@@ -121,7 +121,7 @@ func findEndpoints(prog *loader.Program) ([]endpoint, error) {
 					continue
 				}
 
-				e, err := makeEndpoint(prog, c.Text())
+				e, err := makeEndpoint(c.Text())
 				if err != nil {
 					return nil, err
 				}
@@ -137,7 +137,7 @@ func findEndpoints(prog *loader.Program) ([]endpoint, error) {
 	return endpoints, nil
 }
 
-func makeEndpoint(prog *loader.Program, comment string) (*endpoint, error) {
+func makeEndpoint(comment string) (*endpoint, error) {
 	e := &endpoint{}
 	var tags string
 	fmt.Sscanf(comment, "%s /%s %s", &e.method, &e.path, &tags)
@@ -184,18 +184,20 @@ func makeEndpoint(prog *loader.Program, comment string) (*endpoint, error) {
 			return e, nil
 		}
 	}
-	e.request.contentType = "application/json"
-	if info["reqBody"] != "" {
-		if e.request.body, err = getReference(prog, info["reqBody"]); err != nil {
-			return e, nil
+	/*
+		e.request.contentType = "application/json"
+		if info["reqBody"] != "" {
+			if e.request.body, err = getReference(prog, info["reqBody"]); err != nil {
+				return e, nil
+			}
 		}
-	}
-	e.response.contentType = "application/json"
-	if info["resBody"] != "" {
-		if e.response.body, err = getReference(prog, info["resBody"]); err != nil {
-			return e, nil
+		e.response.contentType = "application/json"
+		if info["resBody"] != "" {
+			if e.response.body, err = getReference(prog, info["resBody"]); err != nil {
+				return e, nil
+			}
 		}
-	}
+	*/
 
 	return e, nil
 }
@@ -234,39 +236,51 @@ func getReference(prog *loader.Program, text string) (reference, error) {
 	return ref, nil
 }
 
+// Process one or more newline-separated parameters.
+//
+// A parameter looks like:
+//
+//   name
+//   name: some description
+//   name (string, required)
+//   name: some description (string, required)
 func parseParams(text string) ([]param, error) {
-	text = strings.TrimSpace(text)
 	params := []param{}
-	for _, line := range strings.Split(strings.TrimSpace(text), "\n") {
+
+	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 		p := param{}
 
-		// Get description
-		s := strings.Split(line, ":")
-		if len(s) > 1 {
-			if paren := strings.Index(s[1], "("); paren > -1 {
-				p.info = strings.TrimSpace(s[1][:paren])
-				s[0] += s[1][paren:]
-			} else {
-				p.info = strings.TrimSpace(s[1])
+		// Get tags
+		var tags []string
+		if open := strings.Index(line, "("); open > -1 {
+			if strings.HasSuffix(line, ")") {
+				tags = strings.Split(line[open+1:len(line)-1], ",")
+				line = line[:open]
 			}
 		}
 
-		m := strings.Split(s[0], "(")
-		p.name = strings.TrimSpace(m[0])
-		if len(m) > 1 {
-			opts := strings.Split(strings.TrimSpace(strings.Trim(m[1], ")")), ",")
-			for _, o := range opts {
-				o = strings.TrimSpace(o)
-				switch {
-				case o == "required":
-					p.required = true
-				case strings.HasPrefix(o, "object:"):
-					p.ref = strings.TrimSpace(strings.Split(o, ":")[1])
-				default:
-					// TODO: validate
-					p.kind = o
-				}
+		// Get description and name
+		if colon := strings.Index(line, ":"); colon > -1 {
+			p.name = line[:colon]
+			p.info = strings.TrimSpace(line[colon+1:])
+		} else {
+			p.name = line
+		}
+		p.name = strings.TrimSpace(p.name)
+
+		for _, t := range tags {
+			t = strings.TrimSpace(t)
+			switch {
+			case t == "required":
+				p.required = true
+			case strings.HasPrefix(t, "object:"):
+				p.ref = strings.TrimSpace(strings.Split(t, ":")[1])
+			default:
+				p.kind = t
 			}
 		}
 
