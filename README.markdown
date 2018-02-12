@@ -53,13 +53,51 @@ A different response for a different status code.
 	//   status: error
 	//   message: A human-readable error message.
 
-The object we references earlier.
+The object we referenced earlier.
 
 	type anObject struct {
 
 Every parameter has a comment which doesn't need to be in any specific format;
 only the type and required are parsed, as with request parameters.
 
+		// Just any comment here really (number, required)
+		ID int
+
+		// Document it!
+		Subject string
+	}
+
+---
+
+Putting the above all together, you get:
+
+	// POST /foo tickets
+	// Post a new foo object.
+	// This is where we explain some caveats or whatnot.
+	//
+	// Form:
+	//   id (number, required): ID of the object
+	//   subject: The subject
+	//
+	// Query:
+	//   same_format (string, optional)
+	//   an_array (array[string])
+	//   woot: just a desc
+	//
+	// Request body (application/json):
+	//   same_format (string, optional)
+	//
+	// JSON response 200 (application/json):
+	//    object: arp242.net/kommentaar.anObject
+	//
+	// JSON response 403 (application/jso):
+	//   status: error
+	//   message: A human-readable error message.
+	func myHandler(r *http.Request, w *http.ResponseWriter) {
+		// ...
+	}
+
+	type anObject struct {
 		// Just any comment here really (number, required)
 		ID int
 
