@@ -73,6 +73,7 @@ Putting the above all together, you get:
 
 	// POST /foo tickets
 	// Post a new foo object.
+	//
 	// This is where we explain some caveats or whatnot.
 	//
 	// Form:
