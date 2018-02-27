@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-yaml/yaml"
+	"github.com/teamwork/kommentaar/parse"
 )
 
 type (
@@ -78,7 +79,7 @@ type (
 	}
 )
 
-func toOpenAPI3(endpoints []endpoint) error {
+func toOpenAPI3(endpoints []parse.Endpoint) error {
 	out := OpenAPI{
 		OpenAPI: "3.0.0",
 		Info: OAInfo{
@@ -90,12 +91,24 @@ func toOpenAPI3(endpoints []endpoint) error {
 
 	for _, e := range endpoints {
 		op := OAOperation{
-			Summary:     e.tagline,
-			Description: e.info,
+			Summary:     e.Tagline,
+			Description: e.Info,
 			OperationID: makeID(e),
-			Tags:        e.tags,
+			Tags:        e.Tags,
 		}
 
+		// Path params
+		for _, p := range e.Request.Path {
+			// TODO: Support refs
+			op.Parameters = append(op.Parameters, OAParameter{
+				In:          "path",
+				Name:        p.name,
+				Required:    p.required,
+				Description: p.info,
+			})
+		}
+
+		// Query params
 		for _, p := range e.request.query {
 			// TODO: Support refs
 			op.Parameters = append(op.Parameters, OAParameter{
@@ -105,6 +118,20 @@ func toOpenAPI3(endpoints []endpoint) error {
 				Description: p.info,
 			})
 		}
+
+		// Form params
+		for _, p := range e.request.form {
+			// TODO: Support refs
+			op.Parameters = append(op.Parameters, OAParameter{
+				In:          "form",
+				Name:        p.name,
+				Required:    p.required,
+				Description: p.info,
+			})
+		}
+
+		// Request body
+		fmt.Println(e.request.body)
 
 		switch e.method {
 		case "GET":

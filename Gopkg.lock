@@ -2,26 +2,30 @@
 
 
 [[projects]]
-  branch = "v2"
-  name = "github.com/go-yaml/yaml"
+  branch = "master"
+  name = "github.com/teamwork/test"
   packages = ["."]
-  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
+  revision = "c05874ffd3109a7224fe9caa97bf15384335beb1"
 
 [[projects]]
   branch = "master"
   name = "github.com/teamwork/utils"
   packages = ["sliceutil"]
-  revision = "91794edc6fbe6ea15b0e6cae711f85f358db429f"
+  revision = "e019cebfed0e9966ff11843f77693986a1ab7e00"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/tools"
-  packages = ["go/ast/astutil","go/buildutil","go/loader"]
+  packages = [
+    "go/ast/astutil",
+    "go/buildutil",
+    "go/loader"
+  ]
   revision = "6d70fb2e85323e81c89374331d3d2b93304faa36"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "013ac91733a2517038bba37387cc786bf64b96a98852640637adb8077ee978cc"
+  inputs-digest = "d3d2a899998fd322b3d4a9389ef0cb4cb04d89d911d85085aaccb63a4e6ddd48"
   solver-name = "gps-cdcl"
   solver-version = 1

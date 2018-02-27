@@ -91,7 +91,7 @@ Putting the above all together, you get:
 	// JSON response 200 (application/json):
 	//    object: arp242.net/kommentaar.anObject
 	//
-	// JSON response 403 (application/jso):
+	// JSON response 403 (application/json):
 	//   status: error
 	//   message: A human-readable error message.
 	func myHandler(r *http.Request, w *http.ResponseWriter) {
@@ -105,3 +105,5 @@ Putting the above all together, you get:
 		// Document it!
 		Subject string
 	}
+
+Also see `example.go`.
