@@ -7,7 +7,7 @@ import (
 	"go/parser"
 	"os"
 
-	"github.com/teamwork/kommentaar/parse"
+	"github.com/teamwork/kommentaar/docparse"
 	"golang.org/x/tools/go/buildutil"
 	"golang.org/x/tools/go/loader"
 )
@@ -69,8 +69,8 @@ func process(path string) error {
 	return nil
 }
 
-func findEndpoints(prog *loader.Program) ([]parse.Endpoint, error) {
-	endpoints := []parse.Endpoint{}
+func findEndpoints(prog *loader.Program) ([]docparse.Endpoint, error) {
+	endpoints := []docparse.Endpoint{}
 
 	for _, p := range prog.InitialPackages() {
 		for _, f := range p.Files {
@@ -79,7 +79,7 @@ func findEndpoints(prog *loader.Program) ([]parse.Endpoint, error) {
 					continue
 				}
 
-				e, err := parse.Parse(c.Text())
+				e, err := docparse.Parse(c.Text())
 				if err != nil {
 					return nil, err
 				}

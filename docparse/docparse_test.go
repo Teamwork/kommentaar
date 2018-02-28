@@ -1,4 +1,4 @@
-package parse
+package docparse
 
 import (
 	"fmt"
@@ -25,8 +25,58 @@ func TestParse(t *testing.T) {
 		{"POST /path\n\n", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path\n \n", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path\nTagline!", "", &Endpoint{Method: "POST", Path: "/path", Tagline: "Tagline!"}},
+		{"POST /path\nTagline!\n\nDesc!\ndesc!", "", &Endpoint{
+			Method: "POST", Path: "/path", Tagline: "Tagline!", Info: "Desc!\ndesc!"}},
+		{"POST /path\n\nDesc!\ndesc!", "", &Endpoint{
+			Method: "POST", Path: "/path", Info: "Desc!\ndesc!"}},
 
-		{"POST /path\n\nRequest body (foo): w00t", "", &Endpoint{Method: "POST", Path: "/path"}},
+		// Query
+		{"POST /path\n\nQuery:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+			Query: []Param{{
+				Name: "foo",
+				Info: "hello",
+			}},
+		}}},
+		{"POST /path/:foo\n\nPath:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path/:foo", Request: Request{
+			Path: []Param{{
+				Name: "foo",
+				Info: "hello",
+			}},
+		}}},
+		// Path
+		// Query and Form
+		{"POST /path\n\nQuery:\n  foo: hello\nForm:\n  Hello: WORLD (required)", "", &Endpoint{
+			Method: "POST", Path: "/path", Request: Request{
+				Query: []Param{{
+					Name: "foo",
+					Info: "hello",
+				}},
+				Form: []Param{{
+					Name:     "Hello",
+					Info:     "WORLD",
+					Required: true,
+				}},
+			}}},
+
+		{"POST /path\n\nRequest body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+			ContentType: defaultRequest,
+		}}},
+
+		{"POST /path\n\nRequest body (foo):\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+			ContentType: "foo",
+		}}},
+
+		{"POST /path\n\nResponse body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
+			Responses: map[int]Response{
+				200: {ContentType: defaultResponse},
+			}}},
+
+		{"POST /path\n\nResponse body:\n w00t\n\nResponse body 400 (w00t):\n asd", "", &Endpoint{
+			Method: "POST", Path: "/path",
+			Responses: map[int]Response{
+				200: {ContentType: defaultResponse},
+				400: {ContentType: "w00t"},
+			}}},
 	}
 
 	for _, tc := range cases {
@@ -95,15 +145,15 @@ func TestParseParams(t *testing.T) {
 		want    Param
 		wantErr string
 	}{
-		{"hello", Param{name: "hello"}, ""},
-		{"hello (string)", Param{name: "hello", kind: "string"}, ""},
-		{"hello (string, required)", Param{name: "hello", kind: "string", required: true}, ""},
-		{"hello: a desc", Param{name: "hello", info: "a desc"}, ""},
+		{"hello", Param{Name: "hello"}, ""},
+		{"hello (string)", Param{Name: "hello", Kind: "string"}, ""},
+		{"hello (string, required)", Param{Name: "hello", Kind: "string", Required: true}, ""},
+		{"hello: a desc", Param{Name: "hello", Info: "a desc"}, ""},
 		{"hello: a desc (string, required)",
-			Param{name: "hello", kind: "string", required: true, info: "a desc"},
+			Param{Name: "hello", Kind: "string", Required: true, Info: "a desc"},
 			""},
 		{"hello  :     a desc    (string, required)",
-			Param{name: "hello", kind: "string", required: true, info: "a desc"},
+			Param{Name: "hello", Kind: "string", Required: true, Info: "a desc"},
 			""},
 	}
 

@@ -2,7 +2,7 @@ package example
 
 import "fmt"
 
-// POST /foo foobar hello
+// POST /foo/:ID foobar hello
 // Create a new foo.
 //
 // This will create a new foo object for a customer. It's important to remember
@@ -22,14 +22,17 @@ import "fmt"
 //   hm:          How about a multi line description? How are we going to do
 //                that? I think just by indentation?
 //
+// Path:
+//   ID: The foo ID.
+//
 // Request body (application/json):
-//   object: RequestObj
+//   $object: RequestObj
 //
 // Response 200 (application/json):
-//    object: AnObject
+//   $object: AnObject
 //
 // Response 400 (application/json):
-//    object: ErrorObject
+//   $object: ErrorObject
 //
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
