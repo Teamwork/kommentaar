@@ -81,7 +81,7 @@ func Parse(comment string) (*Endpoint, error) {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2):])
 	}
 
-	e.Method, e.Path, e.Tags = getStartLine(stringutil.CollapseWhitespace(line1))
+	e.Method, e.Path, e.Tags = getStartLine(line1)
 	if e.Method == "" {
 		return nil, nil
 	}
@@ -184,7 +184,7 @@ var allMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost,
 //
 // The tags are optional, and the method is case-sensitive.
 func getStartLine(line string) (string, string, []string) {
-	words := strings.Split(line, " ")
+	words := strings.Fields(line)
 	if len(words) < 2 || !sliceutil.InStringSlice(allMethods, words[0]) {
 		return "", "", nil
 	}
@@ -195,7 +195,6 @@ func getStartLine(line string) (string, string, []string) {
 	}
 
 	return words[0], words[1], tags
-
 }
 
 // Split the comment in to separate "blocks".
