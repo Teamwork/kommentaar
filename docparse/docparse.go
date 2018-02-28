@@ -66,7 +66,7 @@ var (
 
 var (
 	reRequestHeader  = regexp.MustCompile(`Request body( \((.+?)\))?:`)
-	reResponseHeader = regexp.MustCompile(`Response body( (\d+?))?( \((.+?)\))?:`)
+	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
 // Parse a single comment block.

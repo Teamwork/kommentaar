@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/teamwork/kommentaar/docparse"
 	"golang.org/x/tools/go/buildutil"
 	"golang.org/x/tools/go/loader"
@@ -59,7 +60,10 @@ func process(path string) error {
 		return err
 	}
 
-	fmt.Println(endpoints)
+	spew.Config.Indent = "\t"
+	spew.Config.DisableCapacities = true
+	spew.Config.DisablePointerAddresses = true
+	spew.Dump(endpoints)
 
 	//err = toOpenAPI3(endpoints)
 	//if err != nil {

@@ -2,16 +2,34 @@
 
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/teamwork/test"
-  packages = ["."]
+  packages = [
+    ".",
+    "diff"
+  ]
   revision = "c05874ffd3109a7224fe9caa97bf15384335beb1"
 
 [[projects]]
   branch = "master"
   name = "github.com/teamwork/utils"
-  packages = ["sliceutil"]
-  revision = "e019cebfed0e9966ff11843f77693986a1ab7e00"
+  packages = [
+    "sliceutil",
+    "stringutil"
+  ]
+  revision = "4736c1931ddc3687d67f18738c5f2173c3621091"
 
 [[projects]]
   branch = "master"
@@ -21,11 +39,11 @@
     "go/buildutil",
     "go/loader"
   ]
-  revision = "6d70fb2e85323e81c89374331d3d2b93304faa36"
+  revision = "73e16cff9e0d4a802937444bebb562458548241d"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d3d2a899998fd322b3d4a9389ef0cb4cb04d89d911d85085aaccb63a4e6ddd48"
+  inputs-digest = "6d5816b2468082dbff889c46016d5e214738dde6c59b211eb3073c2a6a719d6e"
   solver-name = "gps-cdcl"
   solver-version = 1

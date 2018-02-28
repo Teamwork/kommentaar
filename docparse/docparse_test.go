@@ -66,12 +66,12 @@ func TestParse(t *testing.T) {
 			ContentType: "foo",
 		}}},
 
-		{"POST /path\n\nResponse body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
+		{"POST /path\n\nResponse:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {ContentType: defaultResponse},
 			}}},
 
-		{"POST /path\n\nResponse body:\n w00t\n\nResponse body 400 (w00t):\n asd", "", &Endpoint{
+		{"POST /path\n\nResponse:\n w00t\n\nResponse 400 (w00t):\n asd", "", &Endpoint{
 			Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {ContentType: defaultResponse},
