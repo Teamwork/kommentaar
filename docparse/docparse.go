@@ -42,7 +42,7 @@ type Response struct {
 
 // Reference ..
 type Reference struct {
-	obj string
+	Obj string
 }
 
 // Object ..
@@ -57,6 +57,8 @@ type Param struct {
 	Required bool   // Is this required to always be sent?
 	//ref      string
 }
+
+const headerDesc = "desc"
 
 // TODO: allow some configuring of this.
 var (
@@ -96,7 +98,7 @@ func Parse(comment string) (*Endpoint, error) {
 
 	for header, contents := range info {
 		switch {
-		case header == "desc":
+		case header == headerDesc:
 			e.Info = contents
 
 		// Path:
@@ -200,7 +202,7 @@ func getStartLine(line string) (string, string, []string) {
 // Split the comment in to separate "blocks".
 func getBlocks(comment string) (map[string]string, error) {
 	info := map[string]string{}
-	header := "desc"
+	header := headerDesc
 
 	for _, line := range strings.Split(comment, "\n") {
 		// Blank lines.
@@ -211,16 +213,16 @@ func getBlocks(comment string) (map[string]string, error) {
 
 		// New header.
 		if line[0] != ' ' && strings.HasSuffix(line, ":") {
-			if header == "desc" {
+			if header == headerDesc {
 				info[header] = strings.TrimSpace(info[header])
 			} else {
 				info[header] = strings.TrimRight(info[header], "\n")
 			}
 			if info[header] == "" || info[header] == "\n" {
-				if header != "desc" {
+				if header != headerDesc {
 					return nil, fmt.Errorf("no content for header %#v", header)
 				}
-				delete(info, "desc")
+				delete(info, headerDesc)
 			}
 			header = line
 			continue
@@ -229,16 +231,16 @@ func getBlocks(comment string) (map[string]string, error) {
 		info[header] += line + "\n"
 	}
 
-	if header == "desc" {
+	if header == headerDesc {
 		info[header] = strings.TrimSpace(info[header])
 	} else {
 		info[header] = strings.TrimRight(info[header], "\n")
 	}
 	if info[header] == "" || info[header] == "\n" {
-		if header != "desc" {
+		if header != headerDesc {
 			return nil, fmt.Errorf("no content for header %#v", header)
 		}
-		delete(info, "desc")
+		delete(info, headerDesc)
 	}
 
 	return info, nil
@@ -305,7 +307,7 @@ func getReference(prog *loader.Program, text string) (Reference, error) {
 	if !strings.HasPrefix(text, "object:") {
 		return ref, fmt.Errorf("must be an object reference: %v", text)
 	}
-	ref.obj = strings.TrimSpace(strings.Split(text, ":")[1])
+	ref.Obj = strings.TrimSpace(strings.Split(text, ":")[1])
 
 	for _, p := range prog.InitialPackages() {
 		for _, f := range p.Files {
