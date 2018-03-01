@@ -10,8 +10,8 @@ import "fmt"
 // that only Pro customers have access to foos.
 //
 // Form:
-//   id:      ID of the object {int, required}
-//   subject: The subject {}
+//   subject: The subject {string, required}.
+//   message: The message {string}.
 //
 // Query:
 //   same_format: {string, optional}

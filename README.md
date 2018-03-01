@@ -6,4 +6,20 @@ Generate OpenAPI files from comments in Go files.
 The idea is that you can write documentation in your comments in a simple
 readable manner.
 
-See `example/example.go`.
+A simple example:
+
+| Code | Explanation |
+| ---- | ----------- |
+|
+| // POST /foo foobar | X |
+| // Create a new foo. | X |
+| // | X |
+| // This will create a new foo object for a customer. It's important to remember | X |
+| // that only Pro customers have access to foos. | X |
+| // | X |
+| // Form: | X |
+| //   subject: The subject {string, required}. | X |
+| //   message: The message {string}. | X |
+| // | X |
+| // Response 200 (application/json): | X |
+| //   $object: responseObject | X |
