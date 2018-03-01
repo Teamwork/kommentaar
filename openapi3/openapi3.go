@@ -22,6 +22,7 @@ type (
 	OAInfo struct {
 		Title   string `json:"title"`
 		Version string `json:"version"`
+		Contact string `json:"contact"`
 	}
 
 	// OAPath ..
@@ -82,17 +83,18 @@ type (
 )
 
 // Write to stdout.
-func Write(w io.Writer, endpoints []*docparse.Endpoint) error {
+func Write(w io.Writer, prog docparse.Program) error {
 	out := OpenAPI{
 		OpenAPI: "3.0.0",
 		Info: OAInfo{
-			Title:   "Teamwork Desk", // TODO
-			Version: "1.0",           // TODO
+			Title:   prog.Config.Title,
+			Version: prog.Config.Version,
+			Contact: prog.Config.Contact,
 		},
 		Paths: map[string]OAPath{},
 	}
 
-	for _, e := range endpoints {
+	for _, e := range prog.Endpoints {
 		op := OAOperation{
 			Summary:     e.Tagline,
 			Description: e.Info,

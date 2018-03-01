@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"arp242.net/sconfig"
 	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 )
@@ -24,8 +25,14 @@ func main() {
 
 	docparse.InitProgram()
 
-	//err := finder.FindComments(paths, openapi3.Write)
-	err := docparse.FindComments(paths, dumpOut)
+	err := sconfig.Parse(&docparse.Prog.Config, "./config", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, err.Error()+"\n")
+		os.Exit(1)
+	}
+
+	//err = finder.FindComments(paths, openapi3.Write)
+	err = docparse.FindComments(paths, dumpOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)

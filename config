@@ -1,0 +1,15 @@
+# Application title.
+title Teamwork Desk
+
+# API version of your application.
+version 2.0
+
+# Contact information.
+contact api@teamwork.com
+
+# Default Content-Type if it's omitted.
+default-request  application/json
+default-response application/json
+
+
+# vim:ft=config

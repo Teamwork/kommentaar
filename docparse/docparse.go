@@ -17,15 +17,18 @@ import (
 // Program is the entire program: all collected endpoints and all collected
 // references.
 type Program struct {
+	Config     Config
 	Endpoints  []*Endpoint
 	References map[string]Reference
-	Config     Config
 }
 
 // Config for the program.
 type Config struct {
 	DefaultRequest  string
 	DefaultResponse string
+	Title           string
+	Version         string
+	Contact         string
 }
 
 // Prog is the program we're currently working on.
