@@ -5,17 +5,45 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
+	"go/token"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 	"github.com/teamwork/utils/stringutil"
-	"golang.org/x/tools/go/loader"
 )
+
+// Program is the entire program: all collected endpoints and all collected
+// references.
+type Program struct {
+	Endpoints  []*Endpoint
+	References map[string]Reference
+	Config     Config
+}
+
+// Config for the program.
+type Config struct {
+	DefaultRequest  string
+	DefaultResponse string
+}
+
+// Prog is the program we're currently working on.
+var Prog Program
+
+// InitProgram creates a new Program instance.
+func InitProgram() {
+	Prog = Program{
+		References: make(map[string]Reference),
+		Config: Config{
+			DefaultRequest:  "application/json",
+			DefaultResponse: "application/json",
+		},
+	}
+}
 
 // Endpoint denotes a single API endpoint.
 type Endpoint struct {
@@ -72,22 +100,10 @@ type Reference struct {
 
 const headerDesc = "desc"
 
-// TODO: allow some configuring of this.
-var (
-	defaultRequest  = "application/json"
-	defaultResponse = "application/json"
-)
-
 var (
 	reRequestHeader  = regexp.MustCompile(`Request body( \((.+?)\))?:`)
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
-
-// Refs stored all the references so it's easier to keep a cache and not re-scan
-// stuff.
-var Refs map[string]Reference
-
-func init() { Refs = make(map[string]Reference) }
 
 // Parse a single comment block in the package pkg.
 func Parse(comment, pkgName string) (*Endpoint, error) {
@@ -147,7 +163,7 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 			// Request body (application/json):
 			req := reRequestHeader.FindStringSubmatch(header)
 			if req != nil {
-				e.Request.ContentType = defaultRequest
+				e.Request.ContentType = Prog.Config.DefaultRequest
 				if len(req) == 3 && req[2] != "" {
 					e.Request.ContentType = req[2]
 				}
@@ -175,7 +191,7 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 					}
 				}
 
-				r := Response{ContentType: defaultResponse}
+				r := Response{ContentType: Prog.Config.DefaultResponse}
 				if len(resp) > 4 && resp[4] != "" {
 					r.ContentType = resp[4]
 				}
@@ -333,7 +349,10 @@ func parseParams(text, pkgName string) (*Params, error) {
 				return nil, err
 			}
 
-			params.Reference = path // ref
+			// TODO: We store it as a path for now, as that's easier to debug in
+			// the intermediate format. We should probably store it as a pointer
+			// once I'm done with that part.
+			params.Reference = path
 
 			continue
 		}
@@ -409,40 +428,8 @@ func getIndent(s string) int {
 	return n
 }
 
-var progs map[string]*loader.Program
-
-func init() { progs = make(map[string]*loader.Program) }
-
-func loadProg(path string) (*loader.Program, error) {
-	prog := progs[path]
-	if prog != nil {
-		return prog, nil
-	}
-
-	ctx := &build.Default
-	conf := &loader.Config{
-		Build:      ctx,
-		ParserMode: parser.ParseComments,
-	}
-	//pkg, err := ctx.ImportDir(".", build.ImportComment)
-	pkg, err := ctx.Import(path, ".", build.ImportComment)
-	if err != nil {
-		return nil, err
-	}
-	conf.ImportWithTests(pkg.ImportPath)
-	prog, err = conf.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	progs[path] = prog
-	return prog, nil
-}
-
 // AnObject: "type AnObject struct" in the current package.
 // github.com/foo/bar.AnObject: Same in another package.
-//
-//prog *loader.Program,
 func getReference(path, pkgName string) (*Reference, string, error) {
 	name := path
 	pkg := pkgName
@@ -452,114 +439,153 @@ func getReference(path, pkgName string) (*Reference, string, error) {
 	}
 	path = fmt.Sprintf("%v %v", pkg, name)
 
-	// Load from cache.
-	if ref, ok := Refs[path]; ok {
+	// Already parsed this one, don't need to do it again.
+	if ref, ok := Prog.References[path]; ok {
 		return &ref, "", nil
 	}
 
-	prog, err := loadProg(pkg)
+	// Find type
+	ts, err := FindType(pkg, name)
 	if err != nil {
 		return nil, "", err
 	}
 
+	// Make sure it's a struct.
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		return nil, "", fmt.Errorf("%v is not a struct but a %T",
+			name, ts.Type)
+	}
+
 	ref := Reference{Name: name, Package: pkg}
+	if ts.Doc != nil {
+		ref.Info = strings.TrimSpace(ts.Doc.Text())
+	}
 
-	for _, p := range prog.InitialPackages() {
-		for _, f := range p.Files {
-			for _, d := range f.Decls {
-				gd, ok := d.(*ast.GenDecl)
-				if !ok {
-					continue
-				}
+	// Parse all the fields.
+	for _, f := range st.Fields.List {
 
-				found := false
+		// TODO: why is names an array?
+		fName := f.Names[0].Name
 
-				for _, s := range gd.Specs {
-					ts, ok := s.(*ast.TypeSpec)
-					if !ok {
-						continue
-					}
-					if ts.Name.Name != name {
-						continue
-					}
+		// Doc is the comment above the field, Comment the
+		// inline comment on the same line.
+		var doc string
+		if f.Doc != nil {
+			doc = f.Doc.Text()
+		} else if f.Comment != nil {
+			doc = f.Comment.Text()
+		}
 
-					st, ok := ts.Type.(*ast.StructType)
-					if !ok {
-						return nil, "", fmt.Errorf("%v is not a struct but a %T",
-							name, ts.Type)
-					}
+		// Make sure that parseParams sees continued lines.
+		// TODO: refactor a bit so we don't have to use this
+		// hack.
+		doc = strings.Replace(doc, "\n", "\n    ", -1)
 
-					found = true
+		p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), pkgName)
+		if err != nil {
+			return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
+				fName, name, err)
+		}
+		if len(p.Params) != 1 {
+			return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
+				fName, name, p.Params)
+		}
 
-					if gd.Doc != nil {
-						ref.Info = strings.TrimSpace(gd.Doc.Text())
-					}
+		switch typ := f.Type.(type) {
+		case *ast.Ident:
+			p.Params[0].Kind = typ.Name
 
-					for _, f := range st.Fields.List {
+		// TODO: this is kinda ugly. There's got to be a better
+		// way?
+		case *ast.ArrayType:
+			//fmt.Printf("%T -> %#v\n", typ.Elt, typ.Elt)
+			// TODO: this only works for primitives, not custom
+			// types.
+			elt, ok := typ.Elt.(*ast.Ident)
+			if !ok {
+				return nil, "", fmt.Errorf("can't type assert")
+			}
 
-						// TODO: why is names an array?
-						fName := f.Names[0].Name
+			p.Params[0].Kind = "[]" + elt.Name
 
-						// Doc is the comment above the field, Comment the
-						// inline comment on the same line.
-						var doc string
-						if f.Doc != nil {
-							doc = f.Doc.Text()
-						} else if f.Comment != nil {
-							doc = f.Comment.Text()
-						}
+		default:
+			return nil, "", fmt.Errorf("unknown type: %T", typ)
+		}
 
-						// Make sure that parseParams sees continued lines.
-						// TODO: refactor a bit so we don't have to use this
-						// hack.
-						doc = strings.Replace(doc, "\n", "\n    ", -1)
+		ref.Params = append(ref.Params, p.Params[0])
+	}
 
-						p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), pkgName)
-						if err != nil {
-							return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
-								fName, name, err)
-						}
-						if len(p.Params) != 1 {
-							return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
-								fName, name, p.Params)
-						}
-
-						switch typ := f.Type.(type) {
-						case *ast.Ident:
-							p.Params[0].Kind = typ.Name
-
-						// TODO: this is kinda ugly. There's got to be a better
-						// way?
-						case *ast.ArrayType:
-							//fmt.Printf("%T -> %#v\n", typ.Elt, typ.Elt)
-							// TODO: this only works for primitives, not custom
-							// types.
-							elt, ok := typ.Elt.(*ast.Ident)
-							if !ok {
-								return nil, "", fmt.Errorf("can't type assert")
-							}
-
-							p.Params[0].Kind = "[]" + elt.Name
-
-						default:
-							return nil, "", fmt.Errorf("unknown type: %T", typ)
-						}
-
-						ref.Params = append(ref.Params, p.Params[0])
-					} // range st.Fields.List
-				} // range gd.Specs
-
-				if found {
-					goto end
-				}
-			} // range f.Decls
-		} // range p.Files
-	} // range prog.InitialPackages()
-
-	return nil, "", fmt.Errorf("could not find %v", path)
-
-end:
-
-	Refs[path] = ref
+	Prog.References[path] = ref
 	return &ref, path, nil
+}
+
+var declsCache = make(map[string][]*ast.TypeSpec)
+
+// FindType attempts to find a type.
+func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
+	pkg, err := goutil.ResolvePackage(pkgPath, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to load from cache.
+	decls, ok := declsCache[pkgPath]
+	if !ok {
+		fset := token.NewFileSet()
+		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(pkgs) != 1 {
+			return nil, fmt.Errorf("more than one package in %v", pkgPath)
+		}
+
+		for _, p := range pkgs {
+			for _, f := range p.Files {
+				for _, d := range f.Decls {
+					// Only need to cache *ast.GenDecl with one *ast.TypeSpec,
+					// as we don't care about functions, imports, and what not.
+					if gd, ok := d.(*ast.GenDecl); ok {
+						for _, s := range gd.Specs {
+							if ts, ok := s.(*ast.TypeSpec); ok {
+								// For:
+								//     // Commment!
+								//     type Foo struct{}
+								//
+								// The "Comment!" is stored on on the
+								// GenDecl.Doc, but for:
+								//     type (
+								//         // Comment!
+								//         Foo struct{}
+								//     )
+								//
+								// it's on the TypeSpec.Doc. Makes no sense to
+								// me either, but this makes it more consistent,
+								// and easier to access since we only care about
+								// the TypeSpec.
+								if ts.Doc == nil && gd.Doc != nil {
+									ts.Doc = gd.Doc
+								}
+
+								decls = append(decls, ts)
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+
+		declsCache[pkgPath] = decls
+	}
+
+	for _, ts := range decls {
+		if ts.Name.Name == name {
+			return ts, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find %v in %v", name, pkgPath)
 }

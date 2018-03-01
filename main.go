@@ -19,33 +19,22 @@ func main() {
 	}
 	flag.Parse()
 	paths := flag.Args()
-
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
 
-	//err := finder.Find(paths, docparse.Parse, openapi3.Write)
-	err := finder.Find(paths, docparse.Parse, dumpOut)
-	//err := finder.Find(paths, dumpDoc, dumpOut)
+	docparse.InitProgram()
+
+	//err := finder.FindComments(paths, docparse.Parse, openapi3.Write)
+	err := finder.FindComments(paths, docparse.Parse, dumpOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 }
 
-func dumpDoc(comment, pkg string) (*docparse.Endpoint, error) {
-	//fmt.Println(pkg)
-	return nil, nil
-}
-
-func dumpOut(_ io.Writer, endpoints []*docparse.Endpoint) error {
-	_, err := pretty.Print(endpoints)
-	if err != nil {
-		return err
-	}
-	fmt.Println("")
-	fmt.Println("")
-	_, err = pretty.Print(docparse.Refs)
+func dumpOut(_ io.Writer, prog docparse.Program) error {
+	_, err := pretty.Print(prog)
 	fmt.Println("")
 	return err
 }

@@ -38,24 +38,15 @@
   branch = "master"
   name = "github.com/teamwork/utils"
   packages = [
+    "goutil",
     "sliceutil",
     "stringutil"
   ]
-  revision = "4736c1931ddc3687d67f18738c5f2173c3621091"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/tools"
-  packages = [
-    "go/ast/astutil",
-    "go/buildutil",
-    "go/loader"
-  ]
-  revision = "73e16cff9e0d4a802937444bebb562458548241d"
+  revision = "5c0740014647b2f77f3479b6d152bfce40b5f64b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "16a759386a7e56c1a2b14b947333dfc4f6e890541956b1bb86e59ca010b00788"
+  inputs-digest = "7bc273742e1b132c544e4f4825b5e0382477da1b213b1d8235382b3e9dae0f71"
   solver-name = "gps-cdcl"
   solver-version = 1

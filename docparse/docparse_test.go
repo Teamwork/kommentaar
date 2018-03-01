@@ -72,7 +72,7 @@ func TestParse(t *testing.T) {
 			}}},
 
 		{"POST /path\n\nRequest body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-			ContentType: defaultRequest,
+			ContentType: "application/json",
 			Body:        &Params{Params: []Param{{Name: "w00t"}}},
 		}}},
 
@@ -84,7 +84,7 @@ func TestParse(t *testing.T) {
 		{"POST /path\n\nResponse:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {
-					ContentType: defaultResponse,
+					ContentType: "application/json",
 					Body:        &Params{Params: []Param{{Name: "w00t"}}},
 				}}}},
 
@@ -92,7 +92,7 @@ func TestParse(t *testing.T) {
 			Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {
-					ContentType: defaultResponse,
+					ContentType: "application/json",
 					Body:        &Params{Params: []Param{{Name: "w00t"}}},
 				},
 				400: {
@@ -102,6 +102,7 @@ func TestParse(t *testing.T) {
 			}}},
 	}
 
+	InitProgram()
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			out, err := Parse(tc.in, ".")
