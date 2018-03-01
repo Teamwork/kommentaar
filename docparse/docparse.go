@@ -1,9 +1,12 @@
 // Package docparse parses the comments.
-package docparse
+package docparse // import "github.com/teamwork/kommentaar/docparse"
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
+	"go/build"
+	"go/parser"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -25,37 +28,46 @@ type Endpoint struct {
 	Responses map[int]Response
 }
 
-// Request ..
+// Request definition.
 type Request struct {
-	ContentType string
-	Path        []Param
-	Query       []Param
-	Form        []Param
-	Body        Reference
+	ContentType string // Content-Type that this request accepts for the body.
+	Body        Params // Request body; usually a JSON body.
+	Path        Params // Path parameters (e.g. /foo/:ID).
+	Query       Params // Query parameters  (e.g. ?foo=id).
+	Form        Params // Form parameters.
 }
 
-// Response ..
+// Response definition.
 type Response struct {
-	ContentType string
-	Body        Reference
+	ContentType string // Content-Type.
+	Body        Params // Body.
 }
 
-// Reference ..
-type Reference struct {
-	Obj string
+// Params parameters for the path, query, form, request body, or response body.
+// This can either be a list of parameters specified in the command, or a
+// reference to a Go struct denoted with $object. You can't mix the two.
+type Params struct {
+	Params    []Param
+	Reference Reference
 }
 
-// Object ..
-type Object struct {
-}
-
-// Param ..
+// Param is a path, query, or form parameter.
 type Param struct {
 	Name     string // Parameter name
 	Info     string // Detailed description
 	Kind     string // Type information
 	Required bool   // Is this required to always be sent?
-	//ref      string
+}
+
+// Reference to a Go struct.
+type Reference struct {
+	Name    string // Name of the struct (without package name).
+	Package string // Package in which the struct resides.
+
+	// TODO: Shouldn't store this in the Reference, but somewhere else (e.g. a
+	// separate list of objects). This way it can be referenced more than once.
+	Info   string  // Comment of the struct itself.
+	Params []Param // Struct fields.
 }
 
 const headerDesc = "desc"
@@ -98,6 +110,8 @@ func Parse(comment string) (*Endpoint, error) {
 
 	for header, contents := range info {
 		switch {
+
+		// Initial description.
 		case header == headerDesc:
 			e.Info = contents
 
@@ -105,21 +119,21 @@ func Parse(comment string) (*Endpoint, error) {
 		case header == "Path:":
 			e.Request.Path, err = parseParams(contents)
 			if err != nil {
-				return e, err
+				return e, fmt.Errorf("could not parse path params: %v", err)
 			}
 
 		// Query:
 		case header == "Query:":
 			e.Request.Query, err = parseParams(contents)
 			if err != nil {
-				return e, err
+				return e, fmt.Errorf("could not parse query params: %v", err)
 			}
 
 		// Form:
 		case header == "Form:":
 			e.Request.Form, err = parseParams(contents)
 			if err != nil {
-				return e, err
+				return e, fmt.Errorf("could not parse form params: %v", err)
 			}
 
 		default:
@@ -132,10 +146,11 @@ func Parse(comment string) (*Endpoint, error) {
 					e.Request.ContentType = req[2]
 				}
 
-				//e.Request.body, err = getReference(prog, contents)
-				//if err != nil {
-				//	return e, err
-				//}
+				e.Request.Body, err = parseParams(contents)
+				if err != nil {
+					return e, fmt.Errorf("could not parse request params: %v", err)
+				}
+
 				break
 			}
 
@@ -158,15 +173,17 @@ func Parse(comment string) (*Endpoint, error) {
 				if len(resp) > 4 && resp[4] != "" {
 					r.ContentType = resp[4]
 				}
+
+				r.Body, err = parseParams(contents)
+				if err != nil {
+					return e, fmt.Errorf("could not parse response %v params: %v", code, err)
+				}
+
 				if e.Responses == nil {
 					e.Responses = make(map[int]Response)
 				}
 				e.Responses[int(code)] = r
 
-				//e.response.body, err = getReference(prog, info["resBody"])
-				//if err != nil {
-				//	return e, nil
-				//}
 				break
 			}
 
@@ -213,17 +230,12 @@ func getBlocks(comment string) (map[string]string, error) {
 
 		// New header.
 		if line[0] != ' ' && strings.HasSuffix(line, ":") {
-			if header == headerDesc {
-				info[header] = strings.TrimSpace(info[header])
-			} else {
-				info[header] = strings.TrimRight(info[header], "\n")
+			var err error
+			info, err = addBlock(info, header)
+			if err != nil {
+				return nil, err
 			}
-			if info[header] == "" || info[header] == "\n" {
-				if header != headerDesc {
-					return nil, fmt.Errorf("no content for header %#v", header)
-				}
-				delete(info, headerDesc)
-			}
+
 			header = line
 			continue
 		}
@@ -231,11 +243,18 @@ func getBlocks(comment string) (map[string]string, error) {
 		info[header] += line + "\n"
 	}
 
+	var err error
+	info, err = addBlock(info, header)
+	return info, err
+}
+
+func addBlock(info map[string]string, header string) (map[string]string, error) {
 	if header == headerDesc {
 		info[header] = strings.TrimSpace(info[header])
 	} else {
 		info[header] = strings.TrimRight(info[header], "\n")
 	}
+
 	if info[header] == "" || info[header] == "\n" {
 		if header != headerDesc {
 			return nil, fmt.Errorf("no content for header %#v", header)
@@ -246,68 +265,193 @@ func getBlocks(comment string) (map[string]string, error) {
 	return info, nil
 }
 
+const (
+	paramOptional = "optional"
+	paramRequired = "required"
+
+	kindString      = "string"
+	kindInt         = "int"
+	kindBool        = "bool"
+	kindArrayString = "[]string"
+	kindArrayInt    = "[]int"
+)
+
 // Process one or more newline-separated parameters.
 //
 // A parameter looks like:
 //
 //   name
 //   name: some description
-//   name: (string, required)
-//   name: some description (string, required)
-func parseParams(text string) ([]Param, error) {
-	params := []Param{}
+//   name: {string, required}
+//   name: some description {string, required}
+//
+// TODO: support $object
+func parseParams(text string) (Params, error) {
+	params := Params{}
 
-	for _, line := range strings.Split(text, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		p := Param{}
-
-		// Get tags
+	for _, line := range collapseIndents(text) {
+		// Get ,-denoted tags from {..} block.
+		// TODO: What if there is more than one {..} block? I think we should
+		// support this.
 		var tags []string
-		if open := strings.Index(line, "("); open > -1 {
-			if strings.HasSuffix(line, ")") {
-				tags = strings.Split(line[open+1:len(line)-1], ",")
+		if open := strings.Index(line, "{"); open > -1 {
+			if close := strings.Index(line, "}"); close > -1 {
+				tags = strings.Split(line[open+1:close], ",")
 				line = line[:open]
 			}
 		}
-
-		// Get description and name
-		if colon := strings.Index(line, ":"); colon > -1 {
-			p.Name = line[:colon]
-			p.Info = strings.TrimSpace(line[colon+1:])
-		} else {
-			p.Name = line
+		// Allow empty {} block.
+		if len(tags) == 1 && tags[0] == "" {
+			tags = nil
 		}
-		p.Name = strings.TrimSpace(p.Name)
 
+		// Get description and name.
+		var name, info string
+		if colon := strings.Index(line, ":"); colon > -1 {
+			name = line[:colon]
+			info = strings.TrimSpace(line[colon+1:])
+		} else {
+			name = line
+		}
+		name = strings.TrimSpace(name)
+
+		// Reference another object.
+		if name == "$object" {
+			s := strings.Split(line, ":")
+			if len(s) != 2 {
+				return params, fmt.Errorf("invalid reference: %#v", line)
+			}
+
+			ref, err := getReference(strings.TrimSpace(s[1]))
+			if err != nil {
+				return params, err
+			}
+
+			params.Reference = ref
+
+			continue
+		}
+
+		p := Param{Name: name, Info: info}
+
+		// Validate tags.
 		for _, t := range tags {
-			t = strings.TrimSpace(t)
-			switch {
-			case t == "required":
+			switch strings.TrimSpace(t) {
+			case paramRequired:
 				p.Required = true
-			//case strings.HasPrefix(t, "object:"):
-			//	p.ref = strings.TrimSpace(strings.Split(t, ":")[1])
-			default:
+			// Bit redundant, but IMHO an explicit "optional" tag can clarify
+			// things sometimes.
+			case paramOptional:
+				p.Required = false
+
+			case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
 				p.Kind = t
+
+			default:
+				return params, fmt.Errorf("unknown parameter tag for %#v: %#v",
+					p.Name, t)
 			}
 		}
 
-		params = append(params, p)
+		params.Params = append(params.Params, p)
+	}
+
+	if params.Reference.Name != "" && len(params.Params) > 0 {
+		return params, errors.New("both a reference and parameters are given")
 	}
 
 	return params, nil
 }
 
-func getReference(prog *loader.Program, text string) (Reference, error) {
-	text = strings.TrimSpace(text)
-	ref := Reference{}
+func collapseIndents(in string) []string {
+	var out []string
+	prevIndent := 0
 
-	if !strings.HasPrefix(text, "object:") {
-		return ref, fmt.Errorf("must be an object reference: %v", text)
+	for i, line := range strings.Split(in, "\n") {
+		indent := getIndent(line)
+
+		if i != 0 && indent > prevIndent {
+			out[len(out)-1] += " " + strings.TrimSpace(line)
+			continue
+		}
+
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		prevIndent = indent
+		out = append(out, line)
 	}
-	ref.Obj = strings.TrimSpace(strings.Split(text, ":")[1])
+
+	return out
+}
+
+func getIndent(s string) int {
+	n := 0
+	for _, c := range s {
+		switch c {
+		case ' ':
+			n++
+		case '\t':
+			n += 8
+		default:
+			return n
+		}
+	}
+
+	return n
+}
+
+var progs map[string]*loader.Program
+
+func init() { progs = make(map[string]*loader.Program) }
+
+func loadProg(path string) (*loader.Program, error) {
+	prog := progs[path]
+	if prog != nil {
+		return prog, nil
+	}
+
+	ctx := &build.Default
+	conf := &loader.Config{
+		Build:      ctx,
+		ParserMode: parser.ParseComments,
+	}
+	//pkg, err := ctx.ImportDir(".", build.ImportComment)
+	pkg, err := ctx.Import(path, ".", build.ImportComment)
+	if err != nil {
+		return nil, err
+	}
+	conf.ImportWithTests(pkg.ImportPath)
+	prog, err = conf.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	progs[path] = prog
+	return prog, nil
+}
+
+// AnObject: "type AnObject struct" in the current package.
+// github.com/foo/bar.AnObject: Same in another package.
+//
+//prog *loader.Program,
+func getReference(path string) (Reference, error) {
+
+	name := path
+	pkg := "." // TODO: maybe use full pkg name?
+	if c := strings.Index(name, " "); c > -1 {
+		pkg = name[:c]
+		name = name[c+1:]
+	}
+
+	prog, err := loadProg(pkg)
+	if err != nil {
+		return Reference{}, err
+	}
+
+	ref := Reference{Name: name, Package: pkg}
 
 	for _, p := range prog.InitialPackages() {
 		for _, f := range p.Files {
@@ -317,19 +461,89 @@ func getReference(prog *loader.Program, text string) (Reference, error) {
 					continue
 				}
 
-				if gd.Doc != nil {
-					fmt.Printf("%s\n", gd.Doc.Text())
+				found := false
 
-					for _, s := range gd.Specs {
-						for _, f := range s.(*ast.TypeSpec).Type.(*ast.StructType).Fields.List {
-							fmt.Printf("%#v - %#v\n", f.Names[0].Name, f.Doc.Text())
-						}
+				for _, s := range gd.Specs {
+					ts, ok := s.(*ast.TypeSpec)
+					if !ok {
+						continue
 					}
+					if ts.Name.Name != name {
+						continue
+					}
+
+					st, ok := ts.Type.(*ast.StructType)
+					if !ok {
+						return Reference{}, fmt.Errorf("%v is not a struct but a %T",
+							name, ts.Type)
+					}
+
+					found = true
+
+					if gd.Doc != nil {
+						ref.Info = strings.TrimSpace(gd.Doc.Text())
+					}
+
+					for _, f := range st.Fields.List {
+
+						// TODO: why is names an array?
+						fName := f.Names[0].Name
+
+						// Doc is the comment above the field, Comment the
+						// inline comment on the same line.
+						var doc string
+						if f.Doc != nil {
+							doc = f.Doc.Text()
+						} else if f.Comment != nil {
+							doc = f.Comment.Text()
+						}
+
+						// Make sure that parseParams sees continued lines.
+						// TODO: refactor a bit so we don't have to use this
+						// hack.
+						doc = strings.Replace(doc, "\n", "\n    ", -1)
+
+						p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc))
+						if err != nil {
+							return Reference{}, fmt.Errorf("could not parse field %v for struct %v: %v",
+								fName, name, err)
+						}
+						if len(p.Params) != 1 {
+							return Reference{}, fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
+								fName, name, p.Params)
+						}
+
+						switch typ := f.Type.(type) {
+						case *ast.Ident:
+							p.Params[0].Kind = typ.Name
+
+						// TODO: this is kinda ugly. There's got to be a better
+						// way?
+						case *ast.ArrayType:
+							elt, ok := typ.Elt.(*ast.Ident)
+							if !ok {
+								return Reference{}, fmt.Errorf("can't type assert")
+							}
+
+							p.Params[0].Kind = "[]" + elt.Name
+
+						default:
+							return Reference{}, fmt.Errorf("unknown type: %T", typ)
+						}
+
+						ref.Params = append(ref.Params, p.Params[0])
+					} // range st.Fields.List
+				} // range gd.Specs
+
+				if found {
+					goto end
 				}
-			}
-		}
+			} // range f.Decls
+		} // range p.Files
+	} // range prog.InitialPackages()
 
-	}
+	return Reference{}, fmt.Errorf("could not find %v", path)
 
+end:
 	return ref, nil
 }

@@ -10,16 +10,16 @@ import "fmt"
 // that only Pro customers have access to foos.
 //
 // Form:
-//   id:      ID of the object (number, required)
-//   subject: The subject (pattern: [a-z], example: "woot", "bar")
+//   id:      ID of the object {int, required}
+//   subject: The subject {}
 //
 // Query:
-//   same_format: (string, optional)
-//   an_array:    (array[string])
+//   same_format: {string, optional}
+//   an_array:    {[]string}
 //   woot:        just a desc
-//   zxc:         just a desc (required,
-//				               pattern: [a-z])
-//   qwe:         (required)
+//   zxc:         just a desc
+//                {required}
+//   qwe:         {required}
 //   hm:          How about a multi line description? How are we going to do
 //                that? I think just by indentation?
 //
@@ -27,14 +27,14 @@ import "fmt"
 //   ID: The foo ID.
 //
 // Request body (application/json):
-//   $object: RequestObj
+//   $object: github.com/teamwork/kommentaar/example RequestObj
 //
 // Response 200 (application/json):
-//   $object: AnObject
+//   $object: github.com/teamwork/kommentaar/example AnObject
 //
 // Response 400 (application/json):
-//   $object: ErrorObject
-//
+//   $object: github.com/teamwork/kommentaar/example ErrorObject
+
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
 // *have* to be right above the handler.
@@ -43,6 +43,10 @@ func MyHandler() {
 	y := AnObject{}
 	fmt.Println(x, y)
 }
+
+// POST /second/endpoint
+//
+// Just to see if that works correct.
 
 // Other others a lot!
 func Other() {
@@ -64,7 +68,7 @@ type RequestObj struct {
 }
 
 type AnObject struct {
-	// Just any comment here really (number, required)
+	// Just any comment here really (int, required)
 	ID int
 
 	// Document it!
