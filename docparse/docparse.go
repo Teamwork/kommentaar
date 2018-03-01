@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 	"github.com/teamwork/utils/stringutil"
 )
@@ -518,74 +515,4 @@ func getReference(path, pkgName string) (*Reference, string, error) {
 
 	Prog.References[path] = ref
 	return &ref, path, nil
-}
-
-var declsCache = make(map[string][]*ast.TypeSpec)
-
-// FindType attempts to find a type.
-func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
-	pkg, err := goutil.ResolvePackage(pkgPath, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Try to load from cache.
-	decls, ok := declsCache[pkgPath]
-	if !ok {
-		fset := token.NewFileSet()
-		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(pkgs) != 1 {
-			return nil, fmt.Errorf("more than one package in %v", pkgPath)
-		}
-
-		for _, p := range pkgs {
-			for _, f := range p.Files {
-				for _, d := range f.Decls {
-					// Only need to cache *ast.GenDecl with one *ast.TypeSpec,
-					// as we don't care about functions, imports, and what not.
-					if gd, ok := d.(*ast.GenDecl); ok {
-						for _, s := range gd.Specs {
-							if ts, ok := s.(*ast.TypeSpec); ok {
-								// For:
-								//     // Commment!
-								//     type Foo struct{}
-								//
-								// The "Comment!" is stored on on the
-								// GenDecl.Doc, but for:
-								//     type (
-								//         // Comment!
-								//         Foo struct{}
-								//     )
-								//
-								// it's on the TypeSpec.Doc. Makes no sense to
-								// me either, but this makes it more consistent,
-								// and easier to access since we only care about
-								// the TypeSpec.
-								if ts.Doc == nil && gd.Doc != nil {
-									ts.Doc = gd.Doc
-								}
-
-								decls = append(decls, ts)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-
-		declsCache[pkgPath] = decls
-	}
-
-	for _, ts := range decls {
-		if ts.Name.Name == name {
-			return ts, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not find %v in %v", name, pkgPath)
 }

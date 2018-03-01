@@ -8,7 +8,6 @@ import (
 
 	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
-	"github.com/teamwork/kommentaar/finder"
 )
 
 func main() {
@@ -25,8 +24,8 @@ func main() {
 
 	docparse.InitProgram()
 
-	//err := finder.FindComments(paths, docparse.Parse, openapi3.Write)
-	err := finder.FindComments(paths, docparse.Parse, dumpOut)
+	//err := finder.FindComments(paths, openapi3.Write)
+	err := docparse.FindComments(paths, dumpOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)

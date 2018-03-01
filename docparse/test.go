@@ -1,3 +1,4 @@
+// nolint
 package docparse
 
 // For tests. We don't parse test files.
