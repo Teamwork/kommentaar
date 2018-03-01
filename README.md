@@ -24,6 +24,9 @@ A simple example:
     type responseObject struct {
         // Unique identifier.
         ID int `json:"id"`
+
+        // All threads that belong to this foo.
+        Threads []models.Threads
     }
 
 To break it down:
