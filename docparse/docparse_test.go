@@ -9,19 +9,6 @@ import (
 	"github.com/teamwork/test/diff"
 )
 
-// TestObject general documentation.
-type TestObject struct {
-	// ID documentation {required}.
-	ID int
-
-	// Foo is a really cool foo-thing!
-	// Such foo!
-	// {optional}
-	Foo string
-
-	Bar []string
-}
-
 func TestParse(t *testing.T) {
 	cases := []struct {
 		in, wantErr string
@@ -188,7 +175,7 @@ func TestParseParams(t *testing.T) {
 		{"subject: The subject {}", Param{Name: "subject", Info: "The subject"}, ""},
 
 		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter tag"},
-		{"subject: foo\n$object: TestObject", Param{}, "both a reference and parameters are given"},
+		{"subject: foo\n$object: testObject", Param{}, "both a reference and parameters are given"},
 	}
 
 	for i, tc := range cases {
@@ -260,10 +247,10 @@ func TestGetReference(t *testing.T) {
 		wantErr string
 		want    *Reference
 	}{
-		{"TestObject", "", &Reference{
-			Name:    "TestObject",
+		{"testObject", "", &Reference{
+			Name:    "testObject",
 			Package: ".",
-			Info:    "TestObject general documentation.",
+			Info:    "testObject general documentation.",
 			Params: []Param{
 				{Name: "ID", Kind: "int", Info: "ID documentation", Required: true},
 				{Name: "Foo", Kind: "string", Info: "Foo is a really cool foo-thing! Such foo!"},
