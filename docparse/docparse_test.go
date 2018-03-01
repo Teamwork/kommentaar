@@ -45,13 +45,13 @@ func TestParse(t *testing.T) {
 
 		// Query
 		{"POST /path\n\nQuery:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-			Query: Params{Params: []Param{{
+			Query: &Params{Params: []Param{{
 				Name: "foo",
 				Info: "hello",
 			}}},
 		}}},
 		{"POST /path/:foo\n\nPath:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path/:foo", Request: Request{
-			Path: Params{Params: []Param{{
+			Path: &Params{Params: []Param{{
 				Name: "foo",
 				Info: "hello",
 			}}},
@@ -60,11 +60,11 @@ func TestParse(t *testing.T) {
 		// Query and Form
 		{"POST /path\n\nQuery:\n  foo: hello\nForm:\n  Hello: WORLD {required}", "", &Endpoint{
 			Method: "POST", Path: "/path", Request: Request{
-				Query: Params{Params: []Param{{
+				Query: &Params{Params: []Param{{
 					Name: "foo",
 					Info: "hello",
 				}}},
-				Form: Params{Params: []Param{{
+				Form: &Params{Params: []Param{{
 					Name:     "Hello",
 					Info:     "WORLD",
 					Required: true,
@@ -73,19 +73,19 @@ func TestParse(t *testing.T) {
 
 		{"POST /path\n\nRequest body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
 			ContentType: defaultRequest,
-			Body:        Params{Params: []Param{{Name: "w00t"}}},
+			Body:        &Params{Params: []Param{{Name: "w00t"}}},
 		}}},
 
 		{"POST /path\n\nRequest body (foo):\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
 			ContentType: "foo",
-			Body:        Params{Params: []Param{{Name: "w00t"}}},
+			Body:        &Params{Params: []Param{{Name: "w00t"}}},
 		}}},
 
 		{"POST /path\n\nResponse:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {
 					ContentType: defaultResponse,
-					Body:        Params{Params: []Param{{Name: "w00t"}}},
+					Body:        &Params{Params: []Param{{Name: "w00t"}}},
 				}}}},
 
 		{"POST /path\n\nResponse:\n w00t\n\nResponse 400 (w00t):\n asd", "", &Endpoint{
@@ -93,18 +93,18 @@ func TestParse(t *testing.T) {
 			Responses: map[int]Response{
 				200: {
 					ContentType: defaultResponse,
-					Body:        Params{Params: []Param{{Name: "w00t"}}},
+					Body:        &Params{Params: []Param{{Name: "w00t"}}},
 				},
 				400: {
 					ContentType: "w00t",
-					Body:        Params{Params: []Param{{Name: "asd"}}},
+					Body:        &Params{Params: []Param{{Name: "asd"}}},
 				},
 			}}},
 	}
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := Parse(tc.in)
+			out, err := Parse(tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
@@ -192,7 +192,7 @@ func TestParseParams(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := parseParams(tc.in)
+			out, err := parseParams(tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
@@ -213,7 +213,7 @@ func TestParseParams(t *testing.T) {
 				}
 			}
 
-			out, err := parseParams(in)
+			out, err := parseParams(in, ".")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -257,9 +257,9 @@ func TestGetReference(t *testing.T) {
 	cases := []struct {
 		in      string
 		wantErr string
-		want    Reference
+		want    *Reference
 	}{
-		{"TestObject", "", Reference{
+		{"TestObject", "", &Reference{
 			Name:    "TestObject",
 			Package: ".",
 			Info:    "TestObject general documentation.",
@@ -269,7 +269,7 @@ func TestGetReference(t *testing.T) {
 				{Name: "Bar", Kind: "[]string"},
 			},
 		}},
-		{"net/mail Address", "", Reference{
+		{"net/mail Address", "", &Reference{
 			Name:    "Address",
 			Package: "net/mail",
 			Info: "Address represents a single mail address.\n" +
@@ -281,13 +281,13 @@ func TestGetReference(t *testing.T) {
 			},
 		}},
 
-		{"UnknownObject", "could not find UnknownObject", Reference{}},
-		{"net/http Header", "not a struct", Reference{}},
+		{"UnknownObject", "could not find", nil},
+		{"net/http Header", "not a struct", nil},
 	}
 
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
-			out, err := getReference(tc.in)
+			out, _, err := getReference(tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}

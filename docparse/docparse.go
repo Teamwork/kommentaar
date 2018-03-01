@@ -30,25 +30,28 @@ type Endpoint struct {
 
 // Request definition.
 type Request struct {
-	ContentType string // Content-Type that this request accepts for the body.
-	Body        Params // Request body; usually a JSON body.
-	Path        Params // Path parameters (e.g. /foo/:ID).
-	Query       Params // Query parameters  (e.g. ?foo=id).
-	Form        Params // Form parameters.
+	ContentType string  // Content-Type that this request accepts for the body.
+	Body        *Params // Request body; usually a JSON body.
+	Path        *Params // Path parameters (e.g. /foo/:ID).
+	Query       *Params // Query parameters  (e.g. ?foo=id).
+	Form        *Params // Form parameters.
 }
 
 // Response definition.
 type Response struct {
-	ContentType string // Content-Type.
-	Body        Params // Body.
+	ContentType string  // Content-Type.
+	Body        *Params // Body.
 }
 
 // Params parameters for the path, query, form, request body, or response body.
 // This can either be a list of parameters specified in the command, or a
 // reference to a Go struct denoted with $object. You can't mix the two.
 type Params struct {
-	Params    []Param
-	Reference Reference
+	Params []Param
+	// Main reason to store as a string (and Refs as a map) for now is so that
+	// it looks pretties in the pretty.Print() output. May not want to keep
+	// this.
+	Reference string //*Reference
 }
 
 // Param is a path, query, or form parameter.
@@ -61,13 +64,10 @@ type Param struct {
 
 // Reference to a Go struct.
 type Reference struct {
-	Name    string // Name of the struct (without package name).
-	Package string // Package in which the struct resides.
-
-	// TODO: Shouldn't store this in the Reference, but somewhere else (e.g. a
-	// separate list of objects). This way it can be referenced more than once.
-	Info   string  // Comment of the struct itself.
-	Params []Param // Struct fields.
+	Name    string  // Name of the struct (without package name).
+	Package string  // Package in which the struct resides.
+	Info    string  // Comment of the struct itself.
+	Params  []Param // Struct fields.
 }
 
 const headerDesc = "desc"
@@ -83,8 +83,14 @@ var (
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
-// Parse a single comment block.
-func Parse(comment string) (*Endpoint, error) {
+// Refs stored all the references so it's easier to keep a cache and not re-scan
+// stuff.
+var Refs map[string]Reference
+
+func init() { Refs = make(map[string]Reference) }
+
+// Parse a single comment block in the package pkg.
+func Parse(comment, pkgName string) (*Endpoint, error) {
 	e := &Endpoint{}
 
 	line1 := stringutil.GetLine(comment, 1)
@@ -117,23 +123,23 @@ func Parse(comment string) (*Endpoint, error) {
 
 		// Path:
 		case header == "Path:":
-			e.Request.Path, err = parseParams(contents)
+			e.Request.Path, err = parseParams(contents, pkgName)
 			if err != nil {
-				return e, fmt.Errorf("could not parse path params: %v", err)
+				return nil, fmt.Errorf("could not parse path params: %v", err)
 			}
 
 		// Query:
 		case header == "Query:":
-			e.Request.Query, err = parseParams(contents)
+			e.Request.Query, err = parseParams(contents, pkgName)
 			if err != nil {
-				return e, fmt.Errorf("could not parse query params: %v", err)
+				return nil, fmt.Errorf("could not parse query params: %v", err)
 			}
 
 		// Form:
 		case header == "Form:":
-			e.Request.Form, err = parseParams(contents)
+			e.Request.Form, err = parseParams(contents, pkgName)
 			if err != nil {
-				return e, fmt.Errorf("could not parse form params: %v", err)
+				return nil, fmt.Errorf("could not parse form params: %v", err)
 			}
 
 		default:
@@ -146,9 +152,9 @@ func Parse(comment string) (*Endpoint, error) {
 					e.Request.ContentType = req[2]
 				}
 
-				e.Request.Body, err = parseParams(contents)
+				e.Request.Body, err = parseParams(contents, pkgName)
 				if err != nil {
-					return e, fmt.Errorf("could not parse request params: %v", err)
+					return nil, fmt.Errorf("could not parse request params: %v", err)
 				}
 
 				break
@@ -174,9 +180,9 @@ func Parse(comment string) (*Endpoint, error) {
 					r.ContentType = resp[4]
 				}
 
-				r.Body, err = parseParams(contents)
+				r.Body, err = parseParams(contents, pkgName)
 				if err != nil {
-					return e, fmt.Errorf("could not parse response %v params: %v", code, err)
+					return nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 				}
 
 				if e.Responses == nil {
@@ -187,7 +193,7 @@ func Parse(comment string) (*Endpoint, error) {
 				break
 			}
 
-			return e, fmt.Errorf("unknown header: %#v", header)
+			return nil, fmt.Errorf("unknown header: %#v", header)
 		}
 	}
 
@@ -286,8 +292,8 @@ const (
 //   name: some description {string, required}
 //
 // TODO: support $object
-func parseParams(text string) (Params, error) {
-	params := Params{}
+func parseParams(text, pkgName string) (*Params, error) {
+	params := &Params{}
 
 	for _, line := range collapseIndents(text) {
 		// Get ,-denoted tags from {..} block.
@@ -319,15 +325,15 @@ func parseParams(text string) (Params, error) {
 		if name == "$object" {
 			s := strings.Split(line, ":")
 			if len(s) != 2 {
-				return params, fmt.Errorf("invalid reference: %#v", line)
+				return nil, fmt.Errorf("invalid reference: %#v", line)
 			}
 
-			ref, err := getReference(strings.TrimSpace(s[1]))
+			_, path, err := getReference(strings.TrimSpace(s[1]), pkgName)
 			if err != nil {
-				return params, err
+				return nil, err
 			}
 
-			params.Reference = ref
+			params.Reference = path // ref
 
 			continue
 		}
@@ -348,7 +354,7 @@ func parseParams(text string) (Params, error) {
 				p.Kind = t
 
 			default:
-				return params, fmt.Errorf("unknown parameter tag for %#v: %#v",
+				return nil, fmt.Errorf("unknown parameter tag for %#v: %#v",
 					p.Name, t)
 			}
 		}
@@ -356,8 +362,8 @@ func parseParams(text string) (Params, error) {
 		params.Params = append(params.Params, p)
 	}
 
-	if params.Reference.Name != "" && len(params.Params) > 0 {
-		return params, errors.New("both a reference and parameters are given")
+	if params.Reference != "" && len(params.Params) > 0 {
+		return nil, errors.New("both a reference and parameters are given")
 	}
 
 	return params, nil
@@ -437,18 +443,23 @@ func loadProg(path string) (*loader.Program, error) {
 // github.com/foo/bar.AnObject: Same in another package.
 //
 //prog *loader.Program,
-func getReference(path string) (Reference, error) {
-
+func getReference(path, pkgName string) (*Reference, string, error) {
 	name := path
-	pkg := "." // TODO: maybe use full pkg name?
+	pkg := pkgName
 	if c := strings.Index(name, " "); c > -1 {
 		pkg = name[:c]
 		name = name[c+1:]
 	}
+	path = fmt.Sprintf("%v %v", pkg, name)
+
+	// Load from cache.
+	if ref, ok := Refs[path]; ok {
+		return &ref, "", nil
+	}
 
 	prog, err := loadProg(pkg)
 	if err != nil {
-		return Reference{}, err
+		return nil, "", err
 	}
 
 	ref := Reference{Name: name, Package: pkg}
@@ -474,7 +485,7 @@ func getReference(path string) (Reference, error) {
 
 					st, ok := ts.Type.(*ast.StructType)
 					if !ok {
-						return Reference{}, fmt.Errorf("%v is not a struct but a %T",
+						return nil, "", fmt.Errorf("%v is not a struct but a %T",
 							name, ts.Type)
 					}
 
@@ -503,13 +514,13 @@ func getReference(path string) (Reference, error) {
 						// hack.
 						doc = strings.Replace(doc, "\n", "\n    ", -1)
 
-						p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc))
+						p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), pkgName)
 						if err != nil {
-							return Reference{}, fmt.Errorf("could not parse field %v for struct %v: %v",
+							return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
 								fName, name, err)
 						}
 						if len(p.Params) != 1 {
-							return Reference{}, fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
+							return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
 								fName, name, p.Params)
 						}
 
@@ -520,15 +531,18 @@ func getReference(path string) (Reference, error) {
 						// TODO: this is kinda ugly. There's got to be a better
 						// way?
 						case *ast.ArrayType:
+							//fmt.Printf("%T -> %#v\n", typ.Elt, typ.Elt)
+							// TODO: this only works for primitives, not custom
+							// types.
 							elt, ok := typ.Elt.(*ast.Ident)
 							if !ok {
-								return Reference{}, fmt.Errorf("can't type assert")
+								return nil, "", fmt.Errorf("can't type assert")
 							}
 
 							p.Params[0].Kind = "[]" + elt.Name
 
 						default:
-							return Reference{}, fmt.Errorf("unknown type: %T", typ)
+							return nil, "", fmt.Errorf("unknown type: %T", typ)
 						}
 
 						ref.Params = append(ref.Params, p.Params[0])
@@ -542,8 +556,10 @@ func getReference(path string) (Reference, error) {
 		} // range p.Files
 	} // range prog.InitialPackages()
 
-	return Reference{}, fmt.Errorf("could not find %v", path)
+	return nil, "", fmt.Errorf("could not find %v", path)
 
 end:
-	return ref, nil
+
+	Refs[path] = ref
+	return &ref, path, nil
 }

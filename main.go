@@ -25,15 +25,27 @@ func main() {
 	}
 
 	//err := finder.Find(paths, docparse.Parse, openapi3.Write)
-	err := finder.Find(paths, docparse.Parse, dump)
+	err := finder.Find(paths, docparse.Parse, dumpOut)
+	//err := finder.Find(paths, dumpDoc, dumpOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 }
 
-func dump(_ io.Writer, endpoints []*docparse.Endpoint) error {
+func dumpDoc(comment, pkg string) (*docparse.Endpoint, error) {
+	//fmt.Println(pkg)
+	return nil, nil
+}
+
+func dumpOut(_ io.Writer, endpoints []*docparse.Endpoint) error {
 	_, err := pretty.Print(endpoints)
+	if err != nil {
+		return err
+	}
+	fmt.Println("")
+	fmt.Println("")
+	_, err = pretty.Print(docparse.Refs)
 	fmt.Println("")
 	return err
 }

@@ -27,7 +27,7 @@ import "fmt"
 //   ID: The foo ID.
 //
 // Request body (application/json):
-//   $object: github.com/teamwork/kommentaar/example RequestObj
+//   $object: RequestObj
 //
 // Response 200 (application/json):
 //   $object: github.com/teamwork/kommentaar/example AnObject
