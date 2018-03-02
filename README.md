@@ -42,8 +42,8 @@ To break it down:
   optional.
 
 - After a single blank line any further text will be treated as the endpoint's
-  description. This is free-form text, this may (and probably should) often be
-  omitted, as "Create a new foo" is usually clear enough.
+  description. This is free-form text, this may be omitted (especially in cases
+  where it just repeats the tagline it's not very useful to add).
 
 - The rest is is formatted as parameter lists which start with a header. A
   header is any text ending in a semicolon (`:`). The block contents is indented
