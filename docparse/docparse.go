@@ -288,8 +288,9 @@ func addBlock(info map[string]string, header string) (map[string]string, error) 
 }
 
 const (
-	paramOptional = "optional"
-	paramRequired = "required"
+	paramOptional  = "optional"
+	paramRequired  = "required"
+	paramOmitEmpty = "omitempty"
 
 	kindString      = "string"
 	kindInt         = "int"
@@ -306,13 +307,11 @@ const (
 //   name: some description
 //   name: {string, required}
 //   name: some description {string, required}
-//
-// TODO: support $object
 func parseParams(text, pkgName string) (*Params, error) {
 	params := &Params{}
 
 	for _, line := range collapseIndents(text) {
-		// Get ,-denoted tags from {..} block.
+		// Get tags from {..} block.
 		// TODO: What if there is more than one {..} block? I think we should
 		// support this.
 		var tags []string
@@ -350,8 +349,9 @@ func parseParams(text, pkgName string) (*Params, error) {
 			}
 
 			// TODO: We store it as a path for now, as that's easier to debug in
-			// the intermediate format. We should probably store it as a pointer
-			// once I'm done with that part.
+			// the intermediate format (otherwise pretty.Print() show the full
+			// object, which is kind of noisy). We should probably store it as a
+			// pointer once I'm done with the docparse part.
 			params.Reference = path
 
 			continue
@@ -368,6 +368,9 @@ func parseParams(text, pkgName string) (*Params, error) {
 			// things sometimes.
 			case paramOptional:
 				p.Required = false
+
+			case paramOmitEmpty:
+				// TODO: implement this. Also load from struct tag?
 
 			case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
 				p.Kind = t
