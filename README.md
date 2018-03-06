@@ -29,26 +29,28 @@ Syntax
 
 A simple example:
 
-    // POST /foo foobar
-    // Create a new foo.
-    //
-    // This will create a new foo object for a customer. It's important to remember
-    // that only Pro customers have access to foos.
-    //
-    // Form:
-    //   subject: The subject {string, required}.
-    //   message: The message {string}.
-    //
-    // Response 200 (application/json):
-    //   $object: responseObject
+```go
+// POST /foo foobar
+// Create a new foo.
+//
+// This will create a new foo object for a customer. It's important to remember
+// that only Pro customers have access to foos.
+//
+// Form:
+//   subject: The subject {string, required}.
+//   message: The message {string}.
+//
+// Response 200 (application/json):
+//   $object: responseObject
 
-    type responseObject struct {
-        // Unique identifier.
-        ID int `json:"id"`
+type responseObject struct {
+    // Unique identifier.
+    ID int `json:"id"`
 
-        // All threads that belong to this foo.
-        Threads []models.Threads
-    }
+    // All threads that belong to this foo.
+    Threads []models.Threads
+}
+```
 
 To break it down:
 
