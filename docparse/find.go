@@ -72,6 +72,7 @@ func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
 	decls, ok := declsCache[pkgPath]
 	if !ok {
 		fset := token.NewFileSet()
+		//fmt.Printf("FindType: parsing dir %#v: %#v\n", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
 			return nil, err

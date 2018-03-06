@@ -3,7 +3,7 @@ package example
 
 import "fmt"
 
-// POST /foo/:ID foobar hello
+// POST /foo/{id} foobar hello
 // Create a new foo.
 //
 // This will create a new foo object for a customer. It's important to remember

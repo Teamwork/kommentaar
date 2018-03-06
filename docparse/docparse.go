@@ -25,11 +25,14 @@ type Program struct {
 
 // Config for the program.
 type Config struct {
+	Title        string
+	Version      string
+	ContactName  string
+	ContactEmail string
+	ContactSite  string
+
 	DefaultRequest  string
 	DefaultResponse string
-	Title           string
-	Version         string
-	Contact         string
 	Prefix          string
 }
 
@@ -54,9 +57,10 @@ type Endpoint struct {
 	Tags      []string // Tags for grouping (optional).
 	Tagline   string   // Single-line description (optional).
 	Info      string   // More detailed description (optional).
-	Location  string   // Location in the source we found this.
 	Request   Request
 	Responses map[int]Response
+
+	Location string // Location in the source we found the comment as "<file>:<line>:<col>"
 }
 
 // Request definition.
@@ -445,6 +449,10 @@ func getIndent(s string) int {
 
 // AnObject: "type AnObject struct" in the current package.
 // github.com/foo/bar.AnObject: Same in another package.
+//
+// TODO: I think we can improve on the syntax here. If I type "models.Foo" then
+// we should be able to determine that "models" refers to
+// "github.com/teamwork/desk/models", as that's imported.
 func getReference(path, pkgName string) (*Reference, string, error) {
 	name := path
 	pkg := pkgName
@@ -507,54 +515,82 @@ func getReference(path, pkgName string) (*Reference, string, error) {
 				fName, name, p.Params)
 		}
 
-		switch typ := f.Type.(type) {
-		case *ast.Ident:
-			p.Params[0].Kind = typ.Name
-
-		// TODO: this is kinda ugly. There's got to be a better
-		// way?
-		case *ast.ArrayType:
-			elt, ok := typ.Elt.(*ast.Ident)
-			if !ok {
-				// e.g. "[]models.Language"
-				slt, ok := typ.Elt.(*ast.SelectorExpr)
-				if !ok {
-					return nil, "", fmt.Errorf("can't type assert %T %[1]v", typ.Elt)
-				}
-
-				xid, ok := slt.X.(*ast.Ident)
-				if !ok {
-					return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", slt.X)
-				}
-
-				p.Params[0].Kind = fmt.Sprintf("[]%v.%v", xid.Name, slt.Sel.Name)
-			} else {
-				// e.g. "[]Foo"
-				p.Params[0].Kind = "[]" + elt.Name
-			}
-
-		// TODO: more uglyness.
-		// e.g. "*models.Session"
-		case *ast.StarExpr:
-			xid, ok := typ.X.(*ast.SelectorExpr)
-			if !ok {
-				return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", typ.X)
-			}
-
-			xid2, ok := xid.X.(*ast.Ident)
-			if !ok {
-				return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", xid.X)
-			}
-
-			p.Params[0].Kind = fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name)
-
-		default:
-			return nil, "", fmt.Errorf("unknown type: %T", typ)
+		kind, err := typeString(f)
+		if err != nil {
+			return nil, "", err
 		}
+		p.Params[0].Kind = kind
 
 		ref.Params = append(ref.Params, p.Params[0])
 	}
 
 	Prog.References[path] = ref
 	return &ref, path, nil
+}
+
+// Convert f.Type to a string (e.g. "int", "models.Foo", "map[string]*Foo",
+// etc.). This is useful for debugging and transparency.
+//
+// TODO: Make this not suck. I think it might actually be a lot easier with
+// reflection?
+func typeString(f *ast.Field) (string, error) {
+	switch typ := f.Type.(type) {
+	case *ast.Ident:
+		return typ.Name, nil
+
+	case *ast.ArrayType:
+		elt, ok := typ.Elt.(*ast.Ident)
+		if !ok {
+			// e.g. "[]models.Language"
+			slt, ok := typ.Elt.(*ast.SelectorExpr)
+			if !ok {
+				return "", fmt.Errorf("can't type assert %T %[1]v", typ.Elt)
+			}
+
+			xid, ok := slt.X.(*ast.Ident)
+			if !ok {
+				return "", fmt.Errorf("can't type assert selector %T %[1]v", slt.X)
+			}
+
+			return fmt.Sprintf("[]%v.%v", xid.Name, slt.Sel.Name), nil
+		}
+
+		// e.g. "[]Foo"
+		return "[]" + elt.Name, nil
+
+	// e.g. "models.Language".
+	case *ast.SelectorExpr:
+		return resolveSelectorExpr(typ)
+
+	// e.g. "*models.Session"
+	case *ast.StarExpr:
+		xid, ok := typ.X.(*ast.SelectorExpr)
+		if !ok {
+			iid, ok := typ.X.(*ast.Ident)
+			if ok {
+				return "*" + iid.Name, nil
+			}
+
+			return "", fmt.Errorf("can't type assert selector 1 %T %[1]v", typ.X)
+		}
+
+		xid2, ok := xid.X.(*ast.Ident)
+		if !ok {
+			return "", fmt.Errorf("can't type assert selector 2 %T %[1]v", xid.X)
+		}
+
+		return fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name), nil
+
+	default:
+		return "", fmt.Errorf("unknown type: %T", typ)
+	}
+}
+
+func resolveSelectorExpr(sel *ast.SelectorExpr) (string, error) {
+	pkg, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return "", fmt.Errorf("can't type assert pkg selector %T %[1]v", sel.X)
+	}
+
+	return fmt.Sprintf("%v.%v", pkg.Name, sel.Sel.Name), nil
 }
