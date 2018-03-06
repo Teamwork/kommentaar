@@ -30,10 +30,10 @@ import "fmt"
 //   $object: RequestObj
 //
 // Response 200 (application/json):
-//   $object: github.com/teamwork/kommentaar/example AnObject
+//   $object: AnObject
 //
 // Response 400 (application/json):
-//   $object: github.com/teamwork/kommentaar/example ErrorObject
+//   $object: ErrorObject
 
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
@@ -81,7 +81,13 @@ type AnObject struct {
 // ErrorObject ..
 type ErrorObject struct {
 	// Errors..
-	Errors []string
+	Errors []MyError
+}
+
+// MyError ..
+type MyError struct {
+	Message string
+	Code    int
 }
 
 func main() {

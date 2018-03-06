@@ -502,15 +502,39 @@ func getReference(path, pkgName string) (*Reference, string, error) {
 		// TODO: this is kinda ugly. There's got to be a better
 		// way?
 		case *ast.ArrayType:
-			//fmt.Printf("%T -> %#v\n", typ.Elt, typ.Elt)
-			// TODO: this only works for primitives, not custom
-			// types.
 			elt, ok := typ.Elt.(*ast.Ident)
 			if !ok {
-				return nil, "", fmt.Errorf("can't type assert")
+				// e.g. "[]models.Language"
+				slt, ok := typ.Elt.(*ast.SelectorExpr)
+				if !ok {
+					return nil, "", fmt.Errorf("can't type assert %T %[1]v", typ.Elt)
+				}
+
+				xid, ok := slt.X.(*ast.Ident)
+				if !ok {
+					return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", slt.X)
+				}
+
+				p.Params[0].Kind = fmt.Sprintf("[]%v.%v", xid.Name, slt.Sel.Name)
+			} else {
+				// e.g. "[]Foo"
+				p.Params[0].Kind = "[]" + elt.Name
 			}
 
-			p.Params[0].Kind = "[]" + elt.Name
+		// TODO: more uglyness.
+		// e.g. "*models.Session"
+		case *ast.StarExpr:
+			xid, ok := typ.X.(*ast.SelectorExpr)
+			if !ok {
+				return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", typ.X)
+			}
+
+			xid2, ok := xid.X.(*ast.Ident)
+			if !ok {
+				return nil, "", fmt.Errorf("can't type assert selector %T %[1]v", xid.X)
+			}
+
+			p.Params[0].Kind = fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name)
 
 		default:
 			return nil, "", fmt.Errorf("unknown type: %T", typ)

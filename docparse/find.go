@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/teamwork/utils/goutil"
 )
@@ -31,11 +32,15 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 		}
 
 		for _, pkg := range pkgs {
-			for _, f := range pkg.Files {
+			for path, f := range pkg.Files {
 				for _, c := range f.Comments {
 					e, err := Parse(c.Text(), p.ImportPath)
 					if err != nil {
-						return err
+						// Print as just <pkgname>/<file> instead of full path.
+						if i := strings.Index(path, p.ImportPath); i > -1 {
+							path = path[i:]
+						}
+						return fmt.Errorf("%v: %v", path, err)
 					}
 					if e == nil {
 						continue
