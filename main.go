@@ -19,7 +19,7 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
-	out := flag.String("out", "dump", `output function. Valid values are "openapi" for OpenAPI3 JSON output
+	out := flag.String("out", "openapi3", `output function. Valid values are "openapi" for OpenAPI3 JSON output
 and "dump" to show the intermediate internal representation (useful
 for development)`)
 

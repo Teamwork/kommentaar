@@ -6,6 +6,27 @@ Generate OpenAPI files from comments in Go files.
 The idea is that you can write documentation in your comments in a simple
 readable manner.
 
+Using the tool
+==============
+
+    $ go install github.com/teamwork/kommentaar
+
+Get all comments from one package:
+
+    $ kommentaar github.com/teamwork/desk/api/v1/inboxController
+
+Or from a package and all subpackages:
+
+    $ kommentaar github.com/teamwork/desk/api/...
+
+The default output is as an OpenAPI 3 YAML file, which is *not* compatible with
+the OpenAPI 2/Swagger spec.
+
+Not everything is correctly output yet. It's a work-in progress tool.
+
+Syntax
+======
+
 A simple example:
 
     // POST /foo foobar
