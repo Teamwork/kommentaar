@@ -11,5 +11,8 @@ contact api@teamwork.com
 default-request  application/json
 default-response application/json
 
+# Prefix all paths with this.
+prefix /desk/
+
 
 # vim:ft=config

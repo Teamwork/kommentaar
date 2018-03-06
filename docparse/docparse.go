@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/ast"
 	"net/http"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ type Config struct {
 	Title           string
 	Version         string
 	Contact         string
+	Prefix          string
 }
 
 // Prog is the program we're currently working on.
@@ -52,6 +54,7 @@ type Endpoint struct {
 	Tags      []string // Tags for grouping (optional).
 	Tagline   string   // Single-line description (optional).
 	Info      string   // More detailed description (optional).
+	Location  string   // Location in the source we found this.
 	Request   Request
 	Responses map[int]Response
 }
@@ -120,6 +123,10 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 	e.Method, e.Path, e.Tags = getStartLine(line1)
 	if e.Method == "" {
 		return nil, nil
+	}
+
+	if Prog.Config.Prefix != "" {
+		e.Path = path.Join(Prog.Config.Prefix, e.Path)
 	}
 
 	e.Tagline = strings.TrimSpace(line2)
@@ -227,6 +234,11 @@ var allMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost,
 func getStartLine(line string) (string, string, []string) {
 	words := strings.Fields(line)
 	if len(words) < 2 || !sliceutil.InStringSlice(allMethods, words[0]) {
+		return "", "", nil
+	}
+
+	// Make sure path starts with /.
+	if len(words[1]) == 0 || words[1][0] != '/' {
 		return "", "", nil
 	}
 

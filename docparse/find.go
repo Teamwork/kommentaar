@@ -13,7 +13,7 @@ import (
 	"github.com/teamwork/utils/goutil"
 )
 
-// FindComments finds all comments in the given packages.
+// FindComments finds all comments in the given paths or packages.
 func FindComments(paths []string, output func(io.Writer, Program) error) error {
 	pkgPaths, err := goutil.Expand(paths, build.FindOnly)
 	if err != nil {
@@ -35,26 +35,28 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 			for path, f := range pkg.Files {
 				for _, c := range f.Comments {
 					e, err := Parse(c.Text(), p.ImportPath)
+					// Print as just <pkgname>/<file> instead of full path.
+					if i := strings.Index(path, p.ImportPath); i > -1 {
+						path = path[i:]
+					}
 					if err != nil {
-						// Print as just <pkgname>/<file> instead of full path.
-						if i := strings.Index(path, p.ImportPath); i > -1 {
-							path = path[i:]
-						}
 						return fmt.Errorf("%v: %v", path, err)
 					}
 					if e == nil {
 						continue
 					}
+					p := fset.Position(c.Pos())
+					e.Location = fmt.Sprintf("%v:%v:%v", path, p.Line, p.Column)
 					Prog.Endpoints = append(Prog.Endpoints, e)
 				}
 			}
 		}
-		err = output(os.Stdout, Prog)
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+
+	// TODO: it's probably better to call this per package or file, rather than
+	// once for everything (much more memory-efficient for large packages).
+	// OTOH, perhaps this is "good enough"?
+	return output(os.Stdout, Prog)
 }
 
 var declsCache = make(map[string][]*ast.TypeSpec)

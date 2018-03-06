@@ -17,6 +17,8 @@ func TestParse(t *testing.T) {
 		{"", "", nil},
 		{"Hello, world!", "", nil},
 		{"Post some data", "", nil},
+		{"POST path", "", nil},
+		{"POST p/ath", "", nil},
 		{"POST /path", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path tag1", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1"}}},
 		{"POST /path tag1 tag2", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1", "tag2"}}},
