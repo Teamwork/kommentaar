@@ -81,7 +81,9 @@ type (
 
 	// Property ..
 	Property struct {
-		Type string `json:"type" yaml:"type"`
+		Description string `json:"description,omitempty" yaml:"description,omitempty"`
+		Type        string `json:"type" yaml:"type"`
+		Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
 		//Format string `json:"format" yaml:"format"`
 	}
 
@@ -119,15 +121,29 @@ func Write(w io.Writer, prog docparse.Program) error {
 	}
 
 	// Add components.
-	// TODO: ensure it's unique in docparse.
-	for _, v := range prog.References {
-		out.Components.Schemas[v.Name] = Schema{
-			Properties: map[string]Property{
-				// TODO
-				"id": {
-					Type: "string",
-				},
-			},
+	for k, v := range prog.References {
+		// TODO
+		// TODO: v.Info?
+		_ = v
+		out.Components.Schemas[k] = Schema{
+			Properties: map[string]Property{},
+		}
+
+		for _, p := range v.Params {
+			if k, ok := kindMap[p.Kind]; ok {
+				p.Kind = k
+			}
+
+			// TODO
+			if p.Kind != "string" && p.Kind != "boolean" && p.Kind != "integer" {
+				continue
+			}
+
+			out.Components.Schemas[k].Properties[p.Name] = Property{
+				Type:        p.Kind,
+				Description: p.Info,
+				//Required:    p.Required,
+			}
 		}
 	}
 

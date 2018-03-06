@@ -453,17 +453,17 @@ func getIndent(s string) int {
 // TODO: I think we can improve on the syntax here. If I type "models.Foo" then
 // we should be able to determine that "models" refers to
 // "github.com/teamwork/desk/models", as that's imported.
-func getReference(path, pkgName string) (*Reference, string, error) {
-	name := path
+func getReference(lookup, pkgName string) (*Reference, string, error) {
+	name := lookup
 	pkg := pkgName
 	if c := strings.Index(name, " "); c > -1 {
 		pkg = name[:c]
 		name = name[c+1:]
 	}
-	path = fmt.Sprintf("%v %v", pkg, name)
+	lookup = fmt.Sprintf("%v.%v", path.Base(pkg), name)
 
 	// Already parsed this one, don't need to do it again.
-	if ref, ok := Prog.References[path]; ok {
+	if ref, ok := Prog.References[lookup]; ok {
 		return &ref, "", nil
 	}
 
@@ -524,8 +524,8 @@ func getReference(path, pkgName string) (*Reference, string, error) {
 		ref.Params = append(ref.Params, p.Params[0])
 	}
 
-	Prog.References[path] = ref
-	return &ref, path, nil
+	Prog.References[lookup] = ref
+	return &ref, lookup, nil
 }
 
 // Convert f.Type to a string (e.g. "int", "models.Foo", "map[string]*Foo",
