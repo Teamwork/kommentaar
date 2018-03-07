@@ -623,6 +623,11 @@ func typeString(f *ast.Field) (string, error) {
 
 		return fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name), nil
 
+	// Don't support interface{} for now. We'd have to add a lot of complexity
+	// for it, and not sure if we're ever going to need it.
+	case *ast.InterfaceType:
+		return "", errors.New("interface{} is not supported")
+
 	default:
 		return "", fmt.Errorf("unknown type: %T", typ)
 	}

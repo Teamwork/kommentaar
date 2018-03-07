@@ -1,4 +1,7 @@
 // Package openapi3 outputs to OpenAPI 3.
+//
+// https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.1.md
+// http://json-schema.org/
 package openapi3
 
 import (
