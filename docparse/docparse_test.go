@@ -104,7 +104,7 @@ func TestParse(t *testing.T) {
 		{"POST /path\n\nResponse 200:\n w00t\n\nResponse 200:\n w00t\n", "duplicate", nil},
 	}
 
-	InitProgram()
+	InitProgram(true)
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			out, err := ParseComment(tc.in, ".", ".")

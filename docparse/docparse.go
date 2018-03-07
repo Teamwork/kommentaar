@@ -466,9 +466,9 @@ func getIndent(s string) int {
 	return n
 }
 
-// Find a type by name. It can either be in the current path ("SomeStruct"), an
-// package path with a type (e.g. "github.com/foo/bar.Foo"), or something from
-// an imported package (e.g. "models.Foo").
+// Find a type by name. It can either be in the current path ("SomeStruct"), a
+// package path with a type (e.g. "github.com/foo/bar.SomeStruct"), or something
+// from an imported package (e.g. "models.SomeStruct").
 func getReference(lookup, filePath string) (*Reference, string, error) {
 	dbg("getReference: %#v", lookup)
 

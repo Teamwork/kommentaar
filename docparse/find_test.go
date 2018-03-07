@@ -8,7 +8,7 @@ import (
 )
 
 func TestFindComments(t *testing.T) {
-	InitProgram()
+	InitProgram(true)
 	err := FindComments([]string{"../example"}, func(_ io.Writer, p Program) error {
 		if len(p.Endpoints) < 2 {
 			t.Errorf("len(p.Endpoints) == %v", len(p.Endpoints))
