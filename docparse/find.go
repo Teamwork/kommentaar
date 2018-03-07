@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
@@ -32,21 +33,26 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 		}
 
 		for _, pkg := range pkgs {
-			for path, f := range pkg.Files {
+			for fullPath, f := range pkg.Files {
+				// Print as just <pkgname>/<file> in errors instead of full path.
+				relPath := fullPath
+				if i := strings.Index(relPath, p.ImportPath); i > -1 {
+					relPath = relPath[i:]
+				}
+
 				for _, c := range f.Comments {
-					e, err := Parse(c.Text(), p.ImportPath)
-					// Print as just <pkgname>/<file> instead of full path.
-					if i := strings.Index(path, p.ImportPath); i > -1 {
-						path = path[i:]
-					}
+					e, err := ParseComment(c.Text(), p.ImportPath, fullPath)
 					if err != nil {
-						return fmt.Errorf("%v: %v", path, err)
+						return fmt.Errorf("%v: %v", relPath, err)
 					}
 					if e == nil {
 						continue
 					}
-					p := fset.Position(c.Pos())
-					e.Location = fmt.Sprintf("%v:%v:%v", path, p.Line, p.Column)
+
+					//p := fset.Position(c.Pos())
+					//e.Location = fmt.Sprintf("%v:%v:%v", path, p.Line, p.Column)
+					e.Pos = fset.Position(c.Pos())
+					e.End = fset.Position(c.End())
 					Prog.Endpoints = append(Prog.Endpoints, e)
 				}
 			}
@@ -59,11 +65,33 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 	return output(os.Stdout, Prog)
 }
 
-var declsCache = make(map[string][]*ast.TypeSpec)
+var (
+	declsCache   = make(map[string][]*ast.TypeSpec)
+	importsCache = make(map[string]map[string]string)
+)
 
 // FindType attempts to find a type.
-func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
+//
+// currentFile is the current file being parsed.
+//
+// pkgPath is the package path of the tyope you want to find. It can either be a
+// fully qualified path (i.e. "github.com/user/pkg") or a package from the
+// currentPkg imports (i.e. "models" will resolve to "github.com/desk/models" if
+// that is imported in currentPkg).
+func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
+	dbg("FindType: %#v %#v %#v", currentFile, pkgPath, name)
+
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
+	if err != nil && currentFile != "" {
+		resolved, found, resolveErr := resolveImport(currentFile, pkgPath)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		if found {
+			pkgPath = resolved
+			pkg, err = goutil.ResolvePackage(pkgPath, 0)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +100,14 @@ func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
 	decls, ok := declsCache[pkgPath]
 	if !ok {
 		fset := token.NewFileSet()
-		//fmt.Printf("FindType: parsing dir %#v: %#v\n", pkg.Dir, pkg.GoFiles)
+		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
 			return nil, err
 		}
 
+		// TODO: we should probably support this, or at least the common case of
+		// "pkg" and "pkg_test".
 		if len(pkgs) != 1 {
 			return nil, fmt.Errorf("more than one package in %v", pkgPath)
 		}
@@ -128,4 +158,34 @@ func FindType(pkgPath, name string) (*ast.TypeSpec, error) {
 	}
 
 	return nil, fmt.Errorf("could not find %v in %v", name, pkgPath)
+}
+
+// ResolveImport resolves an import name (e.g. "models") to the full imported
+// package (e.g. "github.com/teamwork/desk/models") for a file.
+func resolveImport(file, pkgName string) (string, bool, error) {
+	dbg("resolveImport: %#v %#v", file, pkgName)
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
+	if err != nil {
+		return "", false, err
+	}
+
+	var resolved string
+	for _, i := range f.Imports {
+		var base string
+		p := strings.Trim(i.Path.Value, `"`)
+		if i.Name != nil {
+			base = i.Name.Name
+		} else {
+			base = path.Base(p)
+		}
+
+		if base == pkgName {
+			resolved = p
+			break
+		}
+	}
+
+	return resolved, resolved != "", nil
 }

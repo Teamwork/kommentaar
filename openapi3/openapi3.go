@@ -2,7 +2,6 @@
 package openapi3
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -77,9 +76,10 @@ type (
 		Reference  string              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 		Type       string              `json:"type,omitempty" yaml:"type,omitempty"`
 		Properties map[string]Property `json:"properties,omitempty" yaml:"properties,omitempty"`
+		Required   []string            `json:"required,omitempty" yaml:"required,omitempty"`
 	}
 
-	// Property ..
+	// Property is a single property for a schema.
 	Property struct {
 		Description string `json:"description,omitempty" yaml:"description,omitempty"`
 		Type        string `json:"type" yaml:"type"`
@@ -121,14 +121,9 @@ func Write(w io.Writer, prog docparse.Program) error {
 	}
 
 	// Add components.
+	// TODO: finish
 	for k, v := range prog.References {
-		// TODO
-		// TODO: v.Info?
-		_ = v
-		out.Components.Schemas[k] = Schema{
-			Properties: map[string]Property{},
-		}
-
+		schema := Schema{Properties: map[string]Property{}}
 		for _, p := range v.Params {
 			if k, ok := kindMap[p.Kind]; ok {
 				p.Kind = k
@@ -139,16 +134,20 @@ func Write(w io.Writer, prog docparse.Program) error {
 				continue
 			}
 
-			out.Components.Schemas[k].Properties[p.Name] = Property{
+			if p.Required {
+				schema.Required = append(schema.Required, p.Name)
+			}
+
+			schema.Properties[p.Name] = Property{
 				Type:        p.Kind,
 				Description: p.Info,
-				//Required:    p.Required,
 			}
 		}
+
+		out.Components.Schemas[k] = schema
 	}
 
 	// Add endponts.
-	var errList []string
 	for _, e := range prog.Endpoints {
 		op := Operation{
 			Summary:     e.Tagline,
@@ -176,13 +175,6 @@ func Write(w io.Writer, prog docparse.Program) error {
 			}
 		}
 
-		// TODO: Should validate in docparse.
-		// TODO: Should also validate there isn't the same status code twice.
-		if len(e.Responses) == 0 {
-			errList = append(errList, fmt.Sprintf(
-				"%v: must have at least one response", e.Location))
-			continue
-		}
 		for code, resp := range e.Responses {
 			// TODO: add acual params.
 			_ = resp
@@ -203,10 +195,6 @@ func Write(w io.Writer, prog docparse.Program) error {
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
-	}
-
-	if len(errList) > 0 {
-		return errors.New(strings.Join(errList, "\n"))
 	}
 
 	//d, err := json.MarshalIndent(&out, "", "  ")

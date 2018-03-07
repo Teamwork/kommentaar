@@ -1,6 +1,7 @@
 package docparse
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"testing"
@@ -25,32 +26,44 @@ func TestFindComments(t *testing.T) {
 }
 
 func TestFindType(t *testing.T) {
-	ts, err := FindType("net/http", "Header")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ts == nil {
-		t.Fatal("t is nil")
-	}
-	if ts.Name.Name != "Header" {
-		t.Fatalf("ts.Name.Name == %v", ts.Name.Name)
-	}
+	t.Run("absolute", func(t *testing.T) {
+		ts, err := FindType("", "net/http", "Header")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ts == nil {
+			t.Fatal("t is nil")
+		}
+		if ts.Name.Name != "Header" {
+			t.Fatalf("ts.Name.Name == %v", ts.Name.Name)
+		}
 
-	p, ok := declsCache["net/http"]
-	if !ok {
-		t.Fatal("not stored in cache?")
-	}
+		p, ok := declsCache["net/http"]
+		if !ok {
+			t.Fatal("not stored in cache?")
+		}
 
-	if len(p) < 100 {
-		t.Errorf("len(p) == %v", len(p))
-	}
+		if len(p) < 100 {
+			t.Errorf("len(p) == %v", len(p))
+		}
 
-	// Make sure it works from cache as well.
-	ts3, err := FindType("net/http", "Header")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(ts, ts3) {
-		t.Error("not equal from cache?")
-	}
+		// Make sure it works from cache as well.
+		tsCached, err := FindType("", "net/http", "Header")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(ts, tsCached) {
+			t.Error("not equal from cache?")
+		}
+	})
+
+	t.Run("relative", func(t *testing.T) {
+		ts, err := FindType("../example/example.go", "exampleimport", "Foo")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Printf("%#v\n", ts)
+
+	})
 }

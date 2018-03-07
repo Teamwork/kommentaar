@@ -19,6 +19,8 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
+	config := flag.String("config", "./config", "configuration file")
+	debug := flag.Bool("debug", false, "print debug output to stderr")
 	out := flag.String("out", "openapi3", `output function. Valid values are "openapi" for OpenAPI3 JSON output
 and "dump" to show the intermediate internal representation (useful
 for development)`)
@@ -40,9 +42,9 @@ for development)`)
 		flag.Usage()
 	}
 
-	docparse.InitProgram()
+	docparse.InitProgram(*debug)
 
-	err := sconfig.Parse(&docparse.Prog.Config, "./config", nil)
+	err := sconfig.Parse(&docparse.Prog.Config, *config, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)

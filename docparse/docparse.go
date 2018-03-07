@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
@@ -40,7 +42,7 @@ type Config struct {
 var Prog Program
 
 // InitProgram creates a new Program instance.
-func InitProgram() {
+func InitProgram(dbg bool) {
 	Prog = Program{
 		References: make(map[string]Reference),
 		Config: Config{
@@ -48,6 +50,8 @@ func InitProgram() {
 			DefaultResponse: "application/json",
 		},
 	}
+
+	debug = dbg
 }
 
 // Endpoint denotes a single API endpoint.
@@ -60,7 +64,8 @@ type Endpoint struct {
 	Request   Request
 	Responses map[int]Response
 
-	Location string // Location in the source we found the comment as "<file>:<line>:<col>"
+	//Location string // Location in the source we found the comment as "<file>:<line>:<col>"
+	Pos, End token.Position
 }
 
 // Request definition.
@@ -112,8 +117,8 @@ var (
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
-// Parse a single comment block in the package pkg.
-func Parse(comment, pkgName string) (*Endpoint, error) {
+// ParseComment a single comment block in the file filePath.
+func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 	e := &Endpoint{}
 
 	line1 := stringutil.GetLine(comment, 1)
@@ -138,7 +143,7 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 	// Split the blocks.
 	info, err := getBlocks(comment)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v: %v", e.Path, err)
 	}
 
 	for header, contents := range info {
@@ -150,21 +155,21 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 
 		// Path:
 		case header == "Path:":
-			e.Request.Path, err = parseParams(contents, pkgName)
+			e.Request.Path, err = parseParams(contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse path params: %v", err)
 			}
 
 		// Query:
 		case header == "Query:":
-			e.Request.Query, err = parseParams(contents, pkgName)
+			e.Request.Query, err = parseParams(contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse query params: %v", err)
 			}
 
 		// Form:
 		case header == "Form:":
-			e.Request.Form, err = parseParams(contents, pkgName)
+			e.Request.Form, err = parseParams(contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse form params: %v", err)
 			}
@@ -179,7 +184,7 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 					e.Request.ContentType = req[2]
 				}
 
-				e.Request.Body, err = parseParams(contents, pkgName)
+				e.Request.Body, err = parseParams(contents, filePath)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse request params: %v", err)
 				}
@@ -207,7 +212,7 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 					r.ContentType = resp[4]
 				}
 
-				r.Body, err = parseParams(contents, pkgName)
+				r.Body, err = parseParams(contents, filePath)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 				}
@@ -215,14 +220,24 @@ func Parse(comment, pkgName string) (*Endpoint, error) {
 				if e.Responses == nil {
 					e.Responses = make(map[int]Response)
 				}
-				e.Responses[int(code)] = r
 
+				if _, ok := e.Responses[int(code)]; ok {
+					return nil, fmt.Errorf("%v: response code %v defined more than once",
+						e.Path, code)
+				}
+
+				e.Responses[int(code)] = r
 				break
 			}
 
 			return nil, fmt.Errorf("unknown header: %#v", header)
 		}
 	}
+
+	// TODO: fix tests and enable this.
+	//if len(e.Responses) == 0 {
+	//	return nil, fmt.Errorf("%v: must have at least one response", e.Path)
+	//}
 
 	return e, nil
 }
@@ -274,6 +289,10 @@ func getBlocks(comment string) (map[string]string, error) {
 				return nil, err
 			}
 
+			if header == line {
+				return nil, fmt.Errorf("duplicate header %#v", header)
+			}
+
 			header = line
 			continue
 		}
@@ -323,7 +342,7 @@ const (
 //   name: some description
 //   name: {string, required}
 //   name: some description {string, required}
-func parseParams(text, pkgName string) (*Params, error) {
+func parseParams(text, filePath string) (*Params, error) {
 	params := &Params{}
 
 	for _, line := range collapseIndents(text) {
@@ -359,7 +378,7 @@ func parseParams(text, pkgName string) (*Params, error) {
 				return nil, fmt.Errorf("invalid reference: %#v", line)
 			}
 
-			_, path, err := getReference(strings.TrimSpace(s[1]), pkgName)
+			_, path, err := getReference(strings.TrimSpace(s[1]), filePath)
 			if err != nil {
 				return nil, err
 			}
@@ -447,20 +466,38 @@ func getIndent(s string) int {
 	return n
 }
 
-// AnObject: "type AnObject struct" in the current package.
-// github.com/foo/bar.AnObject: Same in another package.
-//
-// TODO: I think we can improve on the syntax here. If I type "models.Foo" then
-// we should be able to determine that "models" refers to
-// "github.com/teamwork/desk/models", as that's imported.
-func getReference(lookup, pkgName string) (*Reference, string, error) {
-	name := lookup
-	pkg := pkgName
-	if c := strings.Index(name, " "); c > -1 {
-		pkg = name[:c]
-		name = name[c+1:]
+// Find a type by name. It can either be in the current path ("SomeStruct"), an
+// package path with a type (e.g. "github.com/foo/bar.Foo"), or something from
+// an imported package (e.g. "models.Foo").
+func getReference(lookup, filePath string) (*Reference, string, error) {
+	dbg("getReference: %#v", lookup)
+
+	var name, pkg string
+	//if c := strings.LastIndex(lookup, "/"); c > -1 {
+	//	// full path: github.com/user/pkg.Foo
+	//	pkg = lookup[:c]
+	//	name = lookup[c+1:]
+	//} else if c := strings.LastIndex(lookup, "."); c > -1 {
+	//	// imported path: models.Foo
+	//	pkg = lookup[:c]
+	//	name = lookup[c+1:]
+	//} else {
+	//	// Current package: Foo
+	//	pkg = path.Dir(filePath)
+	//	name = lookup
+	//}
+
+	if c := strings.LastIndex(lookup, "."); c > -1 {
+		// imported path: models.Foo
+		pkg = lookup[:c]
+		name = lookup[c+1:]
+	} else {
+		// Current package: Foo
+		pkg = path.Dir(filePath)
+		name = lookup
 	}
-	lookup = fmt.Sprintf("%v.%v", path.Base(pkg), name)
+
+	dbg("getReference: %#v -> %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := Prog.References[lookup]; ok {
@@ -468,7 +505,7 @@ func getReference(lookup, pkgName string) (*Reference, string, error) {
 	}
 
 	// Find type
-	ts, err := FindType(pkg, name)
+	ts, err := FindType(filePath, pkg, name)
 	if err != nil {
 		return nil, "", err
 	}
@@ -488,11 +525,14 @@ func getReference(lookup, pkgName string) (*Reference, string, error) {
 	// Parse all the fields.
 	for _, f := range st.Fields.List {
 
-		// TODO: why is names an array?
-		fName := f.Names[0].Name
+		// Embedded struct.
+		// TODO: we want to support this eventually.
+		if len(f.Names) == 0 {
+			return nil, "", fmt.Errorf("embeded struct is not yet supported")
+		}
 
-		// Doc is the comment above the field, Comment the
-		// inline comment on the same line.
+		// Doc is the comment above the field, Comment the inline comment on the
+		// same line.
 		var doc string
 		if f.Doc != nil {
 			doc = f.Doc.Text()
@@ -501,27 +541,29 @@ func getReference(lookup, pkgName string) (*Reference, string, error) {
 		}
 
 		// Make sure that parseParams sees continued lines.
-		// TODO: refactor a bit so we don't have to use this
-		// hack.
+		// TODO: refactor a bit so we don't have to use this hack.
 		doc = strings.Replace(doc, "\n", "\n    ", -1)
 
-		p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), pkgName)
-		if err != nil {
-			return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
-				fName, name, err)
-		}
-		if len(p.Params) != 1 {
-			return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
-				fName, name, p.Params)
-		}
+		// Names is an array in cases like "Foo, Bar string".
+		for _, fName := range f.Names {
+			p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), filePath)
+			if err != nil {
+				return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
+					fName, name, err)
+			}
+			if len(p.Params) != 1 {
+				return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
+					fName, name, p.Params)
+			}
 
-		kind, err := typeString(f)
-		if err != nil {
-			return nil, "", err
-		}
-		p.Params[0].Kind = kind
+			kind, err := typeString(f)
+			if err != nil {
+				return nil, "", err
+			}
+			p.Params[0].Kind = kind
 
-		ref.Params = append(ref.Params, p.Params[0])
+			ref.Params = append(ref.Params, p.Params[0])
+		}
 	}
 
 	Prog.References[lookup] = ref
@@ -593,4 +635,12 @@ func resolveSelectorExpr(sel *ast.SelectorExpr) (string, error) {
 	}
 
 	return fmt.Sprintf("%v.%v", pkg.Name, sel.Sel.Name), nil
+}
+
+var debug bool
+
+func dbg(s string, a ...interface{}) {
+	if debug {
+		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg: "+s+"\x1b[0m\n", a...)
+	}
 }

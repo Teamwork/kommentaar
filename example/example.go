@@ -1,7 +1,11 @@
 // nolint
 package example
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/teamwork/kommentaar/example/exampleimport"
+)
 
 // POST /foo/{id} foobar hello
 // Create a new foo.
@@ -34,6 +38,9 @@ import "fmt"
 //
 // Response 400 (application/json):
 //   $object: ErrorObject
+//
+// Response 401 (application/json):
+//   $object: exampleimport.Foo
 
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
@@ -41,6 +48,7 @@ import "fmt"
 func MyHandler() {
 	x := RequestObj{}
 	y := AnObject{}
+	_ = exampleimport.Foo{}
 	fmt.Println(x, y)
 }
 

@@ -9,20 +9,28 @@ import (
 	"github.com/teamwork/test/diff"
 )
 
+var (
+	stdResp = "Response 200:\n  nodoc\n"
+)
+
 func TestParse(t *testing.T) {
 	cases := []struct {
 		in, wantErr string
 		want        *Endpoint
 	}{
+		// Not valid start lines.
 		{"", "", nil},
 		{"Hello, world!", "", nil},
 		{"Post some data", "", nil},
 		{"POST path", "", nil},
 		{"POST p/ath", "", nil},
+
+		// Valid start lines with tags
 		{"POST /path", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path tag1", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1"}}},
 		{"POST /path tag1 tag2", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1", "tag2"}}},
 
+		// Valid start lines with tagline/description.
 		{"POST /path\n", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path\n\n", "", &Endpoint{Method: "POST", Path: "/path"}},
 		{"POST /path\n \n", "", &Endpoint{Method: "POST", Path: "/path"}},
@@ -45,8 +53,8 @@ func TestParse(t *testing.T) {
 				Info: "hello",
 			}}},
 		}}},
-		// Path
-		// Query and Form
+
+		// Path, Query and Form
 		{"POST /path\n\nQuery:\n  foo: hello\nForm:\n  Hello: WORLD {required}", "", &Endpoint{
 			Method: "POST", Path: "/path", Request: Request{
 				Query: &Params{Params: []Param{{
@@ -70,6 +78,7 @@ func TestParse(t *testing.T) {
 			Body:        &Params{Params: []Param{{Name: "w00t"}}},
 		}}},
 
+		// Single response
 		{"POST /path\n\nResponse:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
 			Responses: map[int]Response{
 				200: {
@@ -77,6 +86,7 @@ func TestParse(t *testing.T) {
 					Body:        &Params{Params: []Param{{Name: "w00t"}}},
 				}}}},
 
+		// Two responses
 		{"POST /path\n\nResponse:\n w00t\n\nResponse 400 (w00t):\n asd", "", &Endpoint{
 			Method: "POST", Path: "/path",
 			Responses: map[int]Response{
@@ -89,12 +99,15 @@ func TestParse(t *testing.T) {
 					Body:        &Params{Params: []Param{{Name: "asd"}}},
 				},
 			}}},
+
+		// Duplicate response codes
+		{"POST /path\n\nResponse 200:\n w00t\n\nResponse 200:\n w00t\n", "duplicate", nil},
 	}
 
 	InitProgram()
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := Parse(tc.in, ".")
+			out, err := ParseComment(tc.in, ".", ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
@@ -259,7 +272,7 @@ func TestGetReference(t *testing.T) {
 				{Name: "Bar", Kind: "[]string"},
 			},
 		}},
-		{"net/mail Address", "", &Reference{
+		{"net/mail.Address", "", &Reference{
 			Name:    "Address",
 			Package: "net/mail",
 			Info: "Address represents a single mail address.\n" +
@@ -272,7 +285,7 @@ func TestGetReference(t *testing.T) {
 		}},
 
 		{"UnknownObject", "could not find", nil},
-		{"net/http Header", "not a struct", nil},
+		{"net/http.Header", "not a struct", nil},
 	}
 
 	for _, tc := range cases {
