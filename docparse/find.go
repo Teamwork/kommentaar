@@ -8,7 +8,6 @@ import (
 	"go/token"
 	"io"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
@@ -65,10 +64,7 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 	return output(os.Stdout, Prog)
 }
 
-var (
-	declsCache   = make(map[string][]*ast.TypeSpec)
-	importsCache = make(map[string]map[string]string)
-)
+var declsCache = make(map[string][]*ast.TypeSpec)
 
 // FindType attempts to find a type.
 //
@@ -83,11 +79,11 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
 
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
-		resolved, found, resolveErr := resolveImport(currentFile, pkgPath)
+		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
 		if resolveErr != nil {
 			return nil, resolveErr
 		}
-		if found {
+		if resolved != "" {
 			pkgPath = resolved
 			pkg, err = goutil.ResolvePackage(pkgPath, 0)
 		}
@@ -158,34 +154,4 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
 	}
 
 	return nil, fmt.Errorf("could not find %v in %v", name, pkgPath)
-}
-
-// ResolveImport resolves an import name (e.g. "models") to the full imported
-// package (e.g. "github.com/teamwork/desk/models") for a file.
-func resolveImport(file, pkgName string) (string, bool, error) {
-	dbg("resolveImport: %#v %#v", file, pkgName)
-
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
-	if err != nil {
-		return "", false, err
-	}
-
-	var resolved string
-	for _, i := range f.Imports {
-		var base string
-		p := strings.Trim(i.Path.Value, `"`)
-		if i.Name != nil {
-			base = i.Name.Name
-		} else {
-			base = path.Base(p)
-		}
-
-		if base == pkgName {
-			resolved = p
-			break
-		}
-	}
-
-	return resolved, resolved != "", nil
 }

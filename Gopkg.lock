@@ -38,7 +38,7 @@
     ".",
     "diff"
   ]
-  revision = "c05874ffd3109a7224fe9caa97bf15384335beb1"
+  revision = "dc1dac931dfa18952f340dcf12d5fb0bea92e8c6"
 
 [[projects]]
   branch = "master"
@@ -48,7 +48,7 @@
     "sliceutil",
     "stringutil"
   ]
-  revision = "5c0740014647b2f77f3479b6d152bfce40b5f64b"
+  revision = "c193a72707f66f6c36f2c562129583b23ff6dd14"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -59,6 +59,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b8f0045808a656c3cbec9d569324a43e90d347f9813f26bcb98be33137eae7b4"
+  inputs-digest = "d0cdebc26083569200aa76fa87880b8fa3354fd4756e026acc721b67dfe4dc6f"
   solver-name = "gps-cdcl"
   solver-version = 1
