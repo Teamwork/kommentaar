@@ -9,10 +9,6 @@ import (
 	"github.com/teamwork/test/diff"
 )
 
-var (
-	stdResp = "Response 200:\n  nodoc\n"
-)
-
 func TestParse(t *testing.T) {
 	cases := []struct {
 		in, wantErr string

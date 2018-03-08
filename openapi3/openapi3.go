@@ -17,10 +17,10 @@ import (
 type (
 	// OpenAPI output.
 	OpenAPI struct {
-		OpenAPI    string          `json:"openapi" yaml:"openapi"`
-		Info       Info            `json:"info" yaml:"info"`
-		Paths      map[string]Path `json:"paths" yaml:"paths"`
-		Components Components      `json:"components" yaml:"components"`
+		OpenAPI    string           `json:"openapi" yaml:"openapi"`
+		Info       Info             `json:"info" yaml:"info"`
+		Paths      map[string]*Path `json:"paths" yaml:"paths"`
+		Components Components       `json:"components" yaml:"components"`
 	}
 
 	// Info provides metadata about the API.
@@ -119,7 +119,7 @@ func Write(w io.Writer, prog docparse.Program) error {
 				URL:   prog.Config.ContactSite,
 			},
 		},
-		Paths:      map[string]Path{},
+		Paths:      map[string]*Path{},
 		Components: Components{Schemas: map[string]Schema{}},
 	}
 
@@ -186,15 +186,21 @@ func Write(w io.Writer, prog docparse.Program) error {
 			}
 		}
 
+		// TODO: this needs to append, not reset all of Path{}!
+
+		if out.Paths[e.Path] == nil {
+			out.Paths[e.Path] = &Path{}
+		}
+
 		switch e.Method {
 		case "GET":
-			out.Paths[e.Path] = Path{Get: op}
+			out.Paths[e.Path].Get = op
 		case "POST":
-			out.Paths[e.Path] = Path{Post: op}
+			out.Paths[e.Path].Post = op
 		case "PUT":
-			out.Paths[e.Path] = Path{Put: op}
+			out.Paths[e.Path].Put = op
 		case "DELETE":
-			out.Paths[e.Path] = Path{Delete: op}
+			out.Paths[e.Path].Delete = op
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
