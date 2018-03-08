@@ -27,11 +27,12 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 			return err
 		}
 
-		if len(pkgs) != 1 {
-			return fmt.Errorf("multiple packages in directory %s", p.Dir)
-		}
-
 		for _, pkg := range pkgs {
+			// Ignore test package.
+			if strings.HasSuffix(pkg.Name, "_test") {
+				continue
+			}
+
 			for fullPath, f := range pkg.Files {
 				// Print as just <pkgname>/<file> in errors instead of full path.
 				relPath := fullPath
