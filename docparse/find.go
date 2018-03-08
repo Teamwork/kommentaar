@@ -20,6 +20,7 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 		return err
 	}
 
+	allErr := []error{}
 	for _, p := range pkgPaths {
 		fset := token.NewFileSet()
 		pkgs, err := parser.ParseDir(fset, p.Dir, nil, parser.ParseComments)
@@ -43,7 +44,8 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 				for _, c := range f.Comments {
 					e, err := ParseComment(c.Text(), p.ImportPath, fullPath)
 					if err != nil {
-						return fmt.Errorf("%v: %v", relPath, err)
+						allErr = append(allErr, fmt.Errorf("%v: %v", relPath, err))
+						continue
 					}
 					if e == nil {
 						continue
@@ -56,6 +58,13 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 					Prog.Endpoints = append(Prog.Endpoints, e)
 				}
 			}
+		}
+	}
+
+	if len(allErr) > 0 {
+		fmt.Fprintf(os.Stderr, "%v errors\n", len(allErr))
+		for _, err := range allErr {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
 	}
 
