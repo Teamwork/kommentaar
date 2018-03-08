@@ -233,10 +233,13 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		}
 	}
 
-	// TODO: fix tests and enable this.
-	//if len(e.Responses) == 0 {
-	//	return nil, fmt.Errorf("%v: must have at least one response", e.Path)
-	//}
+	if len(e.Responses) == 0 {
+		e.Responses = map[int]Response{
+			200: Response{ContentType: Prog.Config.DefaultResponse},
+		}
+		// TODO: enable error once we've added a reponse to all of Desk.
+		//return nil, fmt.Errorf("%v: must have at least one response", e.Path)
+	}
 
 	return e, nil
 }
