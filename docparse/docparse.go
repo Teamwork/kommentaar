@@ -597,8 +597,20 @@ func typeString(f *ast.Field) (string, error) {
 	case *ast.ArrayType:
 		elt, ok := typ.Elt.(*ast.Ident)
 		if !ok {
-			// e.g. "[]models.Language"
-			slt, ok := typ.Elt.(*ast.SelectorExpr)
+			var elt ast.Expr
+			s := ""
+
+			star, ok := typ.Elt.(*ast.StarExpr)
+			if ok {
+				// e.g. "[]*models.Language"
+				s = "*"
+				elt = star.X
+			} else {
+				// e.g. "[]models.Language"
+				elt = typ.Elt
+			}
+
+			slt, ok := elt.(*ast.SelectorExpr)
 			if !ok {
 				return "", fmt.Errorf("can't type assert %T %[1]v", typ.Elt)
 			}
@@ -608,7 +620,7 @@ func typeString(f *ast.Field) (string, error) {
 				return "", fmt.Errorf("can't type assert selector %T %[1]v", slt.X)
 			}
 
-			return fmt.Sprintf("[]%v.%v", xid.Name, slt.Sel.Name), nil
+			return fmt.Sprintf("[]%v%v.%v", s, xid.Name, slt.Sel.Name), nil
 		}
 
 		// e.g. "[]Foo"
