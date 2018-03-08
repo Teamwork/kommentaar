@@ -10,6 +10,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
+	testMode = true
 	cases := []struct {
 		in, wantErr string
 		want        *Endpoint

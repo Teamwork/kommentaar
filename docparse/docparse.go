@@ -117,6 +117,8 @@ var (
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
+var testMode = false
+
 // ParseComment a single comment block in the file filePath.
 func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 	e := &Endpoint{}
@@ -233,7 +235,7 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		}
 	}
 
-	if len(e.Responses) == 0 {
+	if len(e.Responses) == 0 && !testMode {
 		e.Responses = map[int]Response{
 			200: Response{ContentType: Prog.Config.DefaultResponse},
 		}
