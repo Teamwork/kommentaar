@@ -637,6 +637,25 @@ func typeString(f *ast.Field) (string, error) {
 
 		return fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name), nil
 
+	case *ast.MapType:
+		key, ok := typ.Key.(*ast.Ident)
+		if !ok {
+			return "", fmt.Errorf("can't type assert key %T %[1]v", typ.Key)
+		}
+
+		// TODO: just to get ValidationError working..
+		val, ok := typ.Value.(*ast.ArrayType)
+		if !ok {
+			return "", fmt.Errorf("can't type assert value %T %[1]v", typ.Key)
+		}
+
+		valIdent, ok := val.Elt.(*ast.Ident)
+		if !ok {
+			return "", fmt.Errorf("can't type assert value %T %[1]v", typ.Key)
+		}
+
+		return fmt.Sprintf("map[%v][]%v", key.Name, valIdent.Name), nil
+
 	// Don't support interface{} for now. We'd have to add a lot of complexity
 	// for it, and not sure if we're ever going to need it.
 	case *ast.InterfaceType:
