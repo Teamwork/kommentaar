@@ -128,7 +128,6 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 	} else {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2):])
 	}
-
 	e.Method, e.Path, e.Tags = getStartLine(line1)
 	if e.Method == "" {
 		return nil, nil
@@ -295,6 +294,21 @@ func getBlocks(comment string) (map[string]string, error) {
 
 			header = line
 			continue
+		}
+
+		// Single-line header, only supported with "$object" references.
+		// Response 200: $object: AnObject
+		// Response 400: $object: ErrorObject
+		if line[0] != ' ' && strings.Contains(line, ": $object:") {
+			var err error
+			info, err = addBlock(info, header)
+			if err != nil {
+				return nil, err
+			}
+
+			c := strings.Index(line, ":")
+			header = line[:c+1]
+			line = strings.TrimSpace(line[c+1:])
 		}
 
 		info[header] += line + "\n"

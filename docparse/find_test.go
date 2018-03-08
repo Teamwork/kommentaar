@@ -1,14 +1,13 @@
 package docparse
 
 import (
-	"fmt"
 	"io"
 	"reflect"
 	"testing"
 )
 
 func TestFindComments(t *testing.T) {
-	InitProgram(true)
+	InitProgram(false)
 	err := FindComments([]string{"../example"}, func(_ io.Writer, p Program) error {
 		if len(p.Endpoints) < 2 {
 			t.Errorf("len(p.Endpoints) == %v", len(p.Endpoints))
@@ -62,8 +61,8 @@ func TestFindType(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		fmt.Printf("%#v\n", ts)
-
+		if ts.Name.Name != "Foo" {
+			t.Fatalf("ts.Name.Name == %v", ts.Name.Name)
+		}
 	})
 }

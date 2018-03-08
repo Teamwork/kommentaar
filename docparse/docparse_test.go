@@ -104,7 +104,7 @@ func TestParse(t *testing.T) {
 		{"POST /path\n\nResponse 200:\n w00t\n\nResponse 200:\n w00t\n", "duplicate", nil},
 	}
 
-	InitProgram(true)
+	InitProgram(false)
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			out, err := ParseComment(tc.in, ".", ".")
@@ -150,6 +150,21 @@ Query:
 			"desc": "Well, this is\na description",
 			"Request body (text/plain):": " hello\n world",
 			"Query:":                     " foo",
+		}},
+
+		// Single-line blocks
+		{`
+ANOTHER FILE!
+
+Request body: $object: net/mail.Address
+Response 200: $object: AnObject
+Response 400: $object: ErrorObject
+Response 401: $object: exampleimport.Foo`, "", map[string]string{
+			"desc":          "ANOTHER FILE!",
+			"Request body:": "$object: net/mail.Address",
+			"Response 200:": "$object: AnObject",
+			"Response 400:": "$object: ErrorObject",
+			"Response 401:": "$object: exampleimport.Foo",
 		}},
 	}
 
