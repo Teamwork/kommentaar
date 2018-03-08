@@ -62,10 +62,10 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 	}
 
 	if len(allErr) > 0 {
-		fmt.Fprintf(os.Stderr, "%v errors\n", len(allErr))
 		for _, err := range allErr {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
+		return fmt.Errorf("%v errors occurred", len(allErr))
 	}
 
 	// TODO: it's probably better to call this per package or file, rather than
