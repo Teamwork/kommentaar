@@ -21,9 +21,10 @@ func main() {
 	}
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
-	out := flag.String("out", "openapi3", `output function. Valid values are "openapi" for OpenAPI3 JSON output
-and "dump" to show the intermediate internal representation (useful
-for development)`)
+	out := flag.String("out", "openapi3-yaml", `output function. Valid values are "openapi3-yaml", "openapi3-json", and
+"openapi3-jsonindent" for OpenAPI3 output as YAML, JSON, or indented
+JSON respectively. Additionally "dump" can be used to show the internal
+representation.`)
 
 	flag.Parse()
 	paths := flag.Args()
@@ -35,8 +36,12 @@ for development)`)
 	switch strings.ToLower(*out) {
 	case "dump":
 		outFunc = dumpOut
-	case "openapi3":
-		outFunc = openapi3.Write
+	case "openapi3-yaml":
+		outFunc = openapi3.WriteYAML
+	case "openapi3-json":
+		outFunc = openapi3.WriteJSON
+	case "openapi3-jsonindent":
+		outFunc = openapi3.WriteJSONIndent
 	default:
 		fmt.Fprintf(os.Stderr, "invalid value for -out: %#v\n\n", *out)
 		flag.Usage()

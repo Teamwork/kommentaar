@@ -26,7 +26,7 @@ func TestFindComments(t *testing.T) {
 
 func TestFindType(t *testing.T) {
 	t.Run("absolute", func(t *testing.T) {
-		ts, err := FindType("", "net/http", "Header")
+		ts, pkg, err := FindType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,6 +35,9 @@ func TestFindType(t *testing.T) {
 		}
 		if ts.Name.Name != "Header" {
 			t.Fatalf("ts.Name.Name == %v", ts.Name.Name)
+		}
+		if pkg != "net/http" {
+			t.Fatalf("pkg == %v", pkg)
 		}
 
 		p, ok := declsCache["net/http"]
@@ -47,22 +50,28 @@ func TestFindType(t *testing.T) {
 		}
 
 		// Make sure it works from cache as well.
-		tsCached, err := FindType("", "net/http", "Header")
+		tsCached, pkgCached, err := FindType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(ts, tsCached) {
 			t.Error("not equal from cache?")
 		}
+		if pkg != pkgCached {
+			t.Fatalf("pkgCache == %v", pkgCached)
+		}
 	})
 
 	t.Run("relative", func(t *testing.T) {
-		ts, err := FindType("../example/example.go", "exampleimport", "Foo")
+		ts, pkg, err := FindType("../example/example.go", "exampleimport", "Foo")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if ts.Name.Name != "Foo" {
 			t.Fatalf("ts.Name.Name == %v", ts.Name.Name)
+		}
+		if pkg != "github.com/teamwork/kommentaar/example/exampleimport" {
+			t.Fatalf("pkg == %v", pkg)
 		}
 	})
 }

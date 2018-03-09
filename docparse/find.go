@@ -84,18 +84,18 @@ var declsCache = make(map[string][]*ast.TypeSpec)
 //
 // currentFile is the current file being parsed.
 //
-// pkgPath is the package path of the tyope you want to find. It can either be a
+// pkgPath is the package path of the type you want to find. It can either be a
 // fully qualified path (i.e. "github.com/user/pkg") or a package from the
 // currentPkg imports (i.e. "models" will resolve to "github.com/desk/models" if
 // that is imported in currentPkg).
-func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
+func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) {
 	dbg("FindType: %#v %#v %#v", currentFile, pkgPath, name)
 
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
 		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
 		if resolveErr != nil {
-			return nil, resolveErr
+			return nil, "", resolveErr
 		}
 		if resolved != "" {
 			pkgPath = resolved
@@ -103,7 +103,7 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Try to load from cache.
@@ -113,13 +113,7 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
 		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
-			return nil, err
-		}
-
-		// TODO: we should probably support this, or at least the common case of
-		// "pkg" and "pkg_test".
-		if len(pkgs) != 1 {
-			return nil, fmt.Errorf("more than one package in %v", pkgPath)
+			return nil, "", err
 		}
 
 		for _, p := range pkgs {
@@ -163,9 +157,9 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, error) {
 
 	for _, ts := range decls {
 		if ts.Name.Name == name {
-			return ts, nil
+			return ts, pkg.ImportPath, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find %v in %v", name, pkgPath)
+	return nil, "", fmt.Errorf("could not find %v in %v", name, pkgPath)
 }

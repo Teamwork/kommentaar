@@ -5,6 +5,7 @@
 package openapi3
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -109,10 +110,24 @@ type (
 	}
 )
 
-// Write to stdout.
-func Write(w io.Writer, prog docparse.Program) error {
+// WriteYAML writes to stdout as YAML.
+func WriteYAML(w io.Writer, prog docparse.Program) error {
+	return write("yaml", w, prog)
+}
+
+// WriteJSON writes to stdout as JSON.
+func WriteJSON(w io.Writer, prog docparse.Program) error {
+	return write("json", w, prog)
+}
+
+// WriteJSONIndent writes to stdout as indented JSON.
+func WriteJSONIndent(w io.Writer, prog docparse.Program) error {
+	return write("jsonindent", w, prog)
+}
+
+func write(outFormat string, w io.Writer, prog docparse.Program) error {
 	out := OpenAPI{
-		OpenAPI: "3.0.0",
+		OpenAPI: "3.0.1",
 		Info: Info{
 			Title:   prog.Config.Title,
 			Version: prog.Config.Version,
@@ -223,8 +238,20 @@ func Write(w io.Writer, prog docparse.Program) error {
 		}
 	}
 
-	//d, err := json.MarshalIndent(&out, "", "  ")
-	d, err := yaml.Marshal(&out)
+	var (
+		d   []byte
+		err error
+	)
+	switch outFormat {
+	case "jsonindent":
+		d, err = json.MarshalIndent(&out, "", "  ")
+	case "json":
+		d, err = json.Marshal(&out)
+	case "yaml":
+		d, err = yaml.Marshal(&out)
+	default:
+		err = fmt.Errorf("unknown format: %#v", outFormat)
+	}
 	if err != nil {
 		return err
 	}

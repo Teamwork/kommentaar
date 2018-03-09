@@ -276,25 +276,25 @@ func TestGetReference(t *testing.T) {
 	}{
 		{"testObject", "", &Reference{
 			Name:    "testObject",
-			Package: ".",
-			Lookup:  "..testObject", // TODO: this is wrong.
+			Package: "github.com/teamwork/kommentaar/docparse",
+			Lookup:  "docparse.testObject",
 			Info:    "testObject general documentation.",
 			Params: []Param{
-				{Name: "ID", Kind: "int", Info: "ID documentation", Required: true},
-				{Name: "Foo", Kind: "string", Info: "Foo is a really cool foo-thing! Such foo!"},
-				{Name: "Bar", Kind: "[]string"},
+				{Name: "ID", Info: "ID documentation", Required: true},
+				{Name: "Foo", Info: "Foo is a really cool foo-thing! Such foo!"},
+				{Name: "Bar"},
 			},
 		}},
 		{"net/mail.Address", "", &Reference{
 			Name:    "Address",
-			Package: "mail", // TODO: should be net/mail (full pkg)
+			Package: "net/mail",
 			Lookup:  "mail.Address",
 			Info: "Address represents a single mail address.\n" +
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
 			Params: []Param{
-				{Name: "Name", Kind: "string", Info: "Proper name; may be empty."},
-				{Name: "Address", Kind: "string", Info: "user@domain"},
+				{Name: "Name", Info: "Proper name; may be empty."},
+				{Name: "Address", Info: "user@domain"},
 			},
 		}},
 
@@ -308,6 +308,13 @@ func TestGetReference(t *testing.T) {
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
+
+			if out != nil && out.Params != nil {
+				for i := range out.Params {
+					out.Params[i].KindField = nil
+				}
+			}
+
 			if !reflect.DeepEqual(tc.want, out) {
 				t.Errorf("\n%v", diff.Diff(tc.want, out))
 			}

@@ -100,10 +100,11 @@ type Params struct {
 
 // Param is a path, query, or form parameter.
 type Param struct {
-	Name     string // Parameter name
-	Info     string // Detailed description
-	Kind     string // Type information
-	Required bool   // Is this required to always be sent?
+	Name      string     // Parameter name
+	Info      string     // Detailed description
+	Kind      string     // Type information
+	KindField *ast.Field // Type information from struct field.
+	Required  bool       // Is this required to always be sent?
 }
 
 // Reference to a Go struct.
@@ -410,6 +411,7 @@ func parseParams(text, filePath string) (*Params, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			// TODO: We store it as a path for now, as that's easier to debug in
 			// the intermediate format (otherwise pretty.Print() show the full
 			// object, which is kind of noisy). We should probably store it as a
@@ -431,9 +433,15 @@ func parseParams(text, filePath string) (*Params, error) {
 			case paramOptional:
 				p.Required = false
 
-			case paramOmitEmpty:
-				// TODO: implement this. Also load from struct tag?
+			// TODO: implement this (also load from struct tag?), but I
+			// don't see any way to do that in the OpenAPI spec?
+			//case paramOmitEmpty:
 
+			// Only simple types are supported, and not tested types. Use a
+			// struct if you wnat more advanced stuff (this feature is just
+			// intended to quickly add a path parameter or query parameter or
+			// two, without the bother of creating a "dead code" struct).
+			// TODO: ideally I'd like to parse this a bit more flexible.
 			case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
 				p.Kind = t
 
@@ -518,7 +526,7 @@ func getReference(lookup, filePath string) (*Reference, error) {
 	}
 
 	// Find type
-	ts, err := FindType(filePath, pkg, name)
+	ts, pkg, err := FindType(filePath, pkg, name)
 	if err != nil {
 		return nil, err
 	}
@@ -530,8 +538,11 @@ func getReference(lookup, filePath string) (*Reference, error) {
 			name, ts.Type)
 	}
 
-	pkg = filepath.Base(pkg) // TODO: Should probably be full pkg?
-	ref := Reference{Name: name, Package: pkg, Lookup: pkg + "." + name}
+	ref := Reference{
+		Name:    name,
+		Package: pkg,
+		Lookup:  filepath.Base(pkg) + "." + name,
+	}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
 	}
@@ -570,121 +581,13 @@ func getReference(lookup, filePath string) (*Reference, error) {
 					fName, name, p.Params)
 			}
 
-			kind, err := typeString(f)
-			if err != nil {
-				return nil, err
-			}
-			p.Params[0].Kind = kind
-
+			p.Params[0].KindField = f
 			ref.Params = append(ref.Params, p.Params[0])
 		}
 	}
 
 	Prog.References[ref.Lookup] = ref
 	return &ref, nil
-}
-
-// Convert f.Type to a string (e.g. "int", "models.Foo", "map[string]*Foo",
-// etc.). This is useful for debugging and transparency.
-//
-// TODO: Make this not suck. I think it might actually be a lot easier with
-// reflection?
-func typeString(f *ast.Field) (string, error) {
-	switch typ := f.Type.(type) {
-	case *ast.Ident:
-		return typ.Name, nil
-
-	case *ast.ArrayType:
-		elt, ok := typ.Elt.(*ast.Ident)
-		if !ok {
-			var elt ast.Expr
-			s := ""
-
-			star, ok := typ.Elt.(*ast.StarExpr)
-			if ok {
-				// e.g. "[]*models.Language"
-				s = "*"
-				elt = star.X
-			} else {
-				// e.g. "[]models.Language"
-				elt = typ.Elt
-			}
-
-			slt, ok := elt.(*ast.SelectorExpr)
-			if !ok {
-				return "", fmt.Errorf("can't type assert %T %[1]v", typ.Elt)
-			}
-
-			xid, ok := slt.X.(*ast.Ident)
-			if !ok {
-				return "", fmt.Errorf("can't type assert selector %T %[1]v", slt.X)
-			}
-
-			return fmt.Sprintf("[]%v%v.%v", s, xid.Name, slt.Sel.Name), nil
-		}
-
-		// e.g. "[]Foo"
-		return "[]" + elt.Name, nil
-
-	// e.g. "models.Language".
-	case *ast.SelectorExpr:
-		return resolveSelectorExpr(typ)
-
-	// e.g. "*models.Session"
-	case *ast.StarExpr:
-		xid, ok := typ.X.(*ast.SelectorExpr)
-		if !ok {
-			iid, ok := typ.X.(*ast.Ident)
-			if ok {
-				return "*" + iid.Name, nil
-			}
-
-			return "", fmt.Errorf("can't type assert selector 1 %T %[1]v", typ.X)
-		}
-
-		xid2, ok := xid.X.(*ast.Ident)
-		if !ok {
-			return "", fmt.Errorf("can't type assert selector 2 %T %[1]v", xid.X)
-		}
-
-		return fmt.Sprintf("*%v.%v", xid2.Name, xid.Sel.Name), nil
-
-	case *ast.MapType:
-		key, ok := typ.Key.(*ast.Ident)
-		if !ok {
-			return "", fmt.Errorf("can't type assert key %T %[1]v", typ.Key)
-		}
-
-		// TODO: just to get ValidationError working..
-		val, ok := typ.Value.(*ast.ArrayType)
-		if !ok {
-			return "", fmt.Errorf("can't type assert value %T %[1]v", typ.Key)
-		}
-
-		valIdent, ok := val.Elt.(*ast.Ident)
-		if !ok {
-			return "", fmt.Errorf("can't type assert value %T %[1]v", typ.Key)
-		}
-
-		return fmt.Sprintf("map[%v][]%v", key.Name, valIdent.Name), nil
-
-	// Don't support interface{} for now. We'd have to add a lot of complexity
-	// for it, and not sure if we're ever going to need it.
-	case *ast.InterfaceType:
-		return "", errors.New("interface{} is not supported")
-
-	default:
-		return "", fmt.Errorf("unknown type: %T", typ)
-	}
-}
-
-func resolveSelectorExpr(sel *ast.SelectorExpr) (string, error) {
-	pkg, ok := sel.X.(*ast.Ident)
-	if !ok {
-		return "", fmt.Errorf("can't type assert pkg selector %T %[1]v", sel.X)
-	}
-
-	return fmt.Sprintf("%v.%v", pkg.Name, sel.Sel.Name), nil
 }
 
 var debug bool
