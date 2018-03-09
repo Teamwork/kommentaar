@@ -4,8 +4,8 @@ package example
 //
 // ANOTHER FILE!
 //
-// Request body: $object: net/mail.Address
-// Response 200: $object: AnObject
-// Response 400: $object: ErrorObject
+// Request body: $ref: net/mail.Address
+// Response 200: $ref: AnObject
+// Response 400: $ref: ErrorObject
 
 // Response 401: $object: exampleimport.Foo

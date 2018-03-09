@@ -86,7 +86,7 @@ type Response struct {
 
 // Params parameters for the path, query, form, request body, or response body.
 // This can either be a list of parameters specified in the command, or a
-// reference to a Go struct denoted with $object. You can't mix the two.
+// reference to a Go struct denoted with $ref. You can't mix the two.
 type Params struct {
 	Params []Param
 	// Main reason to store as a string (and Refs as a map) for now is so that
@@ -125,16 +125,19 @@ var testMode = false
 func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 	e := &Endpoint{}
 
+	// Determine if this is a comment block.
 	line1 := stringutil.GetLine(comment, 1)
+	e.Method, e.Path, e.Tags = getStartLine(line1)
+	if e.Method == "" {
+		return nil, nil
+	}
+
+	// Determine if the second line is the "tagline"
 	line2 := stringutil.GetLine(comment, 2)
 	if len(comment) >= len(line1)+len(line2)+1 {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2)+1:])
 	} else {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2):])
-	}
-	e.Method, e.Path, e.Tags = getStartLine(line1)
-	if e.Method == "" {
-		return nil, nil
 	}
 
 	if Prog.Config.Prefix != "" {
@@ -237,6 +240,7 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		}
 	}
 
+	// TODO: Temporary hack!
 	if len(e.Responses) == 0 && !testMode {
 		e.Responses = map[int]Response{
 			200: Response{ContentType: Prog.Config.DefaultResponse},
@@ -303,10 +307,10 @@ func getBlocks(comment string) (map[string]string, error) {
 			continue
 		}
 
-		// Single-line header, only supported with "$object" references.
-		// Response 200: $object: AnObject
-		// Response 400: $object: ErrorObject
-		if line[0] != ' ' && strings.Contains(line, ": $object:") {
+		// Single-line header, only supported with "$ref" references.
+		// Response 200: $ref: AnObject
+		// Response 400: $ref: ErrorObject
+		if line[0] != ' ' && strings.Contains(line, ": $ref:") {
 			var err error
 			info, err = addBlock(info, header)
 			if err != nil {
@@ -392,8 +396,8 @@ func parseParams(text, filePath string) (*Params, error) {
 		}
 		name = strings.TrimSpace(name)
 
-		// Reference another object.
-		if name == "$object" {
+		// Reference a struct.
+		if name == "$ref" {
 			s := strings.Split(line, ":")
 			if len(s) != 2 {
 				return nil, fmt.Errorf("invalid reference: %#v", line)

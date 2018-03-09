@@ -41,7 +41,7 @@ A simple example:
 //   message: The message {string}.
 //
 // Response 200 (application/json):
-//   $object: responseObject
+//   $ref: responseObject
 
 type responseObject struct {
     // Unique identifier.
@@ -85,7 +85,7 @@ To break it down:
 
 - An inline parameter looks like `name: a description {tag1, tag2}`.
 
-- A reference is denoted by `$object: pkg name`. The `pkg` may be omitted, in
+- A reference is denoted by `$ref: pkg name`. The `pkg` may be omitted, in
   which case the package the file is in is used. Struct fields can be documented
   with the same tags as inline parameters.
 

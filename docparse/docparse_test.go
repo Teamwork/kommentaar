@@ -153,15 +153,15 @@ Query:
 		{`
 ANOTHER FILE!
 
-Request body: $object: net/mail.Address
-Response 200: $object: AnObject
-Response 400: $object: ErrorObject
-Response 401: $object: exampleimport.Foo`, "", map[string]string{
+Request body: $ref: net/mail.Address
+Response 200: $ref: AnObject
+Response 400: $ref: ErrorObject
+Response 401: $ref: exampleimport.Foo`, "", map[string]string{
 			"desc":          "ANOTHER FILE!",
-			"Request body:": "$object: net/mail.Address",
-			"Response 200:": "$object: AnObject",
-			"Response 400:": "$object: ErrorObject",
-			"Response 401:": "$object: exampleimport.Foo",
+			"Request body:": "$ref: net/mail.Address",
+			"Response 200:": "$ref: AnObject",
+			"Response 400:": "$ref: ErrorObject",
+			"Response 401:": "$ref: exampleimport.Foo",
 		}},
 	}
 
@@ -202,7 +202,7 @@ func TestParseParams(t *testing.T) {
 		{"subject: The subject {}", Param{Name: "subject", Info: "The subject"}, ""},
 
 		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter tag"},
-		{"subject: foo\n$object: testObject", Param{}, "both a reference and parameters are given"},
+		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},
 	}
 
 	for i, tc := range cases {

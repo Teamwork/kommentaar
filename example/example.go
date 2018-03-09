@@ -30,17 +30,10 @@ import (
 // Path:
 //   ID: The foo ID.
 //
-// Request body (application/json):
-//   $object: RequestObj
-//
-// Response 200 (application/json):
-//   $object: AnObject
-//
-// Response 400 (application/json):
-//   $object: ErrorObject
-//
-// Response 401 (application/json):
-//   $object: exampleimport.Foo
+// Request body (application/json): $ref: RequestObj
+// Response 200 (application/json): $ref: AnObject
+// Response 400 (application/json): $ref: ErrorObject
+// Response 401 (application/json): $ref: exampleimport.Foo
 
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
