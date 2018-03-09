@@ -57,7 +57,7 @@ representation.`)
 		}
 	}
 
-	err := docparse.FindComments(paths, outFunc)
+	err := docparse.FindComments(os.Stdout, paths, outFunc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)

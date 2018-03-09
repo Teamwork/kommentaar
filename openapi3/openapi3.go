@@ -110,17 +110,17 @@ type (
 	}
 )
 
-// WriteYAML writes to stdout as YAML.
+// WriteYAML writes w as YAML.
 func WriteYAML(w io.Writer, prog docparse.Program) error {
 	return write("yaml", w, prog)
 }
 
-// WriteJSON writes to stdout as JSON.
+// WriteJSON writes to w as JSON.
 func WriteJSON(w io.Writer, prog docparse.Program) error {
 	return write("json", w, prog)
 }
 
-// WriteJSONIndent writes to stdout as indented JSON.
+// WriteJSONIndent writes to w as indented JSON.
 func WriteJSONIndent(w io.Writer, prog docparse.Program) error {
 	return write("jsonindent", w, prog)
 }

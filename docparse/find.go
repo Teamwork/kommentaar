@@ -14,7 +14,7 @@ import (
 )
 
 // FindComments finds all comments in the given paths or packages.
-func FindComments(paths []string, output func(io.Writer, Program) error) error {
+func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) error) error {
 	// Make sure we don't waste a lot of memory keeping this in memory.
 	// TODO: Remove once we remove global variable.
 	defer func() { Prog = Program{} }()
@@ -75,7 +75,7 @@ func FindComments(paths []string, output func(io.Writer, Program) error) error {
 	// TODO: it's probably better to call this per package or file, rather than
 	// once for everything (much more memory-efficient for large packages).
 	// OTOH, perhaps this is "good enough"?
-	return output(os.Stdout, Prog)
+	return output(w, Prog)
 }
 
 var declsCache = make(map[string][]*ast.TypeSpec)
