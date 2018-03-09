@@ -76,10 +76,12 @@ type (
 
 	// The Schema Object allows the definition of input and output data types.
 	Schema struct {
-		Reference  string              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-		Type       string              `json:"type,omitempty" yaml:"type,omitempty"`
-		Properties map[string]Property `json:"properties,omitempty" yaml:"properties,omitempty"`
-		Required   []string            `json:"required,omitempty" yaml:"required,omitempty"`
+		Reference   string              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+		Title       string              `json:"title,omitempty" yaml:"title,omitempty"`
+		Description string              `json:"description,omitempty" yaml:"description,omitempty"`
+		Type        string              `json:"type,omitempty" yaml:"type,omitempty"`
+		Properties  map[string]Property `json:"properties,omitempty" yaml:"properties,omitempty"`
+		Required    []string            `json:"required,omitempty" yaml:"required,omitempty"`
 	}
 
 	// Property is a single property for a schema.
@@ -126,7 +128,12 @@ func Write(w io.Writer, prog docparse.Program) error {
 	// Add components.
 	// TODO: finish
 	for k, v := range prog.References {
-		schema := Schema{Properties: map[string]Property{}}
+		schema := Schema{
+			Properties:  map[string]Property{},
+			Title:       k,
+			Description: v.Info,
+		}
+
 		for _, p := range v.Params {
 			if k, ok := kindMap[p.Kind]; ok {
 				p.Kind = k
@@ -150,7 +157,7 @@ func Write(w io.Writer, prog docparse.Program) error {
 		out.Components.Schemas[k] = schema
 	}
 
-	// Add endponts.
+	// Add endpoints.
 	for _, e := range prog.Endpoints {
 		op := Operation{
 			Summary:     e.Tagline,
@@ -165,13 +172,12 @@ func Write(w io.Writer, prog docparse.Program) error {
 		addParams(&op.Parameters, "form", e.Request.Form)
 
 		if e.Request.Body != nil {
-			// TODO: store better.
-			n := strings.Split(e.Request.Body.Reference, " ")
+			// TODO: add comment params as well.
 			op.RequestBody = RequestBody{
 				Content: map[string]MediaType{
 					e.Request.ContentType: MediaType{
 						Schema: Schema{
-							Reference: "#/components/schemas/" + n[len(n)-1],
+							Reference: "#/components/schemas/" + e.Request.Body.Reference,
 						},
 					},
 				},
@@ -179,14 +185,22 @@ func Write(w io.Writer, prog docparse.Program) error {
 		}
 
 		for code, resp := range e.Responses {
-			// TODO: add acual params.
-			_ = resp
-			op.Responses[code] = Response{
+			// TODO: add comment params as well.
+			r := Response{
 				Description: fmt.Sprintf("%v %v", code, http.StatusText(code)),
 			}
-		}
 
-		// TODO: this needs to append, not reset all of Path{}!
+			// Link reference.
+			if resp.Body.Reference != "" {
+				r.Content = map[string]MediaType{
+					resp.ContentType: MediaType{
+						Schema: Schema{Reference: "#/components/schemas/" + resp.Body.Reference},
+					},
+				}
+			}
+
+			op.Responses[code] = r
+		}
 
 		if out.Paths[e.Path] == nil {
 			out.Paths[e.Path] = &Path{}

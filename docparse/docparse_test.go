@@ -277,6 +277,7 @@ func TestGetReference(t *testing.T) {
 		{"testObject", "", &Reference{
 			Name:    "testObject",
 			Package: ".",
+			Lookup:  "..testObject", // TODO: this is wrong.
 			Info:    "testObject general documentation.",
 			Params: []Param{
 				{Name: "ID", Kind: "int", Info: "ID documentation", Required: true},
@@ -286,7 +287,8 @@ func TestGetReference(t *testing.T) {
 		}},
 		{"net/mail.Address", "", &Reference{
 			Name:    "Address",
-			Package: "net/mail",
+			Package: "mail", // TODO: should be net/mail (full pkg)
+			Lookup:  "mail.Address",
 			Info: "Address represents a single mail address.\n" +
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
@@ -302,7 +304,7 @@ func TestGetReference(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
-			out, _, err := getReference(tc.in, ".")
+			out, err := getReference(tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}

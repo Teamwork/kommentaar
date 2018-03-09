@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -106,6 +107,7 @@ type Param struct {
 type Reference struct {
 	Name    string  // Name of the struct (without package name).
 	Package string  // Package in which the struct resides.
+	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
 	Params  []Param // Struct fields.
 }
@@ -397,16 +399,15 @@ func parseParams(text, filePath string) (*Params, error) {
 				return nil, fmt.Errorf("invalid reference: %#v", line)
 			}
 
-			_, path, err := getReference(strings.TrimSpace(s[1]), filePath)
+			ref, err := getReference(strings.TrimSpace(s[1]), filePath)
 			if err != nil {
 				return nil, err
 			}
-
 			// TODO: We store it as a path for now, as that's easier to debug in
 			// the intermediate format (otherwise pretty.Print() show the full
 			// object, which is kind of noisy). We should probably store it as a
 			// pointer once I'm done with the docparse part.
-			params.Reference = path
+			params.Reference = ref.Lookup
 
 			continue
 		}
@@ -488,24 +489,10 @@ func getIndent(s string) int {
 // Find a type by name. It can either be in the current path ("SomeStruct"), a
 // package path with a type (e.g. "github.com/foo/bar.SomeStruct"), or something
 // from an imported package (e.g. "models.SomeStruct").
-func getReference(lookup, filePath string) (*Reference, string, error) {
+func getReference(lookup, filePath string) (*Reference, error) {
 	dbg("getReference: %#v", lookup)
 
 	var name, pkg string
-	//if c := strings.LastIndex(lookup, "/"); c > -1 {
-	//	// full path: github.com/user/pkg.Foo
-	//	pkg = lookup[:c]
-	//	name = lookup[c+1:]
-	//} else if c := strings.LastIndex(lookup, "."); c > -1 {
-	//	// imported path: models.Foo
-	//	pkg = lookup[:c]
-	//	name = lookup[c+1:]
-	//} else {
-	//	// Current package: Foo
-	//	pkg = path.Dir(filePath)
-	//	name = lookup
-	//}
-
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
 		pkg = lookup[:c]
@@ -520,23 +507,24 @@ func getReference(lookup, filePath string) (*Reference, string, error) {
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := Prog.References[lookup]; ok {
-		return &ref, "", nil
+		return &ref, nil
 	}
 
 	// Find type
 	ts, err := FindType(filePath, pkg, name)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Make sure it's a struct.
 	st, ok := ts.Type.(*ast.StructType)
 	if !ok {
-		return nil, "", fmt.Errorf("%v is not a struct but a %T",
+		return nil, fmt.Errorf("%v is not a struct but a %T",
 			name, ts.Type)
 	}
 
-	ref := Reference{Name: name, Package: pkg}
+	pkg = filepath.Base(pkg) // TODO: Should probably be full pkg?
+	ref := Reference{Name: name, Package: pkg, Lookup: pkg + "." + name}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
 	}
@@ -547,7 +535,7 @@ func getReference(lookup, filePath string) (*Reference, string, error) {
 		// Embedded struct.
 		// TODO: we want to support this eventually.
 		if len(f.Names) == 0 {
-			return nil, "", fmt.Errorf("embeded struct is not yet supported")
+			return nil, fmt.Errorf("embeded struct is not yet supported")
 		}
 
 		// Doc is the comment above the field, Comment the inline comment on the
@@ -567,17 +555,17 @@ func getReference(lookup, filePath string) (*Reference, string, error) {
 		for _, fName := range f.Names {
 			p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), filePath)
 			if err != nil {
-				return nil, "", fmt.Errorf("could not parse field %v for struct %v: %v",
+				return nil, fmt.Errorf("could not parse field %v for struct %v: %v",
 					fName, name, err)
 			}
 			if len(p.Params) != 1 {
-				return nil, "", fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
+				return nil, fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
 					fName, name, p.Params)
 			}
 
 			kind, err := typeString(f)
 			if err != nil {
-				return nil, "", err
+				return nil, err
 			}
 			p.Params[0].Kind = kind
 
@@ -585,8 +573,8 @@ func getReference(lookup, filePath string) (*Reference, string, error) {
 		}
 	}
 
-	Prog.References[lookup] = ref
-	return &ref, lookup, nil
+	Prog.References[ref.Lookup] = ref
+	return &ref, nil
 }
 
 // Convert f.Type to a string (e.g. "int", "models.Foo", "map[string]*Foo",
