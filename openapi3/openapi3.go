@@ -191,7 +191,7 @@ func Write(w io.Writer, prog docparse.Program) error {
 			}
 
 			// Link reference.
-			if resp.Body.Reference != "" {
+			if resp.Body != nil && resp.Body.Reference != "" {
 				r.Content = map[string]MediaType{
 					resp.ContentType: MediaType{
 						Schema: Schema{Reference: "#/components/schemas/" + resp.Body.Reference},
