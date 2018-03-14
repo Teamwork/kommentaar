@@ -42,7 +42,10 @@ type Config struct {
 // Prog is the program we're currently working on.
 var Prog Program
 
-// InitProgram creates a new Program instance.
+// InitProgram creates a new Program instance. The created Prog will be cleared
+// after running FindComments().
+//
+// TODO: Don't rely on a global variable.
 func InitProgram(dbg bool) {
 	Prog = Program{
 		References: make(map[string]Reference),

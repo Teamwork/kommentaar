@@ -15,6 +15,10 @@ import (
 
 // FindComments finds all comments in the given paths or packages.
 func FindComments(paths []string, output func(io.Writer, Program) error) error {
+	// Make sure we don't waste a lot of memory keeping this in memory.
+	// TODO: Remove once we remove global variable.
+	defer func() { Prog = Program{} }()
+
 	pkgPaths, err := goutil.Expand(paths, build.FindOnly)
 	if err != nil {
 		return err
