@@ -302,9 +302,10 @@ func TestGetReference(t *testing.T) {
 		{"net/http.Header", "not a struct", nil},
 	}
 
+	InitProgram(false)
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
-			out, err := getReference(tc.in, ".")
+			out, err := GetReference(tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}

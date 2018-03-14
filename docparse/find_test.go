@@ -2,13 +2,14 @@ package docparse
 
 import (
 	"io"
+	"os"
 	"reflect"
 	"testing"
 )
 
 func TestFindComments(t *testing.T) {
 	InitProgram(false)
-	err := FindComments([]string{"../example"}, func(_ io.Writer, p Program) error {
+	err := FindComments(os.Stdout, []string{"../example"}, func(_ io.Writer, p Program) error {
 		if len(p.Endpoints) < 2 {
 			t.Errorf("len(p.Endpoints) == %v", len(p.Endpoints))
 		}

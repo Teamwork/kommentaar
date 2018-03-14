@@ -407,7 +407,7 @@ func parseParams(text, filePath string) (*Params, error) {
 				return nil, fmt.Errorf("invalid reference: %#v", line)
 			}
 
-			ref, err := getReference(strings.TrimSpace(s[1]), filePath)
+			ref, err := GetReference(strings.TrimSpace(s[1]), filePath)
 			if err != nil {
 				return nil, err
 			}
@@ -435,7 +435,13 @@ func parseParams(text, filePath string) (*Params, error) {
 
 			// TODO: implement this (also load from struct tag?), but I
 			// don't see any way to do that in the OpenAPI spec?
-			//case paramOmitEmpty:
+			case paramOmitEmpty:
+				return nil, fmt.Errorf("omitempty not implemented yet")
+
+			// TODO: support {readonly} to indicate that it cannot be set by the
+			// user.
+
+			// TODO: suport {enum: foo, bar, xxx}
 
 			// Only simple types are supported, and not tested types. Use a
 			// struct if you wnat more advanced stuff (this feature is just
@@ -501,11 +507,12 @@ func getIndent(s string) int {
 	return n
 }
 
-// Find a type by name. It can either be in the current path ("SomeStruct"), a
-// package path with a type (e.g. "github.com/foo/bar.SomeStruct"), or something
-// from an imported package (e.g. "models.SomeStruct").
-func getReference(lookup, filePath string) (*Reference, error) {
-	dbg("getReference: %#v", lookup)
+// GetReference finds a type by name. It can either be in the current path
+// ("SomeStruct"), a package path with a type (e.g.
+// "example.com/bar.SomeStruct"), or something from an imported package (e.g.
+// "models.SomeStruct").
+func GetReference(lookup, filePath string) (*Reference, error) {
+	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
@@ -518,7 +525,7 @@ func getReference(lookup, filePath string) (*Reference, error) {
 		name = lookup
 	}
 
-	dbg("getReference: %#v -> %#v", pkg, name)
+	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := Prog.References[lookup]; ok {

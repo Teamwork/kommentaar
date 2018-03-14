@@ -78,19 +78,28 @@ type (
 
 	// The Schema Object allows the definition of input and output data types.
 	Schema struct {
-		Reference   string              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-		Title       string              `json:"title,omitempty" yaml:"title,omitempty"`
-		Description string              `json:"description,omitempty" yaml:"description,omitempty"`
-		Type        string              `json:"type,omitempty" yaml:"type,omitempty"`
-		Properties  map[string]Property `json:"properties,omitempty" yaml:"properties,omitempty"`
-		Required    []string            `json:"required,omitempty" yaml:"required,omitempty"`
+		Reference   string                    `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+		Title       string                    `json:"title,omitempty" yaml:"title,omitempty"`
+		Description string                    `json:"description,omitempty" yaml:"description,omitempty"`
+		Type        string                    `json:"type,omitempty" yaml:"type,omitempty"`
+		Properties  map[string]SchemaProperty `json:"properties,omitempty" yaml:"properties,omitempty"`
+		Required    []string                  `json:"required,omitempty" yaml:"required,omitempty"`
 	}
 
-	// Property is a single property for a schema.
-	Property struct {
+	// SchemaProperty is a single property for a JSON schema.
+	SchemaProperty struct {
 		Description string `json:"description,omitempty" yaml:"description,omitempty"`
 		Type        string `json:"type" yaml:"type"`
 		Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
+
+		// Store array items; for primitives:
+		//   "items": {"type": "string"}
+		// or custom types:
+		//   "items": {"$ref": "#/definitions/positiveInteger"},
+		Items Schema `json:"items,omitempty" yaml:"items,omitempty"`
+
+		// Store structs.
+		Properties map[string]Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
 		//Format string `json:"format" yaml:"format"`
 	}
 
@@ -142,35 +151,12 @@ func write(outFormat string, w io.Writer, prog docparse.Program) error {
 	}
 
 	// Add components.
-	// TODO: finish
 	for k, v := range prog.References {
-		schema := Schema{
-			Properties:  map[string]Property{},
-			Title:       k,
-			Description: v.Info,
+		schema, err := structToSchema(k, v)
+		if err != nil {
+			return err
 		}
-
-		for _, p := range v.Params {
-			if k, ok := kindMap[p.Kind]; ok {
-				p.Kind = k
-			}
-
-			// TODO
-			if p.Kind != "string" && p.Kind != "boolean" && p.Kind != "integer" {
-				continue
-			}
-
-			if p.Required {
-				schema.Required = append(schema.Required, p.Name)
-			}
-
-			schema.Properties[p.Name] = Property{
-				Type:        p.Kind,
-				Description: p.Info,
-			}
-		}
-
-		out.Components.Schemas[k] = schema
+		out.Components.Schemas[k] = *schema
 	}
 
 	// Add endpoints.
@@ -265,9 +251,22 @@ func write(outFormat string, w io.Writer, prog docparse.Program) error {
 }
 
 var kindMap = map[string]string{
-	"":     "string",
-	"int":  "integer",
-	"bool": "boolean",
+	//"":     "string",
+	"int":     "integer",
+	"int8":    "integer",
+	"int16":   "integer",
+	"int32":   "integer",
+	"int64":   "integer",
+	"uint8":   "integer",
+	"uint16":  "integer",
+	"uint32":  "integer",
+	"uint64":  "integer",
+	"float32": "number",
+	"float64": "number",
+	"bool":    "boolean",
+	"byte":    "string",
+	"rune":    "string",
+	"error":   "string",
 }
 
 func addParams(list *[]Parameter, in string, params *docparse.Params) {
