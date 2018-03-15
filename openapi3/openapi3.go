@@ -48,6 +48,7 @@ type (
 		Get    Operation `json:"get,omitempty" yaml:"get,omitempty"`
 		Post   Operation `json:"post,omitempty" yaml:"post,omitempty"`
 		Put    Operation `json:"put,omitempty" yaml:"put,omitempty"`
+		Patch  Operation `json:"patch,omitempty" yaml:"patch,omitempty"`
 		Delete Operation `json:"delete,omitempty" yaml:"delete,omitempty"`
 	}
 
@@ -213,6 +214,8 @@ func Write(w io.Writer, prog docparse.Program) error {
 			out.Paths[e.Path].Post = op
 		case "PUT":
 			out.Paths[e.Path].Put = op
+		case "PATCH":
+			out.Paths[e.Path].Patch = op
 		case "DELETE":
 			out.Paths[e.Path].Delete = op
 		default:
