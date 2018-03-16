@@ -181,7 +181,9 @@ func resolveType(ref docparse.Reference, p *SchemaProperty, typ *ast.Ident) erro
 	if typ.Obj == nil {
 		// TODO: this seems nil in cases of "pkg.Foo". Not sure how to fix this?
 		//return fmt.Errorf("Obj is nil in %#v", typ)
-		p.Type = "string"
+		if p.Type == "" {
+			p.Type = "string"
+		}
 		return nil
 	}
 

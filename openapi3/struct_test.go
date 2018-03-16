@@ -20,8 +20,8 @@ func TestFieldToProperty(t *testing.T) {
 		"fl":     {Type: "number"},
 		"err":    {Type: "string"},
 		"strP":   {Type: "string"},
-		"slice":  {Type: "array", Items: Schema{Type: "string"}},
-		"sliceP": {Type: "array", Items: Schema{Type: "string"}},
+		//"slice":  {Type: "array", Items: Schema{Type: "string"}},
+		//"sliceP": {Type: "array", Items: Schema{Type: "string"}},
 		"cstr":   {Type: "string"},
 		"cstrP":  {Type: "string"},
 		"bar": {Type: "object", Properties: map[string]Schema{

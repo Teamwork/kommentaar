@@ -79,7 +79,6 @@ gometalinter --deadline=120s --vendor --sort=path --tests --disable-all \
 	--enable=megacheck \
 	--enable=ineffassign \
 	--enable=unconvert \
-	--enable=goconst \
 	--enable=goimports \
 	--enable=lll --line-length=120 \
 	./...
