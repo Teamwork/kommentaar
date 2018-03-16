@@ -11,8 +11,10 @@ import (
 	"github.com/teamwork/utils/sliceutil"
 )
 
-var primitives = []string{
-	"null", "boolean", "object", "array", "number", "string", "integer",
+func isPrimitive(n string) bool {
+	return sliceutil.InStringSlice([]string{
+		"null", "boolean", "object", "array", "number", "string", "integer",
+	}, n)
 }
 
 func structToSchema(name string, ref docparse.Reference) (*Schema, error) {
@@ -81,7 +83,7 @@ start:
 		}
 
 		// Custom types.
-		if !sliceutil.InStringSlice(primitives, p.Type) {
+		if !isPrimitive(p.Type) {
 			err := resolveType(ref, &p, typ)
 			if err != nil {
 				return nil, err
@@ -143,11 +145,16 @@ arrayStart:
 			}
 
 			p.Items = Schema{Type: elementType.Name}
+			// TODO: Need to $ref this? Or just put it as object inline?
+			if !isPrimitive(p.Items.Type) {
+				p.Items.Type = "string"
+			}
 		}
 
 		if k, ok := kindMap[elementType.Name]; ok {
 			p.Type = k
 		}
+
 		return nil
 
 	// "pkg.foo"
@@ -157,6 +164,11 @@ arrayStart:
 			return err
 		}
 		p.Items = Schema{Type: elementType.Sel.Name}
+		// TODO: Need to $ref this? Or just put it as object inline?
+		if !isPrimitive(p.Items.Type) {
+			p.Items.Type = "string"
+		}
+
 		return nil
 
 	default:
@@ -169,6 +181,7 @@ func resolveType(ref docparse.Reference, p *SchemaProperty, typ *ast.Ident) erro
 	if typ.Obj == nil {
 		// TODO: this seems nil in cases of "pkg.Foo". Not sure how to fix this?
 		//return fmt.Errorf("Obj is nil in %#v", typ)
+		p.Type = "string"
 		return nil
 	}
 
