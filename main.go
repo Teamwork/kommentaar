@@ -10,6 +10,7 @@ import (
 	"arp242.net/sconfig"
 	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi3"
 )
 
@@ -23,8 +24,9 @@ func main() {
 	debug := flag.Bool("debug", false, "print debug output to stderr")
 	out := flag.String("out", "openapi3-yaml", `output function. Valid values are "openapi3-yaml", "openapi3-json", and
 "openapi3-jsonindent" for OpenAPI3 output as YAML, JSON, or indented
-JSON respectively. Additionally "dump" can be used to show the internal
-representation.`)
+JSON respectively, and "html" for HTML documentation. Additionally
+"dump" can be used to show the internal representation.
+`)
 
 	flag.Parse()
 	paths := flag.Args()
@@ -36,6 +38,8 @@ representation.`)
 	switch strings.ToLower(*out) {
 	case "dump":
 		outFunc = dumpOut
+	case "html":
+		outFunc = html.WriteHTML
 	case "openapi3-yaml":
 		outFunc = openapi3.WriteYAML
 	case "openapi3-json":

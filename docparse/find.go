@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
@@ -71,6 +72,14 @@ func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) e
 		}
 		return fmt.Errorf("%v errors occurred", len(allErr))
 	}
+
+	// Sort endpoints by tags first, then method, and then path.
+	key := func(e *Endpoint) string {
+		return fmt.Sprintf("%v%v%v", e.Tags, e.Method, e.Path)
+	}
+	sort.Slice(Prog.Endpoints, func(i, j int) bool {
+		return key(Prog.Endpoints[i]) < key(Prog.Endpoints[j])
+	})
 
 	// TODO: it's probably better to call this per package or file, rather than
 	// once for everything (much more memory-efficient for large packages).
