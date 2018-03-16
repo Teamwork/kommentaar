@@ -114,7 +114,9 @@ start:
 		// this in JSON schema, so simply don't support it for now. I don't
 		// think we actually use this anywhere.
 		// TODO: We should really support this...
-		return nil, errors.New("fieldToProperty: maps are not supported due to JSON schema limitations")
+		//return nil, errors.New("fieldToProperty: maps are not supported due to JSON schema limitations")
+		p.Type = "object"
+		return &p, nil
 
 	default:
 		return nil, fmt.Errorf("fieldToProperty: unknown type: %T", typ)
