@@ -1,6 +1,7 @@
 package openapi3
 
 import (
+	"fmt"
 	"go/ast"
 	"go/build"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestFieldToProperty(t *testing.T) {
 	docparse.InitProgram(false)
 
-	want := map[string]*SchemaProperty{
+	want := map[string]*Schema{
 		"str":    {Type: "string", Description: "Documented str field.\nNewline."},
 		"byt":    {Type: "string"},
 		"r":      {Type: "string"},
@@ -20,26 +21,20 @@ func TestFieldToProperty(t *testing.T) {
 		"fl":     {Type: "number"},
 		"err":    {Type: "string"},
 		"strP":   {Type: "string"},
-		"slice":  {Type: "array", Items: Schema{Type: "string"}},
-		"sliceP": {Type: "array", Items: Schema{Type: "string"}},
+		"slice":  {Type: "array", Items: &Schema{Type: "string"}},
+		"sliceP": {Type: "array", Items: &Schema{Type: "string"}},
 		"cstr":   {Type: "string"},
 		"cstrP":  {Type: "string"},
-		"bar": {Type: "object", Properties: map[string]Schema{
-			"str": {Type: "string"},
-			"num": {Type: "integer", Description: "uint32 docs!"},
-		}},
-		"barP": {Type: "object", Properties: map[string]Schema{
-			"str": {Type: "string"},
-			"num": {Type: "integer", Description: "uint32 docs!"},
-		}},
-		"pkg": {Type: ""},
-		//"pkgSlice":  {Type: "array", Items: Schema{Type: "Address"}},
-		//"pkgSliceP": {Type: "array", Items: Schema{Type: "Address"}},
+		"bar":    {Reference: "#/components/schemas/a.bar"},
+		"barP":   {Reference: "#/components/schemas/a.bar"},
+		"pkg":    {Type: ""},
+		//"pkgSlice":  {Type: "array", Items: *Schema{Type: "Address"}},
+		//"pkgSliceP": {Type: "array", Items: *Schema{Type: "Address"}},
 
 	}
 
 	build.Default.GOPATH = "./testdata"
-	ts, _, err := docparse.FindType("", "a", "foo")
+	ts, _, _, err := docparse.FindType("", "a", "foo")
 	if err != nil {
 		t.Fatalf("could not parse file: %v", err)
 	}
@@ -49,29 +44,31 @@ func TestFieldToProperty(t *testing.T) {
 		t.Fatal("not a struct?!")
 	}
 
-	for _, f := range st.Fields.List {
-		out, err := fieldToProperty(docparse.Reference{
-			Package: "a",
-		}, f)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for i, f := range st.Fields.List {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			out, err := fieldToSchema(docparse.Reference{
+				Package: "a",
+			}, f)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		for _, name := range f.Names {
-			t.Run(name.Name, func(t *testing.T) {
-				w, ok := want[name.Name]
-				if !ok {
-					t.Fatalf("no test case for %v", name)
-				}
+			for _, name := range f.Names {
+				t.Run(name.Name, func(t *testing.T) {
+					w, ok := want[name.Name]
+					if !ok {
+						t.Fatalf("no test case for %v", name)
+					}
 
-				if d := diff.Diff(w, out); d != "" {
-					t.Errorf("%v", d)
-				}
-				//if !reflect.DeepEqual(out, w) {
-				//	t.Errorf("\nwant: %#v\nout:  %#v", w, out)
-				//}
-			})
-		}
+					if d := diff.Diff(w, out); d != "" {
+						t.Errorf("%v", d)
+					}
+					//if !reflect.DeepEqual(out, w) {
+					//	t.Errorf("\nwant: %#v\nout:  %#v", w, out)
+					//}
+				})
+			}
+		})
 	}
 
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -91,7 +92,8 @@ type Response struct {
 // This can either be a list of parameters specified in the command, or a
 // reference to a Go struct denoted with $ref. You can't mix the two.
 type Params struct {
-	Params []Param
+	Params      []Param
+	Description string
 	// Main reason to store as a string (and Refs as a map) for now is so that
 	// it looks pretties in the pretty.Print() output. May not want to keep
 	// this.
@@ -111,6 +113,7 @@ type Param struct {
 type Reference struct {
 	Name    string  // Name of the struct (without package name).
 	Package string  // Package in which the struct resides.
+	File    string  // File this struct resides in.
 	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
 	Params  []Param // Struct fields.
@@ -198,6 +201,9 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 				if err != nil {
 					return nil, fmt.Errorf("could not parse request params: %v", err)
 				}
+				if e.Request.Body.Reference == "" {
+					return nil, fmt.Errorf("reference is mandatory for request body")
+				}
 
 				break
 			}
@@ -226,6 +232,12 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 				if err != nil {
 					return nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 				}
+				if r.Body.Reference == "" && r.Body.Description == "" {
+					return nil, fmt.Errorf("reference is mandatory for response %v", code)
+				}
+				if r.Body.Description != "" {
+					r.Body.Description = http.StatusText(int(code))
+				}
 
 				if e.Responses == nil {
 					e.Responses = make(map[int]Response)
@@ -244,7 +256,7 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		}
 	}
 
-	// TODO: Temporary hack!
+	// TODO: Temporary hack so I don't have to rewrite all tests!
 	if len(e.Responses) == 0 && !testMode {
 		e.Responses = map[int]Response{
 			200: Response{ContentType: Prog.Config.DefaultResponse},
@@ -314,7 +326,7 @@ func getBlocks(comment string) (map[string]string, error) {
 		// Single-line header, only supported with "$ref" references.
 		// Response 200: $ref: AnObject
 		// Response 400: $ref: ErrorObject
-		if line[0] != ' ' && strings.Contains(line, ": $ref:") {
+		if line[0] != ' ' && (strings.Contains(line, ": $ref:") || strings.Contains(line, ": $empty")) {
 			var err error
 			info, err = addBlock(info, header)
 			if err != nil {
@@ -419,6 +431,8 @@ func parseParams(text, filePath string) (*Params, error) {
 			params.Reference = ref.Lookup
 
 			continue
+		} else if name == "$empty" {
+			params.Description = "no data"
 		}
 
 		p := Param{Name: name, Info: info}
@@ -511,6 +525,16 @@ func getIndent(s string) int {
 // ("SomeStruct"), a package path with a type (e.g.
 // "example.com/bar.SomeStruct"), or something from an imported package (e.g.
 // "models.SomeStruct").
+//
+// References are stored in the Prog.References global. This also finds and
+// stores all nested references, so for:
+//
+//  type Foo struct {
+//    Field Bar
+//  }
+//
+// A GetReference("Foo", "") call will add two entries to Prog.References: Foo
+// and Bar (but only Foo is returned).
 func GetReference(lookup, filePath string) (*Reference, error) {
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
@@ -532,8 +556,8 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 		return &ref, nil
 	}
 
-	// Find type
-	ts, pkg, err := FindType(filePath, pkg, name)
+	// Find type.
+	ts, foundPath, pkg, err := FindType(filePath, pkg, name)
 	if err != nil {
 		return nil, err
 	}
@@ -541,14 +565,14 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	// Make sure it's a struct.
 	st, ok := ts.Type.(*ast.StructType)
 	if !ok {
-		return nil, fmt.Errorf("%v is not a struct but a %T",
-			name, ts.Type)
+		return nil, fmt.Errorf("%v is not a struct but a %T", name, ts.Type)
 	}
 
 	ref := Reference{
 		Name:    name,
 		Package: pkg,
 		Lookup:  filepath.Base(pkg) + "." + name,
+		File:    foundPath,
 	}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
@@ -557,10 +581,11 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	// Parse all the fields.
 	for _, f := range st.Fields.List {
 
-		// Embedded struct.
+		// Skip embedded struct for now.
 		// TODO: we want to support this eventually.
 		if len(f.Names) == 0 {
-			return nil, fmt.Errorf("embeded struct is not yet supported")
+			continue
+			//return nil, fmt.Errorf("embeded struct is not yet supported")
 		}
 
 		// Doc is the comment above the field, Comment the inline comment on the
@@ -573,7 +598,8 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 		}
 
 		// Make sure that parseParams sees continued lines.
-		// TODO: refactor a bit so we don't have to use this hack.
+		// TODO: split out "parseParams()" in two functions, so we don't have to
+		// format it like this (same with Sprintf below).
 		doc = strings.Replace(doc, "\n", "\n    ", -1)
 
 		// Names is an array in cases like "Foo, Bar string".
@@ -583,6 +609,9 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 				return nil, fmt.Errorf("could not parse field %v for struct %v: %v",
 					fName, name, err)
 			}
+
+			// There should be only parameter per struct field. Something is
+			// wrong if we found more (or fewer) than one.
 			if len(p.Params) != 1 {
 				return nil, fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
 					fName, name, p.Params)
@@ -594,13 +623,173 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	}
 
 	Prog.References[ref.Lookup] = ref
+
+	// Scan all fields of f if it refers to a struct. Do this after storing the
+	// reference in Prog.References to prevent cyclic lookup issues.
+	for _, f := range st.Fields.List {
+		if JSONTag(f) == "-" {
+			continue
+		}
+
+		err := findNested(f, foundPath, pkg)
+		if err != nil {
+			return nil, fmt.Errorf("\n  findNested: %v", err)
+		}
+	}
+
 	return &ref, nil
+}
+
+// JSONTag gets the field name from the JSON tag with any attributes (like
+// omitempty) removed.
+func JSONTag(f *ast.Field) string {
+	if f.Tag == nil {
+		return ""
+	}
+
+	tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("json")
+	if p := strings.Index(tag, ","); p != -1 {
+		tag = tag[:p]
+	}
+	return tag
+}
+
+// MapTypes ..
+var MapTypes = map[string]string{
+	"sql.NullBool":    "bool",
+	"sql.NullFloat64": "float64",
+	"sql.NullInt64":   "int64",
+	"sql.NullString":  "string",
+	"time.Time":       "string",
+
+	"twnull.Bool":   "bool",
+	"twnull.Int":    "int64",
+	"twnull.String": "string",
+	"twtime.Time":   "string",
+}
+
+func findNested(f *ast.Field, filePath, pkg string) error {
+	var name *ast.Ident
+
+	sw := f.Type
+start:
+	switch typ := sw.(type) {
+
+	// Pointer type; we don't really care about this for now, so just read over
+	// it.
+	case *ast.StarExpr:
+		sw = typ.X
+		goto start
+
+	// Simple identifiers such as "string", "int", "MyType", etc.
+	case *ast.Ident:
+		if !builtInType(typ.Name) {
+			name = typ
+		}
+
+	// An expression followed by a selector, e.g. "pkg.foo"
+	case *ast.SelectorExpr:
+		pkgSel, ok := typ.X.(*ast.Ident)
+		if !ok {
+			return fmt.Errorf("typ.X is not ast.Ident: %#v", typ.X)
+		}
+		name = typ.Sel
+		pkg = pkgSel.Name
+
+	// Array and slices.
+	case *ast.ArrayType:
+		asw := typ.Elt
+
+	arrayStart:
+		switch elementType := asw.(type) {
+
+		// Ignore *
+		case *ast.StarExpr:
+			asw = elementType.X
+			goto arrayStart
+
+		// Simple identifier
+		case *ast.Ident:
+			if !builtInType(elementType.Name) {
+				name = elementType
+			}
+
+		// "pkg.foo"
+		case *ast.SelectorExpr:
+			pkgSel, ok := elementType.X.(*ast.Ident)
+			if !ok {
+				return fmt.Errorf("elementType.X is not ast.Ident: %#v",
+					elementType.X)
+			}
+			name = elementType.Sel
+			pkg = pkgSel.Name
+		}
+	}
+
+	if name == nil {
+		return nil
+	}
+
+	lookup := pkg + "." + name.Name
+	if i := strings.LastIndex(pkg, "/"); i > -1 {
+		lookup = pkg[i+1:] + "." + name.Name
+	}
+
+	if _, ok := MapTypes[lookup]; ok {
+		return nil
+	}
+
+	if _, ok := Prog.References[lookup]; !ok {
+		err := resolveType(name, filePath, pkg)
+		if err != nil {
+			return fmt.Errorf("%v.%v: %v", pkg, name, err)
+		}
+	}
+	return nil
+}
+
+func builtInType(n string) bool {
+	return sliceutil.InStringSlice([]string{"bool", "byte", "complex64",
+		"complex128", "error", "float32", "float64", "int", "int8", "int16",
+		"int32", "int64", "rune", "string", "uint", "uint8", "uint16", "uint32",
+		"uint64", "uintptr"}, n)
+}
+
+func resolveType(typ *ast.Ident, filePath, pkg string) error {
+
+	var ts *ast.TypeSpec
+	if typ.Obj == nil {
+		var err error
+		ts, _, _, err = FindType(filePath, pkg, typ.Name)
+		if err != nil {
+			return err
+		}
+	} else {
+		var ok bool
+		ts, ok = typ.Obj.Decl.(*ast.TypeSpec)
+		if !ok {
+			return fmt.Errorf("resolveType: not a type declaration but %T",
+				typ.Obj.Decl)
+		}
+	}
+
+	// Only need to add struct types. Stuff like "type Foo string" gets added as
+	// simply a string.
+	_, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		return nil
+	}
+
+	// This sets the Prog.References global.
+	lookup := pkg + "." + typ.Name
+	_, err := GetReference(lookup, filePath)
+	return err
 }
 
 var debug bool
 
 func dbg(s string, a ...interface{}) {
 	if debug {
-		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg: "+s+"\x1b[0m\n", a...)
+		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
 	}
 }

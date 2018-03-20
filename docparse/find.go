@@ -87,7 +87,12 @@ func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) e
 	return output(w, Prog)
 }
 
-var declsCache = make(map[string][]*ast.TypeSpec)
+type declCache struct {
+	ts   *ast.TypeSpec
+	file string
+}
+
+var declsCache = make(map[string][]declCache)
 
 // FindType attempts to find a type.
 //
@@ -97,14 +102,19 @@ var declsCache = make(map[string][]*ast.TypeSpec)
 // fully qualified path (i.e. "github.com/user/pkg") or a package from the
 // currentPkg imports (i.e. "models" will resolve to "github.com/desk/models" if
 // that is imported in currentPkg).
-func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) {
-	dbg("FindType: %#v %#v %#v", currentFile, pkgPath, name)
+func FindType(currentFile, pkgPath, name string) (
+	ts *ast.TypeSpec,
+	filePath string,
+	importPath string,
+	err error,
+) {
+	dbg("FindType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
 
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
 		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
 		if resolveErr != nil {
-			return nil, "", resolveErr
+			return nil, "", "", resolveErr
 		}
 		if resolved != "" {
 			pkgPath = resolved
@@ -112,7 +122,7 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) 
 		}
 	}
 	if err != nil {
-		return nil, "", fmt.Errorf("could not resolve package: %v", err)
+		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
 	}
 
 	// Try to load from cache.
@@ -122,11 +132,11 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) 
 		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 
 		for _, p := range pkgs {
-			for _, f := range p.Files {
+			for path, f := range p.Files {
 				for _, d := range f.Decls {
 					// Only need to cache *ast.GenDecl with one *ast.TypeSpec,
 					// as we don't care about functions, imports, and what not.
@@ -152,7 +162,7 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) 
 									ts.Doc = gd.Doc
 								}
 
-								decls = append(decls, ts)
+								decls = append(decls, declCache{ts, path})
 								break
 							}
 						}
@@ -165,11 +175,11 @@ func FindType(currentFile, pkgPath, name string) (*ast.TypeSpec, string, error) 
 	}
 
 	for _, ts := range decls {
-		if ts.Name.Name == name {
-			return ts, pkg.ImportPath, nil
+		if ts.ts.Name.Name == name {
+			return ts.ts, ts.file, pkg.ImportPath, nil
 		}
 	}
 
-	return nil, "", fmt.Errorf("could not find type %#v in package %#v",
+	return nil, "", "", fmt.Errorf("could not find type %#v in package %#v",
 		name, pkgPath)
 }

@@ -18,10 +18,11 @@ type foo struct {
 	strP   *string
 	slice  []string
 	sliceP []*string
-	cstr   customStr
-	cstrP  *customStr
-	bar    bar
-	barP   *bar
+	//cstr   customStr
+	//cstrP  *customStr
+
+	bar  bar
+	barP *bar
 
 	// TODO:
 	//pkg    mail.Address

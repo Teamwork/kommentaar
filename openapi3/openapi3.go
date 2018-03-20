@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/teamwork/kommentaar/docparse"
@@ -26,8 +27,8 @@ type (
 
 	// Info provides metadata about the API.
 	Info struct {
-		Title   string  `json:"title" yaml:"title"`
-		Version string  `json:"version" yaml:"version"`
+		Title   string  `json:"title,omitempty" yaml:"title,omitempty"`
+		Version string  `json:"version,omitempty" yaml:"version,omitempty"`
 		Contact Contact `json:"contact,omitempty" yaml:"contact,omitempty"`
 	}
 
@@ -78,29 +79,21 @@ type (
 
 	// The Schema Object allows the definition of input and output data types.
 	Schema struct {
-		Reference   string                    `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-		Title       string                    `json:"title,omitempty" yaml:"title,omitempty"`
-		Description string                    `json:"description,omitempty" yaml:"description,omitempty"`
-		Type        string                    `json:"type,omitempty" yaml:"type,omitempty"`
-		Properties  map[string]SchemaProperty `json:"properties,omitempty" yaml:"properties,omitempty"`
-		Required    []string                  `json:"required,omitempty" yaml:"required,omitempty"`
-	}
-
-	// SchemaProperty is a single property for a JSON schema.
-	SchemaProperty struct {
+		Reference   string `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+		Title       string `json:"title,omitempty" yaml:"title,omitempty"`
 		Description string `json:"description,omitempty" yaml:"description,omitempty"`
-		Type        string `json:"type" yaml:"type"`
-		Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
+		Type        string `json:"type,omitempty" yaml:"type,omitempty"`
+		//Format string `json:"format" yaml:"format"`
+		Required []string `json:"required,omitempty" yaml:"required,omitempty"`
 
 		// Store array items; for primitives:
 		//   "items": {"type": "string"}
 		// or custom types:
 		//   "items": {"$ref": "#/definitions/positiveInteger"},
-		Items Schema `json:"items,omitempty" yaml:"items,omitempty"`
+		Items *Schema `json:"items,omitempty" yaml:"items,omitempty"`
 
 		// Store structs.
-		Properties map[string]Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
-		//Format string `json:"format" yaml:"format"`
+		Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
 	}
 
 	// Parameter describes a single operation parameter.
@@ -169,12 +162,12 @@ func write(outFormat string, w io.Writer, prog docparse.Program) error {
 			Responses:   map[int]Response{},
 		}
 
+		// TODO: Support params.Reference for path, query, and form.
 		addParams(&op.Parameters, "path", e.Request.Path)
 		addParams(&op.Parameters, "query", e.Request.Query)
 		addParams(&op.Parameters, "form", e.Request.Form)
 
 		if e.Request.Body != nil {
-			// TODO: add comment params as well.
 			op.RequestBody = RequestBody{
 				Content: map[string]MediaType{
 					e.Request.ContentType: MediaType{
@@ -187,7 +180,6 @@ func write(outFormat string, w io.Writer, prog docparse.Program) error {
 		}
 
 		for code, resp := range e.Responses {
-			// TODO: add comment params as well.
 			r := Response{
 				Description: fmt.Sprintf("%v %v", code, http.StatusText(code)),
 			}
@@ -274,8 +266,6 @@ func addParams(list *[]Parameter, in string, params *docparse.Params) {
 		return
 	}
 
-	// TODO: Support params.Reference
-
 	for _, p := range params.Params {
 		// Path parameters must have required set or SwaggerHub complains.
 		if in == "path" {
@@ -304,4 +294,12 @@ func addParams(list *[]Parameter, in string, params *docparse.Params) {
 func makeID(e *docparse.Endpoint) string {
 	return strings.Replace(fmt.Sprintf("%v_%v", e.Method,
 		strings.Replace(e.Path, "/", "_", -1)), "__", "_", 1)
+}
+
+var debug = false
+
+func dbg(s string, a ...interface{}) {
+	if debug {
+		fmt.Fprintf(os.Stderr, "\x1b[38;5;239mdbg openapi: "+s+"\x1b[0m\n", a...)
+	}
 }

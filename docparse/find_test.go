@@ -3,7 +3,9 @@ package docparse
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -27,7 +29,7 @@ func TestFindComments(t *testing.T) {
 
 func TestFindType(t *testing.T) {
 	t.Run("absolute", func(t *testing.T) {
-		ts, pkg, err := FindType("", "net/http", "Header")
+		ts, path, pkg, err := FindType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -40,6 +42,9 @@ func TestFindType(t *testing.T) {
 		if pkg != "net/http" {
 			t.Fatalf("pkg == %v", pkg)
 		}
+		if path != filepath.Join(runtime.GOROOT(), "src", "net", "http", "header.go") {
+			t.Fatalf("path == %v", path)
+		}
 
 		p, ok := declsCache["net/http"]
 		if !ok {
@@ -51,7 +56,7 @@ func TestFindType(t *testing.T) {
 		}
 
 		// Make sure it works from cache as well.
-		tsCached, pkgCached, err := FindType("", "net/http", "Header")
+		tsCached, pathCached, pkgCached, err := FindType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,10 +66,13 @@ func TestFindType(t *testing.T) {
 		if pkg != pkgCached {
 			t.Fatalf("pkgCache == %v", pkgCached)
 		}
+		if path != pathCached {
+			t.Fatalf("path == %v", pathCached)
+		}
 	})
 
 	t.Run("relative", func(t *testing.T) {
-		ts, pkg, err := FindType("../example/example.go", "exampleimport", "Foo")
+		ts, path, pkg, err := FindType("../example/example.go", "exampleimport", "Foo")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,6 +81,10 @@ func TestFindType(t *testing.T) {
 		}
 		if pkg != "github.com/teamwork/kommentaar/example/exampleimport" {
 			t.Fatalf("pkg == %v", pkg)
+		}
+		p, _ := filepath.Abs("./../example/exampleimport/exampleimport.go")
+		if path != p {
+			t.Fatalf("path == %v", path)
 		}
 	})
 }
