@@ -4,13 +4,19 @@ package html
 import (
 	"html/template"
 	"io"
+	"net/http"
 
+	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 )
 
-var tpl = template.Must(template.New("out").Funcs(template.FuncMap{
-	"add": func(a, b int) int { return a + b },
-}).Parse(`
+var funcMap = template.FuncMap{
+	"add":    func(a, b int) int { return a + b },
+	"status": func(c int) string { return http.StatusText(c) },
+	"dump":   func(x interface{}) string { return pretty.Sprintf("%# v", x) },
+}
+
+var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,51 +27,113 @@ var tpl = template.Must(template.New("out").Funcs(template.FuncMap{
 	<style>
 		body {
 			font: 16px/1.9em sans-serif;
+			background-color: #eee;
 		}
 
 		a {
 			text-decoration: none;
 		}
 
-		p {
+		p, ul {
 			margin: 0;
 			padding: 0;
 		}
 
-		h2 {
-			color: #3a6ea5;
+		ul {
+			margin-left: 2em;
 		}
 
 		h3 {
+			font-size: 1.5em;
+			position: relative;
+			margin-top: 1rem;
+			margin-bottom: 0;
+			padding: .2rem;
+			padding-left: .5rem;
+			color: #fff;
+			background-color: #888;
+			border: 1px solid #888;
+			margin-bottom: -1px;
+		}
+
+		h4 {
 			margin: 0;
+			font-size: 16px;
+		}
+
+		sup {
+			color: #aaa;
+		}
+
+		.btn {
+			color: #000;
+			background-color: #ddd;
+			border: 1px solid #aaa;
+			border-radius: 1px;
+			width: .8em;
+			display: inline-block;
+			text-align: center;
+			line-height: 1em;
+			padding: .2em;
+		}
+
+		.btn:visited {
+			color: #000;
+		}
+
+		.btn:hover {
+			background-color: #777;
+		}
+
+		.btn:first-child {
+			margin-right: -1px;
+		}
+
+		h3 .btn {
+			font-size: 16px;
+			position: relative;
+			top: -3px;
+		}
+
+		.btn-group {
+			position: absolute;
+			left: -1px;
+			top: -4px;
+			display: none;
+		}
+
+		h3:hover .btn-group,
+		.endpoint:hover .btn-group {
+			display: inline;
 		}
 
 		.endpoint {
-			background-color: #f7f7f7;
+			position: relative;
+			background-color: #fff;
 			border: 1px solid #b7b7b7;
 			margin-bottom: .5rem;
 			padding: .2em .5em;
+			border-radius: 2px;
 		}
 
 		.info {
+			margin-left: 4.5rem;
 			display: none;
 		}
 
 		.resource {
 			display: inline-block;
-			width: 38rem;
+			min-width: 38rem;
 		}
 
 		.resource .method {
 			display: inline-block;
-			width: 3.7rem;
+			min-width: 3.7rem;
 		}
 
-		strong {
-			display: block;
-		}
-		strong, p {
-			margin-left: .5rem;
+		.param-name {
+			display: inline-block;
+			min-width: 11rem;
 		}
 	</style>
 </head>
@@ -73,77 +141,118 @@ var tpl = template.Must(template.New("out").Funcs(template.FuncMap{
 <body>
 	<h1>{{.Config.Title}} API documentation {{.Config.Version}}</h1>
 
+	{{define "paramsTpl"}}
+		<ul>
+			{{range $p := .Params}}
+				<li><code class="param-name">{{$p.Name}}</code> {{$p.Info}}</li>
+			{{end}}
+		</ul>
+	{{end}}
+
+	<h2>Endpoints</h2>
 	{{range $i, $e := .Endpoints}}
 		{{if eq $i 0}}
-			<h2>{{index $e.Tags 0}}</h2>
+			</div><div>
+			<h3 id="{{index $e.Tags 0}}">
+				{{index $e.Tags 0}}
+				<span class="btn-group">
+					<a class="btn" href="#{{index $e.Tags 0}}">§</a><a class="btn js-expand" href="#">⬇</a>
+				</span>
+			</h3>
 		{{else if ne (index (index $.Endpoints (add $i -1)).Tags 0) (index $e.Tags 0)}}
-			<h2>{{index $e.Tags 0}}</h2>
+			</div><div>
+			<h3 id="{{index $e.Tags 0}}">
+				{{index $e.Tags 0}}
+				<span class="btn-group">
+					<a class="btn" href="#{{index $e.Tags 0}}">§</a><a class="btn js-expand" href="#">⬇</a>
+				</span>
+			</h3>
 		{{end}}
 
 		<div class="endpoint" id="{{$e.Method}}-{{$e.Path}}">
-			<a href="#{{$e.Method}}-{{$e.Path}}">§</a>
-			<a href="#" class="js-expand">⬇</a>
 			<code class="resource"><span class="method">{{$e.Method}}</span> {{$e.Path}}</code>
 			{{$e.Tagline}}
+			<span class="btn-group">
+				<a class="btn" href="#{{$e.Method}}-{{$e.Path}}">§</a><a class="btn js-expand" href="#">⬇</a>
+			</span>
 
 			<div class="info">
 				<p>{{$e.Info}}</p>
 
-				<h3>Request</h3>
 				{{if $e.Request.Path}}
-					<strong>Path parameters</strong>
-					<p>
-						{{range $p := $e.Request.Path.Params}}
-							{{$p.Name}} {{$p.Info}}<br>
-						{{end}}
-					</p>
+					<h4>Path parameters</h4>
+					{{template "paramsTpl" $e.Request.Path}}
 				{{end}}
 
 				{{if $e.Request.Query}}
-					<strong>Query parameters</strong>
-					<p>
-						{{range $p := $e.Request.Query.Params}}
-							{{$p.Name}} {{$p.Info}}<br>
-						{{end}}
-					</p>
+					<h4>Query parameters</h4>
+					{{template "paramsTpl" $e.Request.Query}}
 				{{end}}
 
 				{{if $e.Request.Form}}
-					<strong>Form parameters</strong>
-					<p>
-						{{range $p := $e.Request.Form.Params}}
-							{{$p.Name}} {{$p.Info}}<br>
-						{{end}}
-					</p>
+					<h4>Form parameters</h4>
+					{{template "paramsTpl" $e.Request.Form}}
 				{{end}}
 
 				{{if $e.Request.Body}}
-					<strong>Body</strong>
-					<p>{{$e.Request.ContentType}} <a href="#TODO">{{$e.Request.Body.Reference}}</a></p>
+					<h4>Request body</h4>
+					<ul>
+						<li><a href="#TODO">{{$e.Request.Body.Reference}}</a>
+							<sup>({{$e.Request.ContentType}})</sup></li>
+					</ul>
 				{{end}}
 
-				<h3>Responses</h3>
-				{{range $code, $r := $e.Responses}}
-					<strong>{{$code}}</strong>
-					<p>{{$r.ContentType}} {{if $r.Body}}<a href="#TODO">{{$r.Body.Reference}}</a>{{end}}</p>
-				{{end}}
+				<h4>Responses</h4>
+				<ul>
+					{{range $code, $r := $e.Responses}}
+						<li><code class="param-name">{{$code}} {{status $code}}</code>
+							{{if $r.Body}}
+								{{if $r.Body.Reference}}
+									<a href="#TODO">{{$r.Body.Reference}}</a>
+								{{else}}
+									{{$r.Body.Description}}
+								{{end}}
+								<sup>({{$r.ContentType}})</sup>
+							{{end}}
+						</li>
+					{{end}}
+				</ul>
 			</div>
 		</div>
 	{{end}}
 
-	<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+	<h2>Models</h2>
+	{{range $k, $v := .References}}
+		<h3>{{$k}}</h3>
+		<div class="endpoint">
+			<p>{{$v.Info}}</p>
+			<ul>
+				{{range $i, $p := $v.Params}}
+					<li>
+						<code>{{$p.Name}}</code>
+						<code>{{$p.Kind}}</code>
+						– {{$p.Info}}
+					</li>
+				{{end}}
+			</ul>
+		</div>
+	{{end}}
+
 	<script>
-	$('.js-expand').on('click', function(e) {
-		e.preventDefault()
-		info = $(this).parent().find('.info')
-		info.css('display', info.is(':visible') ? '' : 'block')
-	})
-	/*
-		document.getElementsByClassName('js-expand').addEventListener('click', function(e) {
+		document.addEventListener('click', function(e) {
+			window.eee = e
+			if (e.target.className !== 'btn js-expand')
+				return
+
 			e.preventDefault()
-			this.parentNode.getElementsByClassName('info')[0].style.display = 'block'
+			var parent = e.target.parentNode.parentNode
+			if (parent.tagName.toLowerCase() === 'h3')
+				parent = parent.parentNode
+
+			var info = parent.getElementsByClassName('info')
+			for (var i = 0; i < info.length; i++)
+				info[i].style.display = info[i].style.display === 'block' ? '' : 'block'
 		})
-		*/
 	</script>
 </body>
 </html>
@@ -151,5 +260,5 @@ var tpl = template.Must(template.New("out").Funcs(template.FuncMap{
 
 // WriteHTML writes w as HTML.
 func WriteHTML(w io.Writer, prog docparse.Program) error {
-	return tpl.Execute(w, prog)
+	return mainTpl.Execute(w, prog)
 }
