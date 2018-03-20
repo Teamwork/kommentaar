@@ -94,7 +94,6 @@ start:
 
 		// e.g. string, int64, etc.: don't need to look up as struct.
 		if isPrimitive(p.Type) {
-			//fmt.Println("PRIM", f.Names, f.Type)
 			return &p, nil
 		}
 
@@ -145,8 +144,6 @@ start:
 			return &p, nil
 		}
 
-		//return &p, nil
-
 	// Maps
 	case *ast.MapType:
 		// As far as I can find there is no obvious/elegant way to represent
@@ -178,7 +175,24 @@ start:
 	lookup := pkg + "." + name.Name
 	_, err := docparse.GetReference(lookup, ref.File)
 	if err != nil {
-		return nil, fmt.Errorf("getReference: %v", err)
+		nsErr, ok := err.(docparse.ErrNotStruct)
+		if ok {
+			id, ok := nsErr.TypeSpec.Type.(*ast.Ident)
+			if ok {
+				p.Type = id.Name
+				if k, ok := kindMap[p.Type]; ok {
+					p.Type = k
+				}
+
+				fmt.Println(p.Type)
+
+				if isPrimitive(p.Type) {
+					return &p, nil
+				}
+			}
+		}
+
+		return nil, fmt.Errorf("GetReference error for %v: %v", lookup, err)
 	}
 
 	if i := strings.LastIndex(lookup, "/"); i > -1 {
@@ -210,18 +224,17 @@ arrayStart:
 		dbg("resolveArray: ident: %#v", typ.Name)
 
 		p.Items = &Schema{Type: typ.Name}
-		if k, ok := kindMap[p.Type]; ok {
+		if k, ok := kindMap[typ.Name]; ok {
 			p.Items.Type = k
-		}
-
-		if isPrimitive(typ.Name) {
-			p.Items.Type = typ.Name
-			return nil
 		}
 
 		if typ.Name == "byte" {
 			p.Items = nil
 			p.Type = "string"
+			return nil
+		}
+
+		if isPrimitive(p.Items.Type) {
 			return nil
 		}
 
@@ -247,6 +260,23 @@ arrayStart:
 	lookup := pkg + "." + name.Name
 	_, err := docparse.GetReference(lookup, ref.File) // TODO: just as sanity check
 	if err != nil {
+		nsErr, ok := err.(docparse.ErrNotStruct)
+		if ok {
+			id, ok := nsErr.TypeSpec.Type.(*ast.Ident)
+			if ok {
+				p.Type = id.Name
+				if k, ok := kindMap[p.Type]; ok {
+					p.Type = k
+				}
+
+				fmt.Println(p.Type)
+
+				if isPrimitive(p.Type) {
+					return nil
+				}
+			}
+		}
+
 		return fmt.Errorf("resolveArray: GetReference error for %v: %v",
 			lookup, err)
 	}

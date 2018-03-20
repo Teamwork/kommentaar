@@ -521,6 +521,17 @@ func getIndent(s string) int {
 	return n
 }
 
+// ErrNotStruct is used when GetReference resolves to something that is not a
+// struct.
+type ErrNotStruct struct {
+	TypeSpec *ast.TypeSpec
+	msg      string
+}
+
+func (err ErrNotStruct) Error() string {
+	return err.msg
+}
+
 // GetReference finds a type by name. It can either be in the current path
 // ("SomeStruct"), a package path with a type (e.g.
 // "example.com/bar.SomeStruct"), or something from an imported package (e.g.
@@ -565,7 +576,8 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	// Make sure it's a struct.
 	st, ok := ts.Type.(*ast.StructType)
 	if !ok {
-		return nil, fmt.Errorf("%v is not a struct but a %T", name, ts.Type)
+		return nil, ErrNotStruct{ts, fmt.Sprintf(
+			"%v is not a struct but a %T", name, ts.Type)}
 	}
 
 	ref := Reference{
@@ -661,6 +673,17 @@ var MapTypes = map[string]string{
 	"sql.NullInt64":   "int64",
 	"sql.NullString":  "string",
 	"time.Time":       "string",
+
+	"null.Bool":   "bool",
+	"null.Float":  "float64",
+	"null.Int":    "int64",
+	"null.String": "String",
+	"null.Time":   "string",
+	"zero.Bool":   "bool",
+	"zero.Float":  "float64",
+	"zero.Int":    "int64",
+	"zero.String": "String",
+	"zero.Time":   "string",
 
 	"twnull.Bool":   "bool",
 	"twnull.Int":    "int64",
