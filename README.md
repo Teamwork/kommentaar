@@ -3,22 +3,22 @@
 
 Generate documentation for Go APIs.
 
-The primary focus is on outputting as [OpenAPI](https://github.com/OAI/OpenAPI-Specification)
-(previously known as Swagger), but it can also output directly to HTML, and the
-design allows easy addition of other output formats.
+The primary focus is currently on [OpenAPI](https://github.com/OAI/OpenAPI-Specification)
+output (previously known as Swagger), but it can also output directly to HTML,
+and the design allows easy addition of other output formats.
 
 Goals:
 
 - Easy to use.
 - Good performance.
-- Does not require significant code refactors to use.
+- Will not require significant code refactors to use in most cases.
 
 Non-goals:
 
 - Support every single last OpenAPI feature.
 
 Using the tool
-==============
+--------------
 
     $ go install github.com/teamwork/kommentaar
 
@@ -33,10 +33,10 @@ Or from a package and all subpackages:
 The default output is as an OpenAPI 3 YAML file, which is *not* compatible with
 the OpenAPI 2/Swagger specification.
 
-See `kommentaar -h` for a list of options.
+See `kommentaar -h` for a list of options. You can also the Go API (see godoc).
 
 Syntax
-======
+------
 
 The Kommentaar syntax is primarily driven by a simple data format in Go
 comments. While "programming-by-comments" is not always ideal, using comments
@@ -63,18 +63,22 @@ type createResponse struct {
 //   color: Bike color code {string}.
 //
 // Response 200: $ref: createResponse
-func create() {
+func create(w http.ResponseWriter, r *http.Request) {
     // ...
 }
 ```
 
 To break it down:
 
+- The comment block is *not* directly tied to the handler function. You will
+  usually want to use it like above, but there is nothing stopping you from
+  putting it in another file or even package.
+
 - The first line *must* be the HTTP method followed by the path. The method
   *must* be upper-case, and the path *must* start with a `/`.
 
-  The path can optionally be followed by a tag, one or more space-separated
-  tags, which are used to group endpoints.
+  The path can optionally be followed by one or more space-separated tags, which
+  are used to group endpoints.
 
 - The second line is used as a "tagline". This can only be a single line and
   *must* immediately follow the opening line with no extra newlines. This line
@@ -84,10 +88,12 @@ To break it down:
   description. This is free-form text and may be omitted (especially in cases
   where it just repeats the tagline it's not useful to add).
 
-- The `Form:` header denotes the form parameters, the parameter list is as
-  `name: description {keywords}`. The keywords are optional.
+- The `Form:` header denotes the form parameters, the parameter list *should* be
+  indented by one or more spaces and is as `name: description {keywords}`. The
+  keywords are optional.
 
 - The response references a struct, `createResponse` in this case.
 
-See the [`example` directory](/example) for a more elaborate example, and
-[doc/syntax](doc/syntax.markdown) for a full description of the syntax.
+See the [`example/` directory](/example) for a more elaborate example, and
+[`doc/syntax.markdown`](doc/syntax.markdown) for a full description of the
+syntax.
