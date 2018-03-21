@@ -1,10 +1,21 @@
 [![Build Status](https://travis-ci.org/Teamwork/kommentaar.svg?branch=master)](https://travis-ci.org/Teamwork/kommentaar)
 [![codecov](https://codecov.io/gh/Teamwork/kommentaar/branch/master/graph/badge.svg)](https://codecov.io/gh/Teamwork/kommentaar)
 
-Generate OpenAPI files from comments in Go files.
+Generate documentation for Go APIs.
 
-The idea is that you can write documentation in your comments in a simple
-readable manner.
+The primary focus is on outputting as [OpenAPI](https://github.com/OAI/OpenAPI-Specification)
+(previously known as Swagger), but it can also output directly to HTML, and the
+design allows easy addition of other output formats.
+
+Goals:
+
+- Easy to use.
+- Good performance.
+- Does not require significant code refactors to use.
+
+Non-goals:
+
+- Support every single last OpenAPI feature.
 
 Using the tool
 ==============
@@ -20,73 +31,63 @@ Or from a package and all subpackages:
     $ kommentaar github.com/teamwork/desk/api/...
 
 The default output is as an OpenAPI 3 YAML file, which is *not* compatible with
-the OpenAPI 2/Swagger spec.
+the OpenAPI 2/Swagger specification.
 
-Not everything is correctly output yet. It's a work-in progress tool.
+See `kommentaar -h` for a list of options.
 
 Syntax
 ======
 
+The Kommentaar syntax is primarily driven by a simple data format in Go
+comments. While "programming-by-comments" is not always ideal, using comments
+does make it easier to use in some scenarios as it doesn't assume too much about
+how you write your code.
+
 A simple example:
 
 ```go
-// POST /foo foobar
-// Create a new foo.
+type createResponse struct {
+    ID    int     `json:"id"`
+    Price float64 `json:"price"`
+}
+
+// POST /bike bikes
+// Create a new bike.
 //
-// This will create a new foo object for a customer. It's important to remember
-// that only Pro customers have access to foos.
+// This will create a new bike. It's important to remember that newly created
+// bikes are *not* automatically fit with a steering wheel or seat, as the
+// customer will have to choose one later on.
 //
 // Form:
-//   subject: The subject {string, required}.
-//   message: The message {string}.
+//   size:  The bike frame size in centimetre {int, required}.
+//   color: Bike color code {string}.
 //
-// Response 200 (application/json):
-//   $ref: responseObject
-
-type responseObject struct {
-    // Unique identifier.
-    ID int `json:"id"`
-
-    // All threads that belong to this foo.
-    Threads []models.Threads
+// Response 200: $ref: createResponse
+func create() {
+    // ...
 }
 ```
 
 To break it down:
 
 - The first line *must* be the HTTP method followed by the path. The method
-  *must* be upper-case, and the path *must* start with a /.
-  The path can optionally be followed by one or more space-separated tags, which
-  can are used to group endpoints (you typically want the controller name here,
-  e.g. `tickets` or `inboxes`).
+  *must* be upper-case, and the path *must* start with a `/`.
+
+  The path can optionally be followed by a tag, one or more space-separated
+  tags, which are used to group endpoints.
 
 - The second line is used as a "tagline". This can only be a single line and
-  *must* immediately follow the opening line with no extra newlines. This is
-  optional.
+  *must* immediately follow the opening line with no extra newlines. This line
+  is optional but highly recommended to use.
 
 - After a single blank line any further text will be treated as the endpoint's
-  description. This is free-form text, this may be omitted (especially in cases
-  where it just repeats the tagline it's not very useful to add).
+  description. This is free-form text and may be omitted (especially in cases
+  where it just repeats the tagline it's not useful to add).
 
-- The rest is is formatted as parameter lists which start with a header. A
-  header is any text ending in a semicolon (`:`). The block contents is indented
-  with two spaces as a matter of convention to aid readability, but this is not
-  mandatory.
+- The `Form:` header denotes the form parameters, the parameter list is as
+  `name: description {keywords}`. The keywords are optional.
 
-- The following headers can be used:
+- The response references a struct, `createResponse` in this case.
 
-  - `Path:`, `Query:`, `Form:`  – Parameters for the path, query, and form.
-  - `Request body [(Content-Type)]:` – The request body.
-  - `Response [code] [(Content-Type)]` – Response bodies; may occur more than
-    once for different status codes.
-
-- The parameter list can be specified in two ways, either as a reference to a
-  struct or "inline". You need to choose one per list, and can't mix the two.
-
-- An inline parameter looks like `name: a description {tag1, tag2}`.
-
-- A reference is denoted by `$ref: pkg name`. The `pkg` may be omitted, in
-  which case the package the file is in is used. Struct fields can be documented
-  with the same tags as inline parameters.
-
-See the [`example` directory](/example) for a more elaborate example.
+See the [`example` directory](/example) for a more elaborate example, and
+[doc/syntax](doc/syntax.markdown) for a full description of the syntax.
