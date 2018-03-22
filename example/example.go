@@ -48,6 +48,8 @@ func MyHandler() {
 // POST /second/endpoint
 //
 // Just to see if that works correct.
+//
+// Response 200: $empty
 
 // Other others a lot!
 func Other() {

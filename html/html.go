@@ -259,6 +259,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 `))
 
 // WriteHTML writes w as HTML.
-func WriteHTML(w io.Writer, prog docparse.Program) error {
+func WriteHTML(w io.Writer, prog *docparse.Program) error {
+	// TODO: support prog.Config.Prefix
 	return mainTpl.Execute(w, prog)
 }

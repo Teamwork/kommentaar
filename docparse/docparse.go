@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 	"github.com/teamwork/utils/stringutil"
 )
@@ -29,34 +30,46 @@ type Program struct {
 
 // Config for the program.
 type Config struct {
+	// Kommentaar control.
+	Paths  []string
+	Output func(io.Writer, *Program) error
+	Debug  bool
+
+	// General information.
 	Title        string
 	Version      string
 	ContactName  string
 	ContactEmail string
 	ContactSite  string
 
+	// Defaults.
 	DefaultRequest  string
 	DefaultResponse string
 	Prefix          string
 }
 
-// Prog is the program we're currently working on.
-var Prog Program
+// NewProgram creates a new Program instance.
+func NewProgram(dbg bool) *Program {
+	debug = dbg
 
-// InitProgram creates a new Program instance. The created Prog will be cleared
-// after running FindComments().
-//
-// TODO: Don't rely on a global variable.
-func InitProgram(dbg bool) {
-	Prog = Program{
+	return &Program{
 		References: make(map[string]Reference),
 		Config: Config{
 			DefaultRequest:  "application/json",
 			DefaultResponse: "application/json",
+
+			// Override from commandline.
+			Debug: dbg,
 		},
 	}
+}
 
-	debug = dbg
+var debug bool
+
+func dbg(s string, a ...interface{}) {
+	if debug {
+		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
+	}
 }
 
 // Endpoint denotes a single API endpoint.
@@ -126,10 +139,8 @@ var (
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
-var testMode = false
-
 // ParseComment a single comment block in the file filePath.
-func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
+func ParseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, error) {
 	e := &Endpoint{}
 
 	// Determine if this is a comment block.
@@ -145,10 +156,6 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2)+1:])
 	} else {
 		comment = strings.TrimSpace(comment[len(line1)+len(line2):])
-	}
-
-	if Prog.Config.Prefix != "" {
-		e.Path = path.Join(Prog.Config.Prefix, e.Path)
 	}
 
 	e.Tagline = strings.TrimSpace(line2)
@@ -168,21 +175,21 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 
 		// Path:
 		case header == "Path:":
-			e.Request.Path, err = parseParams(contents, filePath)
+			e.Request.Path, err = parseParams(prog, contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse path params: %v", err)
 			}
 
 		// Query:
 		case header == "Query:":
-			e.Request.Query, err = parseParams(contents, filePath)
+			e.Request.Query, err = parseParams(prog, contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse query params: %v", err)
 			}
 
 		// Form:
 		case header == "Form:":
-			e.Request.Form, err = parseParams(contents, filePath)
+			e.Request.Form, err = parseParams(prog, contents, filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse form params: %v", err)
 			}
@@ -192,12 +199,12 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 			// Request body (application/json):
 			req := reRequestHeader.FindStringSubmatch(header)
 			if req != nil {
-				e.Request.ContentType = Prog.Config.DefaultRequest
+				e.Request.ContentType = prog.Config.DefaultRequest
 				if len(req) == 3 && req[2] != "" {
 					e.Request.ContentType = req[2]
 				}
 
-				e.Request.Body, err = parseParams(contents, filePath)
+				e.Request.Body, err = parseParams(prog, contents, filePath)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse request params: %v", err)
 				}
@@ -223,12 +230,12 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 					}
 				}
 
-				r := Response{ContentType: Prog.Config.DefaultResponse}
+				r := Response{ContentType: prog.Config.DefaultResponse}
 				if len(resp) > 4 && resp[4] != "" {
 					r.ContentType = resp[4]
 				}
 
-				r.Body, err = parseParams(contents, filePath)
+				r.Body, err = parseParams(prog, contents, filePath)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 				}
@@ -256,13 +263,8 @@ func ParseComment(comment, pkgPath, filePath string) (*Endpoint, error) {
 		}
 	}
 
-	// TODO: Temporary hack so I don't have to rewrite all tests!
-	if len(e.Responses) == 0 && !testMode {
-		e.Responses = map[int]Response{
-			200: Response{ContentType: Prog.Config.DefaultResponse},
-		}
-		// TODO: enable error once we've added a reponse to all of Desk.
-		//return nil, fmt.Errorf("%v: must have at least one response", e.Path)
+	if len(e.Responses) == 0 {
+		return nil, fmt.Errorf("%v: must have at least one response", e.Path)
 	}
 
 	return e, nil
@@ -323,9 +325,11 @@ func getBlocks(comment string) (map[string]string, error) {
 			continue
 		}
 
-		// Single-line header, only supported with "$ref" references.
-		// Response 200: $ref: AnObject
-		// Response 400: $ref: ErrorObject
+		// Single-line header, only supported with "$ref" and "$empty":
+		//
+		//  Response 200: $ref: AnObject
+		//  Response 204: $empty
+		//  Response 400: $ref: ErrorObject
 		if line[0] != ' ' && (strings.Contains(line, ": $ref:") || strings.Contains(line, ": $empty")) {
 			var err error
 			info, err = addBlock(info, header)
@@ -383,7 +387,7 @@ const (
 //   name: some description
 //   name: {string, required}
 //   name: some description {string, required}
-func parseParams(text, filePath string) (*Params, error) {
+func parseParams(prog *Program, text, filePath string) (*Params, error) {
 	params := &Params{}
 
 	for _, line := range collapseIndents(text) {
@@ -419,13 +423,13 @@ func parseParams(text, filePath string) (*Params, error) {
 				return nil, fmt.Errorf("invalid reference: %#v", line)
 			}
 
-			ref, err := GetReference(strings.TrimSpace(s[1]), filePath)
+			ref, err := GetReference(prog, strings.TrimSpace(s[1]), filePath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("GetReference: %v", err)
 			}
 
-			// TODO: We store it as a path for now, as that's easier to debug in
-			// the intermediate format (otherwise pretty.Print() show the full
+			// We store it as a path for now, as that's easier to debug in the
+			// intermediate format (otherwise pretty.Print() show the full
 			// object, which is kind of noisy). We should probably store it as a
 			// pointer once I'm done with the docparse part.
 			params.Reference = ref.Lookup
@@ -462,6 +466,7 @@ func parseParams(text, filePath string) (*Params, error) {
 			// intended to quickly add a path parameter or query parameter or
 			// two, without the bother of creating a "dead code" struct).
 			// TODO: ideally I'd like to parse this a bit more flexible.
+			// TODO: error out on multiple types being given
 			case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
 				p.Kind = t
 
@@ -537,16 +542,16 @@ func (err ErrNotStruct) Error() string {
 // "example.com/bar.SomeStruct"), or something from an imported package (e.g.
 // "models.SomeStruct").
 //
-// References are stored in the Prog.References global. This also finds and
-// stores all nested references, so for:
+// References are stored in prog.References. This also finds and stores all
+// nested references, so for:
 //
 //  type Foo struct {
 //    Field Bar
 //  }
 //
-// A GetReference("Foo", "") call will add two entries to Prog.References: Foo
+// A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
-func GetReference(lookup, filePath string) (*Reference, error) {
+func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
 	var name, pkg string
@@ -563,7 +568,7 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
-	if ref, ok := Prog.References[lookup]; ok {
+	if ref, ok := prog.References[lookup]; ok {
 		return &ref, nil
 	}
 
@@ -616,7 +621,7 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
-			p, err := parseParams(fmt.Sprintf("%v: %v", fName, doc), filePath)
+			p, err := parseParams(prog, fmt.Sprintf("%v: %v", fName, doc), filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse field %v for struct %v: %v",
 					fName, name, err)
@@ -634,16 +639,16 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 		}
 	}
 
-	Prog.References[ref.Lookup] = ref
+	prog.References[ref.Lookup] = ref
 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
-	// reference in Prog.References to prevent cyclic lookup issues.
+	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
-		if JSONTag(f) == "-" {
+		if goutil.TagName(f, "json") == "-" {
 			continue
 		}
 
-		err := findNested(f, foundPath, pkg)
+		err := findNested(prog, f, foundPath, pkg)
 		if err != nil {
 			return nil, fmt.Errorf("\n  findNested: %v", err)
 		}
@@ -652,46 +657,37 @@ func GetReference(lookup, filePath string) (*Reference, error) {
 	return &ref, nil
 }
 
-// JSONTag gets the field name from the JSON tag with any attributes (like
-// omitempty) removed.
-func JSONTag(f *ast.Field) string {
-	if f.Tag == nil {
-		return ""
-	}
-
-	tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("json")
-	if p := strings.Index(tag, ","); p != -1 {
-		tag = tag[:p]
-	}
-	return tag
-}
-
-// MapTypes ..
+// MapTypes maps some Go types to primitives, so they appear as such in the
+// output. Most of the time users of the API don't really care if it's a
+// "sql.NullString" or just a string.
 var MapTypes = map[string]string{
+	// stdlib
 	"sql.NullBool":    "bool",
 	"sql.NullFloat64": "float64",
 	"sql.NullInt64":   "int64",
 	"sql.NullString":  "string",
-	"time.Time":       "string",
+	"time.Time":       "string", // TODO: date
 
+	// http://github.com/guregu/null
 	"null.Bool":   "bool",
 	"null.Float":  "float64",
 	"null.Int":    "int64",
 	"null.String": "String",
-	"null.Time":   "string",
+	"null.Time":   "string", // TODO: date
 	"zero.Bool":   "bool",
 	"zero.Float":  "float64",
 	"zero.Int":    "int64",
 	"zero.String": "String",
-	"zero.Time":   "string",
+	"zero.Time":   "string", // TODO: date
 
+	// TODO: add this to config.
 	"twnull.Bool":   "bool",
 	"twnull.Int":    "int64",
 	"twnull.String": "string",
-	"twtime.Time":   "string",
+	"twtime.Time":   "string", // TODO: date
 }
 
-func findNested(f *ast.Field, filePath, pkg string) error {
+func findNested(prog *Program, f *ast.Field, filePath, pkg string) error {
 	var name *ast.Ident
 
 	sw := f.Type
@@ -762,8 +758,8 @@ start:
 		return nil
 	}
 
-	if _, ok := Prog.References[lookup]; !ok {
-		err := resolveType(name, filePath, pkg)
+	if _, ok := prog.References[lookup]; !ok {
+		err := resolveType(prog, name, filePath, pkg)
 		if err != nil {
 			return fmt.Errorf("%v.%v: %v", pkg, name, err)
 		}
@@ -778,7 +774,7 @@ func builtInType(n string) bool {
 		"uint64", "uintptr"}, n)
 }
 
-func resolveType(typ *ast.Ident, filePath, pkg string) error {
+func resolveType(prog *Program, typ *ast.Ident, filePath, pkg string) error {
 
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {
@@ -803,16 +799,8 @@ func resolveType(typ *ast.Ident, filePath, pkg string) error {
 		return nil
 	}
 
-	// This sets the Prog.References global.
+	// This sets prog.References
 	lookup := pkg + "." + typ.Name
-	_, err := GetReference(lookup, filePath)
+	_, err := GetReference(prog, lookup, filePath)
 	return err
-}
-
-var debug bool
-
-func dbg(s string, a ...interface{}) {
-	if debug {
-		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
-	}
 }

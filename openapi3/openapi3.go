@@ -113,21 +113,24 @@ type (
 )
 
 // WriteYAML writes w as YAML.
-func WriteYAML(w io.Writer, prog docparse.Program) error {
+func WriteYAML(w io.Writer, prog *docparse.Program) error {
 	return write("yaml", w, prog)
 }
 
 // WriteJSON writes to w as JSON.
-func WriteJSON(w io.Writer, prog docparse.Program) error {
+func WriteJSON(w io.Writer, prog *docparse.Program) error {
 	return write("json", w, prog)
 }
 
 // WriteJSONIndent writes to w as indented JSON.
-func WriteJSONIndent(w io.Writer, prog docparse.Program) error {
+func WriteJSONIndent(w io.Writer, prog *docparse.Program) error {
 	return write("jsonindent", w, prog)
 }
 
-func write(outFormat string, w io.Writer, prog docparse.Program) error {
+func write(outFormat string, w io.Writer, prog *docparse.Program) error {
+
+	// TODO: support prog.Config.Prefix
+
 	out := OpenAPI{
 		OpenAPI: "3.0.1",
 		Info: Info{
@@ -145,7 +148,7 @@ func write(outFormat string, w io.Writer, prog docparse.Program) error {
 
 	// Add components.
 	for k, v := range prog.References {
-		schema, err := structToSchema(k, v)
+		schema, err := structToSchema(prog, k, v)
 		if err != nil {
 			return err
 		}

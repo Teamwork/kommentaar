@@ -9,50 +9,41 @@ import (
 	"github.com/teamwork/test/diff"
 )
 
-func TestParse(t *testing.T) {
-	testMode = true
+func TestParseComments(t *testing.T) {
+	stdResp := map[int]Response{200: Response{
+		ContentType: "application/json",
+		Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
+	}}
+
 	cases := []struct {
 		in, wantErr string
 		want        *Endpoint
 	}{
-		// Not valid start lines.
-		{"", "", nil},
-		{"Hello, world!", "", nil},
-		{"Post some data", "", nil},
-		{"POST path", "", nil},
-		{"POST p/ath", "", nil},
-
-		// Valid start lines with tags
-		{"POST /path", "", &Endpoint{Method: "POST", Path: "/path"}},
-		{"POST /path tag1", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1"}}},
-		{"POST /path tag1 tag2", "", &Endpoint{Method: "POST", Path: "/path", Tags: []string{"tag1", "tag2"}}},
-
-		// Valid start lines with tagline/description.
-		{"POST /path\n", "", &Endpoint{Method: "POST", Path: "/path"}},
-		{"POST /path\n\n", "", &Endpoint{Method: "POST", Path: "/path"}},
-		{"POST /path\n \n", "", &Endpoint{Method: "POST", Path: "/path"}},
-		{"POST /path\nTagline!", "", &Endpoint{Method: "POST", Path: "/path", Tagline: "Tagline!"}},
-		{"POST /path\nTagline!\n\nDesc!\ndesc!", "", &Endpoint{
-			Method: "POST", Path: "/path", Tagline: "Tagline!", Info: "Desc!\ndesc!"}},
-		{"POST /path\n\nDesc!\ndesc!", "", &Endpoint{
-			Method: "POST", Path: "/path", Info: "Desc!\ndesc!"}},
-
 		// Query
-		{"POST /path\n\nQuery:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+		{`
+			POST /path
+		
+			Query:
+			  foo: hello
+			
+			Response 200: $empty
+		`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
 			Query: &Params{Params: []Param{{
-				Name: "foo",
-				Info: "hello",
-			}}},
-		}}},
-		{"POST /path/:foo\n\nPath:\n  foo: hello", "", &Endpoint{Method: "POST", Path: "/path/:foo", Request: Request{
-			Path: &Params{Params: []Param{{
 				Name: "foo",
 				Info: "hello",
 			}}},
 		}}},
 
 		// Path, Query and Form
-		{"POST /path\n\nQuery:\n  foo: hello\nForm:\n  Hello: WORLD {required}", "", &Endpoint{
+		{`
+			POST /path
+			
+			Response 200: $empty
+			Query:
+				foo: hello
+			Form:
+				Hello: WORLD {required}
+		`, "", &Endpoint{
 			Method: "POST", Path: "/path", Request: Request{
 				Query: &Params{Params: []Param{{
 					Name: "foo",
@@ -65,51 +56,112 @@ func TestParse(t *testing.T) {
 				}}},
 			}}},
 
-		//{"POST /path\n\nRequest body:\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-		//	ContentType: "application/json",
-		//	Body:        &Params{Params: []Param{{Name: "w00t"}}},
-		//}}},
+		{`
+			POST /path
 
-		//{"POST /path\n\nRequest body (foo):\n w00t", "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-		//	ContentType: "foo",
-		//	Body:        &Params{Params: []Param{{Name: "w00t"}}},
-		//}}},
+			Request body: $ref: net/mail.Address
+			Response 200: $empty
+		`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+			ContentType: "application/json",
+			Body:        &Params{Reference: "mail.Address"},
+		}}},
 
-		// Single response
-		//{"POST /path\n\nResponse:\n w00t", "", &Endpoint{Method: "POST", Path: "/path",
-		//	Responses: map[int]Response{
-		//		200: {
-		//			ContentType: "application/json",
-		//			Body:        &Params{Params: []Param{{Name: "w00t"}}},
-		//		}}}},
+		{
+			`
+				POST /path
+
+				Request body (foo): $ref: net/mail.Address
+				Response 200: $empty
+			`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
+				ContentType: "foo",
+				Body:        &Params{Reference: "mail.Address"},
+			}}},
 
 		// Two responses
-		//{"POST /path\n\nResponse:\n w00t\n\nResponse 400 (w00t):\n asd", "", &Endpoint{
-		//	Method: "POST", Path: "/path",
-		//	Responses: map[int]Response{
-		//		200: {
-		//			ContentType: "application/json",
-		//			Body:        &Params{Params: []Param{{Name: "w00t"}}},
-		//		},
-		//		400: {
-		//			ContentType: "w00t",
-		//			Body:        &Params{Params: []Param{{Name: "asd"}}},
-		//		},
-		//	}}},
+		{
+			`
+				POST /path
+
+				Response: $empty
+				Response 400 (w00t): $empty
+			`, "", &Endpoint{
+				Method: "POST", Path: "/path",
+				Responses: map[int]Response{
+					200: {
+						ContentType: "application/json",
+						Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
+					},
+					400: {
+						ContentType: "w00t",
+						Body:        &Params{Description: "Bad Request", Params: []Param{{Name: "$empty"}}},
+					},
+				}}},
 
 		// Duplicate response codes
-		{"POST /path\n\nResponse 200:\n w00t\n\nResponse 200:\n w00t\n", "duplicate", nil},
+		{
+			`
+				POST /path
+
+				Response 200: $empty
+				Response 200: $empty
+			`, "response", nil},
 	}
 
-	InitProgram(false)
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := ParseComment(tc.in, ".", ".")
+			prog := NewProgram(false)
+
+			if tc.want != nil && tc.want.Responses == nil {
+				tc.want.Responses = stdResp
+			}
+			tc.in = test.NormalizeIndent(tc.in)
+
+			out, err := ParseComment(prog, tc.in, ".", "docparse.go")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
 			if !reflect.DeepEqual(tc.want, out) {
 				t.Errorf("\n%v", diff.Diff(tc.want, out))
+			}
+		})
+	}
+}
+
+func TestGetStartLine(t *testing.T) {
+	cases := []struct {
+		in, wantMethod, wantPath string
+		wantTags                 []string
+	}{
+		// Valid
+		{"POST /path", "POST", "/path", nil},
+		{"GET /path tag1", "GET", "/path", []string{"tag1"}},
+		{"DELETE /path/str tag1 tag2", "DELETE", "/path/str", []string{"tag1", "tag2"}},
+		{"PATCH /path/{id}/{var}/x tag1 tag2", "PATCH", "/path/{id}/{var}/x", []string{"tag1", "tag2"}},
+
+		// Invalid start lines.
+		{"", "", "", nil},
+		{"Hello, world!", "", "", nil},
+		{"Post some data", "", "", nil},
+		{"POST path", "", "", nil},
+		{"POST p/ath", "", "", nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			method, path, tags := getStartLine(tc.in)
+
+			if method != tc.wantMethod {
+				t.Errorf("method wrong\nout:  %#v\nwant: %#v\n",
+					method, tc.wantMethod)
+			}
+
+			if path != tc.wantPath {
+				t.Errorf("path wrong\nout:  %#v\nwant: %#v\n",
+					path, tc.wantPath)
+			}
+
+			if !reflect.DeepEqual(tc.wantTags, tags) {
+				t.Errorf("tags wrong\nout:  %#v\nwant: %#v\n", tags, tc.wantTags)
 			}
 		})
 	}
@@ -124,6 +176,7 @@ func TestGetBlocks(t *testing.T) {
 		{"", "", map[string]string{}},
 		{"Request body:\n", `no content for header "Request body:"`, nil},
 		{"Request body:\nwoot:\n", `no content for header "Request body:"`, nil},
+		{"Request body:\n hello\n world\nRequest body:\n hello\n world\n", "duplicate header", nil},
 
 		{"Request body:\n hello\n world", "", map[string]string{
 			"Request body:": " hello\n world",
@@ -207,7 +260,8 @@ func TestParseParams(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := parseParams(tc.in, ".")
+			prog := NewProgram(false)
+			out, err := parseParams(prog, tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
@@ -228,7 +282,8 @@ func TestParseParams(t *testing.T) {
 				}
 			}
 
-			out, err := parseParams(in, ".")
+			prog := NewProgram(false)
+			out, err := parseParams(prog, in, ".")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -304,10 +359,10 @@ func TestGetReference(t *testing.T) {
 		{"net/http.Header", "not a struct", nil},
 	}
 
-	InitProgram(false)
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
-			out, err := GetReference(tc.in, ".")
+			prog := NewProgram(false)
+			out, err := GetReference(prog, tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}

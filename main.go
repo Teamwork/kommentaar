@@ -33,7 +33,8 @@ JSON respectively, and "html" for HTML documentation.`)
 		paths = []string{"."}
 	}
 
-	var outFunc func(io.Writer, docparse.Program) error
+	// TODO: allow setting the default outFunc from the config file as well.
+	var outFunc func(io.Writer, *docparse.Program) error
 	switch strings.ToLower(*out) {
 	case "openapi3-yaml":
 		outFunc = openapi3.WriteYAML
@@ -54,30 +55,33 @@ JSON respectively, and "html" for HTML documentation.`)
 		flag.Usage()
 	}
 
-	docparse.InitProgram(*debug)
+	prog := docparse.NewProgram(*debug)
 
 	if *config != "" {
-		err := sconfig.Parse(&docparse.Prog.Config, *config, nil)
+		err := sconfig.Parse(prog.Config, *config, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, err.Error()+"\n")
 			os.Exit(1)
 		}
 	}
 
-	err := docparse.FindComments(os.Stdout, paths, outFunc)
+	prog.Config.Paths = paths
+	prog.Config.Output = outFunc
+
+	err := docparse.FindComments(os.Stdout, prog)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 }
 
-func lsAll(_ io.Writer, prog docparse.Program) error {
+func lsAll(_ io.Writer, prog *docparse.Program) error {
 	_, err := pretty.Print(prog)
 	fmt.Println("")
 	return err
 }
 
-func lsRef(_ io.Writer, prog docparse.Program) error {
+func lsRef(_ io.Writer, prog *docparse.Program) error {
 	sp := 0
 	var refs []docparse.Reference
 	for _, ref := range prog.References {

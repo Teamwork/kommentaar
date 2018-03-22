@@ -7,11 +7,14 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/teamwork/test"
 )
 
-func TestFindComments(t *testing.T) {
-	InitProgram(false)
-	err := FindComments(os.Stdout, []string{"../example"}, func(_ io.Writer, p Program) error {
+func TestExampleDir(t *testing.T) {
+	prog := NewProgram(false)
+	prog.Config.Paths = []string{"../example"}
+	prog.Config.Output = func(_ io.Writer, p *Program) error {
 		if len(p.Endpoints) < 2 {
 			t.Errorf("len(p.Endpoints) == %v", len(p.Endpoints))
 		}
@@ -20,8 +23,9 @@ func TestFindComments(t *testing.T) {
 		}
 
 		return nil
-	})
+	}
 
+	err := FindComments(os.Stdout, prog)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +89,39 @@ func TestFindType(t *testing.T) {
 		p, _ := filepath.Abs("./../example/exampleimport/exampleimport.go")
 		if path != p {
 			t.Fatalf("path == %v", path)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cases := []struct {
+			name                      string
+			inFile, inPkgPath, inName string
+			wantErr                   string
+		}{
+			{
+				"nodir",
+				"../../example.com", "asdasd", "qwewqe",
+				"no such file or directory",
+			},
+			{
+				"nopkg",
+				"", "asdasd", "qwewqe",
+				`cannot find package "asdasd" in any of`,
+			},
+			{
+				"notfound",
+				"../example/example.go", "exampleimport", "doesntexist",
+				`could not find type "doesntexist" in package "github.com/teamwork/kommentaar/example/exampleimport"`,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				_, _, _, err := FindType(tc.inFile, tc.inPkgPath, tc.inName)
+				if !test.ErrorContains(err, tc.wantErr) {
+					t.Fatalf("\nwant: %v\ngot:  %v", tc.wantErr, err)
+				}
+			})
 		}
 	})
 }

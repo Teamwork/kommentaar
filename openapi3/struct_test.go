@@ -11,7 +11,7 @@ import (
 )
 
 func TestFieldToProperty(t *testing.T) {
-	docparse.InitProgram(false)
+	prog := docparse.NewProgram(false)
 
 	want := map[string]*Schema{
 		"str":    {Type: "string", Description: "Documented str field.\nNewline."},
@@ -46,7 +46,7 @@ func TestFieldToProperty(t *testing.T) {
 
 	for i, f := range st.Fields.List {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := fieldToSchema(docparse.Reference{
+			out, err := fieldToSchema(prog, docparse.Reference{
 				Package: "a",
 			}, f)
 			if err != nil {

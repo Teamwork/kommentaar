@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 )
 
 // Convert a struct to a JSON schema.
-func structToSchema(name string, ref docparse.Reference) (*Schema, error) {
+func structToSchema(prog *docparse.Program, name string, ref docparse.Reference) (*Schema, error) {
 	schema := &Schema{
 		Title:       name,
 		Description: ref.Info,
@@ -23,7 +24,9 @@ func structToSchema(name string, ref docparse.Reference) (*Schema, error) {
 			return nil, fmt.Errorf("p.KindField is nil for %v", name)
 		}
 
-		name := docparse.JSONTag(p.KindField)
+		// TODO: doesn't have to be json tag; that's just what Desk happens to
+		// use.
+		name := goutil.TagName(p.KindField, "json")
 		if name == "-" {
 			continue
 		}
@@ -31,7 +34,7 @@ func structToSchema(name string, ref docparse.Reference) (*Schema, error) {
 			name = p.Name
 		}
 
-		prop, err := fieldToSchema(ref, p.KindField)
+		prop, err := fieldToSchema(prog, ref, p.KindField)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
@@ -53,7 +56,7 @@ func structToSchema(name string, ref docparse.Reference) (*Schema, error) {
 }
 
 // Convert a struct field to JSON schema.
-func fieldToSchema(ref docparse.Reference, f *ast.Field) (*Schema, error) {
+func fieldToSchema(prog *docparse.Program, ref docparse.Reference, f *ast.Field) (*Schema, error) {
 	var p Schema
 
 	// TODO: parse {..} tags from here. That should probably be in docparse
@@ -136,7 +139,7 @@ start:
 		switch resolvType := ts.Type.(type) {
 		case *ast.ArrayType:
 			p.Type = "array"
-			err := resolveArray(ref, &p, resolvType.Elt)
+			err := resolveArray(prog, ref, &p, resolvType.Elt)
 			if err != nil {
 				return nil, err
 			}
@@ -157,7 +160,7 @@ start:
 	case *ast.ArrayType:
 		p.Type = "array"
 
-		err := resolveArray(ref, &p, typ.Elt)
+		err := resolveArray(prog, ref, &p, typ.Elt)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +176,7 @@ start:
 	}
 
 	lookup := pkg + "." + name.Name
-	_, err := docparse.GetReference(lookup, ref.File)
+	_, err := docparse.GetReference(prog, lookup, ref.File)
 	if err != nil {
 		nsErr, ok := err.(docparse.ErrNotStruct)
 		if ok {
@@ -204,7 +207,7 @@ start:
 	return &p, nil
 }
 
-func resolveArray(ref docparse.Reference, p *Schema, typ ast.Expr) error {
+func resolveArray(prog *docparse.Program, ref docparse.Reference, p *Schema, typ ast.Expr) error {
 	asw := typ
 
 	pkg := ref.Package
@@ -258,7 +261,7 @@ arrayStart:
 	}
 
 	lookup := pkg + "." + name.Name
-	_, err := docparse.GetReference(lookup, ref.File) // TODO: just as sanity check
+	_, err := docparse.GetReference(prog, lookup, ref.File) // TODO: just as sanity check
 	if err != nil {
 		nsErr, ok := err.(docparse.ErrNotStruct)
 		if ok {

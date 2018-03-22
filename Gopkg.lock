@@ -2,10 +2,10 @@
 
 
 [[projects]]
-  branch = "master"
   name = "arp242.net/sconfig"
   packages = ["."]
   revision = "733b9df4c03101676f9cbfab02c606078e4409ee"
+  version = "v1.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -38,7 +38,7 @@
     ".",
     "diff"
   ]
-  revision = "dc1dac931dfa18952f340dcf12d5fb0bea92e8c6"
+  revision = "6df92b968421b53954eb3b73530c9d9573f7295e"
 
 [[projects]]
   branch = "master"
@@ -48,7 +48,7 @@
     "sliceutil",
     "stringutil"
   ]
-  revision = "09425d41e8eb56e39cb829d15a5ddf4c6f4e4ffa"
+  revision = "a3e93a7a0780b598ef3a643de183632606c5d885"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"

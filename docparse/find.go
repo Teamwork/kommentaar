@@ -15,12 +15,8 @@ import (
 )
 
 // FindComments finds all comments in the given paths or packages.
-func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) error) error {
-	// Make sure we don't waste a lot of memory keeping this in memory.
-	// TODO: Remove once we remove global variable.
-	defer func() { Prog = Program{} }()
-
-	pkgPaths, err := goutil.Expand(paths, build.FindOnly)
+func FindComments(w io.Writer, prog *Program) error {
+	pkgPaths, err := goutil.Expand(prog.Config.Paths, build.FindOnly)
 	if err != nil {
 		return err
 	}
@@ -47,7 +43,7 @@ func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) e
 				}
 
 				for _, c := range f.Comments {
-					e, err := ParseComment(c.Text(), p.ImportPath, fullPath)
+					e, err := ParseComment(prog, c.Text(), p.ImportPath, fullPath)
 					if err != nil {
 						allErr = append(allErr, fmt.Errorf("%v: %v", relPath, err))
 						continue
@@ -60,7 +56,7 @@ func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) e
 					//e.Location = fmt.Sprintf("%v:%v:%v", path, p.Line, p.Column)
 					e.Pos = fset.Position(c.Pos())
 					e.End = fset.Position(c.End())
-					Prog.Endpoints = append(Prog.Endpoints, e)
+					prog.Endpoints = append(prog.Endpoints, e)
 				}
 			}
 		}
@@ -77,14 +73,14 @@ func FindComments(w io.Writer, paths []string, output func(io.Writer, Program) e
 	key := func(e *Endpoint) string {
 		return fmt.Sprintf("%v%v%v", e.Tags, e.Method, e.Path)
 	}
-	sort.Slice(Prog.Endpoints, func(i, j int) bool {
-		return key(Prog.Endpoints[i]) < key(Prog.Endpoints[j])
+	sort.Slice(prog.Endpoints, func(i, j int) bool {
+		return key(prog.Endpoints[i]) < key(prog.Endpoints[j])
 	})
 
-	// TODO: it's probably better to call this per package or file, rather than
-	// once for everything (much more memory-efficient for large packages).
-	// OTOH, perhaps this is "good enough"?
-	return output(w, Prog)
+	// It's probably better to call this per package or file, rather than once
+	// for everything (much more memory-efficient for large packages). OTOH,
+	// perhaps this is "good enough"?
+	return prog.Config.Output(w, prog)
 }
 
 type declCache struct {
@@ -132,7 +128,7 @@ func FindType(currentFile, pkgPath, name string) (
 		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", fmt.Errorf("parse error: %v", err)
 		}
 
 		for _, p := range pkgs {
