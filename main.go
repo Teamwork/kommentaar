@@ -58,7 +58,7 @@ JSON respectively, and "html" for HTML documentation.`)
 	prog := docparse.NewProgram(*debug)
 
 	if *config != "" {
-		err := sconfig.Parse(prog.Config, *config, nil)
+		err := sconfig.Parse(&prog.Config, *config, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, err.Error()+"\n")
 			os.Exit(1)
