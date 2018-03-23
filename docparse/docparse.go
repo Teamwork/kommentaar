@@ -393,7 +393,7 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 
 	for _, line := range collapseIndents(text) {
 		// Get tags from {..} blocks.
-		line, tags := parseParamsTags(line)
+		line, tags := ParseParamsTags(line)
 
 		// Get description and name.
 		var name, info string
@@ -445,8 +445,8 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 	return params, nil
 }
 
-// Get tags from {..} blocks.
-func parseParamsTags(line string) (string, []string) {
+// ParseParamsTags get tags from {..} blocks.
+func ParseParamsTags(line string) (string, []string) {
 	var alltags []string
 
 	for {
@@ -678,7 +678,7 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
-			doc, tags := parseParamsTags(doc)
+			doc, tags := ParseParamsTags(doc)
 			p := Param{
 				Name:      fName.Name,
 				Info:      doc,
@@ -830,7 +830,6 @@ func builtInType(n string) bool {
 }
 
 func resolveType(prog *Program, typ *ast.Ident, filePath, pkg string) error {
-
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {
 		var err error

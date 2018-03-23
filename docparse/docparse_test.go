@@ -319,7 +319,7 @@ func TestParseParamsTags(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
-			outLine, outTags := parseParamsTags(tc.in)
+			outLine, outTags := ParseParamsTags(tc.in)
 			if outLine != tc.wantLine {
 				t.Errorf("\nout:  %#v\nwant: %#v\n", outLine, tc.wantLine)
 			}

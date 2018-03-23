@@ -34,7 +34,7 @@ func structToSchema(prog *docparse.Program, name string, ref docparse.Reference)
 			name = p.Name
 		}
 
-		prop, err := fieldToSchema(prog, ref, p.KindField)
+		prop, err := fieldToSchema(prog, name, ref, p.KindField)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
@@ -55,8 +55,35 @@ func structToSchema(prog *docparse.Program, name string, ref docparse.Reference)
 	return schema, nil
 }
 
+func setTags(name string, p *Schema, tags []string) error {
+	for _, t := range tags {
+		switch t {
+		case "required":
+			p.Required = append(p.Required, name)
+
+		default:
+			switch {
+			case strings.HasPrefix(t, "enum: "):
+				p.Type = "enum"
+				for _, e := range strings.Split(t[5:], " ") {
+					e = strings.TrimSpace(e)
+					if e != "" {
+						p.Enum = append(p.Enum, e)
+					}
+				}
+
+			default:
+				return fmt.Errorf("unknown parameter tag for %#v: %#v",
+					name, t)
+			}
+		}
+	}
+
+	return nil
+}
+
 // Convert a struct field to JSON schema.
-func fieldToSchema(prog *docparse.Program, ref docparse.Reference, f *ast.Field) (*Schema, error) {
+func fieldToSchema(prog *docparse.Program, fName string, ref docparse.Reference, f *ast.Field) (*Schema, error) {
 	var p Schema
 
 	// TODO: parse {..} tags from here. That should probably be in docparse
@@ -67,6 +94,13 @@ func fieldToSchema(prog *docparse.Program, ref docparse.Reference, f *ast.Field)
 		p.Description = f.Comment.Text()
 	}
 	p.Description = strings.TrimSpace(p.Description)
+
+	var tags []string
+	p.Description, tags = docparse.ParseParamsTags(p.Description)
+	err := setTags(fName, &p, tags)
+	if err != nil {
+		return nil, err
+	}
 
 	pkg := ref.Package
 	var name *ast.Ident
@@ -175,8 +209,10 @@ start:
 		return &p, nil
 	}
 
+	// Check if the type resolves to a Go primitive.
+	// TODO: don't use GetReference here; has many side-effects!
 	lookup := pkg + "." + name.Name
-	_, err := docparse.GetReference(prog, lookup, ref.File)
+	_, err = docparse.GetReference(prog, lookup, ref.File)
 	if err != nil {
 		nsErr, ok := err.(docparse.ErrNotStruct)
 		if ok {
@@ -186,8 +222,6 @@ start:
 				if k, ok := kindMap[p.Type]; ok {
 					p.Type = k
 				}
-
-				fmt.Println(p.Type)
 
 				if isPrimitive(p.Type) {
 					return &p, nil
@@ -260,8 +294,10 @@ arrayStart:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
 	}
 
+	// Check if the type resolves to a Go primitive.
+	// TODO: don't use GetReference here; has many side-effects!
 	lookup := pkg + "." + name.Name
-	_, err := docparse.GetReference(prog, lookup, ref.File) // TODO: just as sanity check
+	_, err := docparse.GetReference(prog, lookup, ref.File)
 	if err != nil {
 		nsErr, ok := err.(docparse.ErrNotStruct)
 		if ok {
@@ -271,8 +307,6 @@ arrayStart:
 				if k, ok := kindMap[p.Type]; ok {
 					p.Type = k
 				}
-
-				fmt.Println(p.Type)
 
 				if isPrimitive(p.Type) {
 					return nil
