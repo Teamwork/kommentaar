@@ -117,9 +117,10 @@ type Params struct {
 type Param struct {
 	Name      string     // Parameter name
 	Info      string     // Detailed description
+	Required  bool       // Is this required to always be sent?
 	Kind      string     // Type information
 	KindField *ast.Field // Type information from struct field.
-	Required  bool       // Is this required to always be sent?
+	KindEnum  []string   // Enum fields, only when Kind=enum.
 }
 
 // Reference to a Go struct.
@@ -482,7 +483,7 @@ func parseParamsTags(line string) (string, []string) {
 		pc = c
 	}
 
-	nl = strings.TrimRight(nl, "\n")
+	nl = strings.TrimRight(nl, "\n ")
 
 	// So that:
 	//   var: this is now documented {int}.
@@ -499,11 +500,17 @@ func setParamTags(p *Param, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
+		// Only simple types are supported, and not tested types. Use a
+		// struct if you wnat more advanced stuff (this feature is just
+		// intended to quickly add a path parameter or query parameter or
+		// two, without the bother of creating a "dead code" struct).
+		// TODO: ideally I'd like to parse this a bit more flexible.
+		// TODO: error out on multiple types being given
+		case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
+			p.Kind = t
+
 		case paramRequired:
 			p.Required = true
-
-		// Bit redundant, but IMHO an explicit "optional" tag can clarify
-		// things sometimes.
 		case paramOptional:
 			p.Required = false
 
@@ -515,20 +522,26 @@ func setParamTags(p *Param, tags []string) error {
 		// TODO: support {readonly} to indicate that it cannot be set by the
 		// user.
 
-		// TODO: suport {enum: foo, bar, xxx}
-
-		// Only simple types are supported, and not tested types. Use a
-		// struct if you wnat more advanced stuff (this feature is just
-		// intended to quickly add a path parameter or query parameter or
-		// two, without the bother of creating a "dead code" struct).
-		// TODO: ideally I'd like to parse this a bit more flexible.
-		// TODO: error out on multiple types being given
-		case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
-			p.Kind = t
-
+		// TODO: support types:
+		// uri, url
+		// email
+		// phone
+		// date
 		default:
-			return fmt.Errorf("unknown parameter tag for %#v: %#v",
-				p.Name, t)
+			switch {
+			case strings.HasPrefix(t, "enum: "):
+				p.Kind = "enum"
+				for _, e := range strings.Split(t[5:len(t)], " ") {
+					e = strings.TrimSpace(e)
+					if e != "" {
+						p.KindEnum = append(p.KindEnum, e)
+					}
+				}
+
+			default:
+				return fmt.Errorf("unknown parameter tag for %#v: %#v",
+					p.Name, t)
+			}
 		}
 	}
 

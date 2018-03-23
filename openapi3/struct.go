@@ -25,7 +25,7 @@ func structToSchema(prog *docparse.Program, name string, ref docparse.Reference)
 		}
 
 		// TODO: doesn't have to be json tag; that's just what Desk happens to
-		// use.
+		// use. We should get it from Content-Type or some such instead.
 		name := goutil.TagName(p.KindField, "json")
 		if name == "-" {
 			continue

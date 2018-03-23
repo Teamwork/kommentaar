@@ -79,10 +79,11 @@ type (
 
 	// The Schema Object allows the definition of input and output data types.
 	Schema struct {
-		Reference   string `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-		Title       string `json:"title,omitempty" yaml:"title,omitempty"`
-		Description string `json:"description,omitempty" yaml:"description,omitempty"`
-		Type        string `json:"type,omitempty" yaml:"type,omitempty"`
+		Reference   string   `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+		Title       string   `json:"title,omitempty" yaml:"title,omitempty"`
+		Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+		Type        string   `json:"type,omitempty" yaml:"type,omitempty"`
+		Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
 		//Format string `json:"format" yaml:"format"`
 		Required []string `json:"required,omitempty" yaml:"required,omitempty"`
 
@@ -282,14 +283,18 @@ func addParams(list *[]Parameter, in string, params *docparse.Params) {
 			p.Kind = k
 		}
 
+		s := Schema{Type: p.Kind}
+		if p.Kind == "enum" {
+			s.Type = ""
+			s.Enum = p.KindEnum
+		}
+
 		*list = append(*list, Parameter{
 			In:          in,
 			Name:        p.Name,
 			Required:    p.Required,
 			Description: p.Info,
-			Schema: Schema{
-				Type: p.Kind,
-			},
+			Schema:      s,
 		})
 	}
 }

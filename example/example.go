@@ -20,7 +20,7 @@ import (
 // Query:
 //   same_format: {string, optional}
 //   an_array:    {[]string}
-//   woot:        just a desc
+//   woot:        just a desc {enum: one two three}
 //   zxc:         just a desc
 //                {required}
 //   qwe:         {required}
