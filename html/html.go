@@ -6,14 +6,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 )
 
 var funcMap = template.FuncMap{
 	"add":    func(a, b int) int { return a + b },
 	"status": func(c int) string { return http.StatusText(c) },
-	"dump":   func(x interface{}) string { return pretty.Sprintf("%# v", x) },
+	//"dump":   func(x interface{}) string { return pretty.Sprintf("%# v", x) },
 }
 
 var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
@@ -259,7 +258,17 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 `))
 
 // WriteHTML writes w as HTML.
+//
+// TODO: support prog.Config.Prefix
+// TODO: Consider using: https://github.com/valyala/quicktemplate
 func WriteHTML(w io.Writer, prog *docparse.Program) error {
-	// TODO: support prog.Config.Prefix
+
+	// Too hard to write template oterwise.
+	for i := range prog.Endpoints {
+		if len(prog.Endpoints[i].Tags) == 0 {
+			prog.Endpoints[i].Tags = []string{"default"}
+		}
+	}
+
 	return mainTpl.Execute(w, prog)
 }
