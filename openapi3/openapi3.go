@@ -130,8 +130,6 @@ func WriteJSONIndent(w io.Writer, prog *docparse.Program) error {
 
 func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
-	// TODO: support prog.Config.Prefix
-
 	out := OpenAPI{
 		OpenAPI: "3.0.1",
 		Info: Info{
@@ -158,6 +156,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 	// Add endpoints.
 	for _, e := range prog.Endpoints {
+		e.Path = prog.Config.Prefix + e.Path
+
 		op := Operation{
 			Summary:     e.Tagline,
 			Description: e.Info,

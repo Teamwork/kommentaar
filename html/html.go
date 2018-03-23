@@ -265,6 +265,8 @@ func WriteHTML(w io.Writer, prog *docparse.Program) error {
 
 	// Too hard to write template oterwise.
 	for i := range prog.Endpoints {
+		prog.Endpoints[i].Path = prog.Config.Prefix + prog.Endpoints[i].Path
+
 		if len(prog.Endpoints[i].Tags) == 0 {
 			prog.Endpoints[i].Tags = []string{"default"}
 		}
