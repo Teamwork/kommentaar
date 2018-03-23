@@ -254,7 +254,7 @@ func TestParseParams(t *testing.T) {
 		{"same_format: {string, optional}", Param{Name: "same_format", Kind: "string"}, ""},
 		{"subject: The subject {}", Param{Name: "subject", Info: "The subject"}, ""},
 		{"hello: {int} {required}", Param{Name: "hello", Kind: "int", Required: true}, ""},
-		{"Hello {enum: one two three}", Param{Name: "Hello", Kind: "enum"}, ""},
+		{"Hello {enum: one two three}", Param{Name: "Hello", Kind: "enum", KindEnum: []string{"one", "two", "three"}}, ""},
 
 		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter tag"},
 		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},

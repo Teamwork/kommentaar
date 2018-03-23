@@ -531,7 +531,7 @@ func setParamTags(p *Param, tags []string) error {
 			switch {
 			case strings.HasPrefix(t, "enum: "):
 				p.Kind = "enum"
-				for _, e := range strings.Split(t[5:len(t)], " ") {
+				for _, e := range strings.Split(t[5:], " ") {
 					e = strings.TrimSpace(e)
 					if e != "" {
 						p.KindEnum = append(p.KindEnum, e)
