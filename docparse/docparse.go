@@ -391,20 +391,8 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 	params := &Params{}
 
 	for _, line := range collapseIndents(text) {
-		// Get tags from {..} block.
-		// TODO: What if there is more than one {..} block? I think we should
-		// support this.
-		var tags []string
-		if open := strings.Index(line, "{"); open > -1 {
-			if close := strings.Index(line, "}"); close > -1 {
-				tags = strings.Split(line[open+1:close], ",")
-				line = line[:open]
-			}
-		}
-		// Allow empty {} block.
-		if len(tags) == 1 && tags[0] == "" {
-			tags = nil
-		}
+		// Get tags from {..} blocks.
+		line, tags := parseParamsTags(line)
 
 		// Get description and name.
 		var name, info string
@@ -441,39 +429,9 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 
 		p := Param{Name: name, Info: info}
 
-		// Validate tags.
-		for _, t := range tags {
-			switch strings.TrimSpace(t) {
-			case paramRequired:
-				p.Required = true
-			// Bit redundant, but IMHO an explicit "optional" tag can clarify
-			// things sometimes.
-			case paramOptional:
-				p.Required = false
-
-			// TODO: implement this (also load from struct tag?), but I
-			// don't see any way to do that in the OpenAPI spec?
-			case paramOmitEmpty:
-				return nil, fmt.Errorf("omitempty not implemented yet")
-
-			// TODO: support {readonly} to indicate that it cannot be set by the
-			// user.
-
-			// TODO: suport {enum: foo, bar, xxx}
-
-			// Only simple types are supported, and not tested types. Use a
-			// struct if you wnat more advanced stuff (this feature is just
-			// intended to quickly add a path parameter or query parameter or
-			// two, without the bother of creating a "dead code" struct).
-			// TODO: ideally I'd like to parse this a bit more flexible.
-			// TODO: error out on multiple types being given
-			case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
-				p.Kind = t
-
-			default:
-				return nil, fmt.Errorf("unknown parameter tag for %#v: %#v",
-					p.Name, t)
-			}
+		err := setParamTags(&p, tags)
+		if err != nil {
+			return nil, fmt.Errorf("%v: %v", name, err)
 		}
 
 		params.Params = append(params.Params, p)
@@ -484,6 +442,97 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 	}
 
 	return params, nil
+}
+
+// Get tags from {..} blocks.
+func parseParamsTags(line string) (string, []string) {
+	var alltags []string
+
+	for {
+		open := strings.Index(line, "{")
+		if open == -1 {
+			break
+		}
+
+		close := strings.Index(line, "}")
+		if close == -1 {
+			break
+		}
+
+		tags := strings.Split(line[open+1:close], ",")
+		line = line[:open] + line[close+1:]
+
+		for _, tag := range tags {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				alltags = append(alltags, tag)
+			}
+		}
+	}
+
+	// Remove multiple consecutive spaces.
+	var pc rune
+	var nl string
+	for _, c := range line {
+		if pc == ' ' && c == ' ' {
+			pc = c
+			continue
+		}
+		nl += string(c)
+		pc = c
+	}
+
+	nl = strings.TrimRight(nl, "\n")
+
+	// So that:
+	//   var: this is now documented {int}.
+	// doesn't show as:
+	//   this is now documented .
+	if strings.HasSuffix(nl, " .") {
+		nl = nl[:len(nl)-2] + "."
+	}
+
+	return nl, alltags
+}
+
+func setParamTags(p *Param, tags []string) error {
+	for _, t := range tags {
+		switch t {
+
+		case paramRequired:
+			p.Required = true
+
+		// Bit redundant, but IMHO an explicit "optional" tag can clarify
+		// things sometimes.
+		case paramOptional:
+			p.Required = false
+
+		// TODO: implement this (also load from struct tag?), but I
+		// don't see any way to do that in the OpenAPI spec?
+		case paramOmitEmpty:
+			return fmt.Errorf("omitempty not implemented yet")
+
+		// TODO: support {readonly} to indicate that it cannot be set by the
+		// user.
+
+		// TODO: suport {enum: foo, bar, xxx}
+
+		// Only simple types are supported, and not tested types. Use a
+		// struct if you wnat more advanced stuff (this feature is just
+		// intended to quickly add a path parameter or query parameter or
+		// two, without the bother of creating a "dead code" struct).
+		// TODO: ideally I'd like to parse this a bit more flexible.
+		// TODO: error out on multiple types being given
+		case kindString, kindInt, kindBool, kindArrayString, kindArrayInt:
+			p.Kind = t
+
+		default:
+			return fmt.Errorf("unknown parameter tag for %#v: %#v",
+				p.Name, t)
+		}
+	}
+
+	return nil
 }
 
 func collapseIndents(in string) []string {
@@ -614,28 +663,21 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 			doc = f.Comment.Text()
 		}
 
-		// Make sure that parseParams sees continued lines.
-		// TODO: split out "parseParams()" in two functions, so we don't have to
-		// format it like this (same with Sprintf below).
-		doc = strings.Replace(doc, "\n", "\n    ", -1)
-
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
-			p, err := parseParams(prog, fmt.Sprintf("%v: %v", fName, doc), filePath)
+			doc, tags := parseParamsTags(doc)
+			p := Param{
+				Name:      fName.Name,
+				Info:      doc,
+				KindField: f,
+			}
+
+			err := setParamTags(&p, tags)
 			if err != nil {
-				return nil, fmt.Errorf("could not parse field %v for struct %v: %v",
-					fName, name, err)
+				return nil, fmt.Errorf("%v: %v", fName.Name, err)
 			}
 
-			// There should be only parameter per struct field. Something is
-			// wrong if we found more (or fewer) than one.
-			if len(p.Params) != 1 {
-				return nil, fmt.Errorf("len(p.Params) != 1 for field %v in struct %v: %#v",
-					fName, name, p.Params)
-			}
-
-			p.Params[0].KindField = f
-			ref.Params = append(ref.Params, p.Params[0])
+			ref.Params = append(ref.Params, p)
 		}
 	}
 

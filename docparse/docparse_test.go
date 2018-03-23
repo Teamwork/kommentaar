@@ -22,10 +22,10 @@ func TestParseComments(t *testing.T) {
 		// Query
 		{`
 			POST /path
-		
+
 			Query:
 			  foo: hello
-			
+
 			Response 200: $empty
 		`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
 			Query: &Params{Params: []Param{{
@@ -37,7 +37,7 @@ func TestParseComments(t *testing.T) {
 		// Path, Query and Form
 		{`
 			POST /path
-			
+
 			Response 200: $empty
 			Query:
 				foo: hello
@@ -253,6 +253,7 @@ func TestParseParams(t *testing.T) {
 		}, ""},
 		{"same_format: {string, optional}", Param{Name: "same_format", Kind: "string"}, ""},
 		{"subject: The subject {}", Param{Name: "subject", Info: "The subject"}, ""},
+		{"hello: {int} {required}", Param{Name: "hello", Kind: "int", Required: true}, ""},
 
 		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter tag"},
 		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},
@@ -290,6 +291,40 @@ func TestParseParams(t *testing.T) {
 			if !reflect.DeepEqual(want, out.Params) {
 				t.Errorf("could not parse combined string:\n%v\n%v",
 					in, diff.Diff(want, out.Params))
+			}
+		})
+	}
+}
+
+func TestParseParamsTags(t *testing.T) {
+	cases := []struct {
+		in, wantLine string
+		wantTags     []string
+	}{
+		{"", "", nil},
+		{"hello", "hello", nil},
+		{"hello {}", "hello ", nil},
+		{"hello {  }", "hello ", nil},
+		{"hello {int}", "hello ", []string{"int"}},
+		{"hello {int, required}", "hello ", []string{"int", "required"}},
+		{"hello {int, required,}", "hello ", []string{"int", "required"}},
+		{"Hello {int}{required} world", "Hello world", []string{"int", "required"}},
+
+		{"Hello {int} world {required}", "Hello world ", []string{"int", "required"}},
+		{"Hello {int} {required} world", "Hello world", []string{"int", "required"}},
+		{"hello {  } { } world", "hello world", nil},
+		{"Hello there {int}.", "Hello there.", []string{"int"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			outLine, outTags := parseParamsTags(tc.in)
+			if outLine != tc.wantLine {
+				t.Errorf("\nout:  %#v\nwant: %#v\n", outLine, tc.wantLine)
+			}
+
+			if !reflect.DeepEqual(tc.wantTags, outTags) {
+				t.Errorf("\nout:  %#v\nwant: %#v\n", outTags, tc.wantTags)
 			}
 		})
 	}
@@ -336,8 +371,8 @@ func TestGetReference(t *testing.T) {
 			Lookup:  "docparse.testObject",
 			Info:    "testObject general documentation.",
 			Params: []Param{
-				{Name: "ID", Info: "ID documentation", Required: true},
-				{Name: "Foo", Info: "Foo is a really cool foo-thing! Such foo!"},
+				{Name: "ID", Info: "ID documentation.", Required: true},
+				{Name: "Foo", Info: "Foo is a really cool foo-thing!\nSuch foo!"},
 				{Name: "Bar"},
 			},
 		}},
