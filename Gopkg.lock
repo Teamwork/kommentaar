@@ -48,7 +48,7 @@
     "sliceutil",
     "stringutil"
   ]
-  revision = "a3e93a7a0780b598ef3a643de183632606c5d885"
+  revision = "c212da7afcda2654961486d3e431deb931e71666"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
