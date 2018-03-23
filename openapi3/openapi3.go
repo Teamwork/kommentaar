@@ -84,8 +84,8 @@ type (
 		Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 		Type        string   `json:"type,omitempty" yaml:"type,omitempty"`
 		Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
-		//Format string `json:"format" yaml:"format"`
-		Required []string `json:"required,omitempty" yaml:"required,omitempty"`
+		Format      string   `json:"format,omitempty" yaml:"format,omitempty"`
+		Required    []string `json:"required,omitempty" yaml:"required,omitempty"`
 
 		// Store array items; for primitives:
 		//   "items": {"type": "string"}
@@ -283,7 +283,7 @@ func addParams(list *[]Parameter, in string, params *docparse.Params) {
 			p.Kind = k
 		}
 
-		s := Schema{Type: p.Kind}
+		s := Schema{Type: p.Kind, Format: p.Format}
 		if p.Kind == "enum" {
 			s.Type = ""
 			s.Enum = p.KindEnum

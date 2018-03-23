@@ -61,6 +61,19 @@ func setTags(name string, p *Schema, tags []string) error {
 		case "required":
 			p.Required = append(p.Required, name)
 
+		case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
+			if t == "url" {
+				t = "uri"
+			}
+			if t == "email" {
+				t = "idn-email"
+			}
+			if t == "hostname" {
+				t = "idn-hostname"
+			}
+
+			p.Format = t
+
 		default:
 			switch {
 			case strings.HasPrefix(t, "enum: "):
@@ -153,8 +166,10 @@ start:
 		name = typ.Sel
 
 		lookup := pkg + "." + name.Name
-		if l, ok := docparse.MapTypes[lookup]; ok {
-			p.Type = l
+		t, f := docparse.MapType(lookup)
+		p.Format = f
+		if t != "" {
+			p.Type = t
 			if k, ok := kindMap[p.Type]; ok {
 				p.Type = k
 			}

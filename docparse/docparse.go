@@ -121,6 +121,7 @@ type Param struct {
 	Kind      string     // Type information
 	KindField *ast.Field // Type information from struct field.
 	KindEnum  []string   // Enum fields, only when Kind=enum.
+	Format    string     // Format, such as "email", "date", etc.
 }
 
 // Reference to a Go struct.
@@ -522,11 +523,21 @@ func setParamTags(p *Param, tags []string) error {
 		// TODO: support {readonly} to indicate that it cannot be set by the
 		// user.
 
-		// TODO: support types:
-		// uri, url
-		// email
-		// phone
-		// date
+		// Various string formats.
+		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
+		case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
+			if t == "url" {
+				t = "uri"
+			}
+			if t == "email" {
+				t = "idn-email"
+			}
+			if t == "hostname" {
+				t = "idn-hostname"
+			}
+
+			p.Format = t
+
 		default:
 			switch {
 			case strings.HasPrefix(t, "enum: "):
@@ -712,34 +723,54 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 	return &ref, nil
 }
 
-// MapTypes maps some Go types to primitives, so they appear as such in the
+var (
+	mapTypes = map[string]string{
+		// stdlib
+		"sql.NullBool":    "bool",
+		"sql.NullFloat64": "float64",
+		"sql.NullInt64":   "int64",
+		"sql.NullString":  "string",
+		"time.Time":       "string",
+
+		// http://github.com/guregu/null
+		"null.Bool":   "bool",
+		"null.Float":  "float64",
+		"null.Int":    "int64",
+		"null.String": "String",
+		"null.Time":   "string",
+		"zero.Bool":   "bool",
+		"zero.Float":  "float64",
+		"zero.Int":    "int64",
+		"zero.String": "String",
+		"zero.Time":   "string",
+
+		// TODO: add this to config.
+		"twnull.Bool":   "bool",
+		"twnull.Int":    "int64",
+		"twnull.String": "string",
+		"twtime.Time":   "string",
+	}
+
+	mapFormats = map[string]string{
+		"null.Time":   "date-time",
+		"time.Time":   "date-time",
+		"twtime.Time": "date-time",
+		"zero.Time":   "date-time",
+	}
+)
+
+// MapType maps some Go types to primitives, so they appear as such in the
 // output. Most of the time users of the API don't really care if it's a
 // "sql.NullString" or just a string.
-var MapTypes = map[string]string{
-	// stdlib
-	"sql.NullBool":    "bool",
-	"sql.NullFloat64": "float64",
-	"sql.NullInt64":   "int64",
-	"sql.NullString":  "string",
-	"time.Time":       "string", // TODO: date
+func MapType(in string) (kind, format string) {
+	if v, ok := mapTypes[in]; ok {
+		kind = v
+	}
+	if v, ok := mapFormats[in]; ok {
+		format = v
+	}
 
-	// http://github.com/guregu/null
-	"null.Bool":   "bool",
-	"null.Float":  "float64",
-	"null.Int":    "int64",
-	"null.String": "String",
-	"null.Time":   "string", // TODO: date
-	"zero.Bool":   "bool",
-	"zero.Float":  "float64",
-	"zero.Int":    "int64",
-	"zero.String": "String",
-	"zero.Time":   "string", // TODO: date
-
-	// TODO: add this to config.
-	"twnull.Bool":   "bool",
-	"twnull.Int":    "int64",
-	"twnull.String": "string",
-	"twtime.Time":   "string", // TODO: date
+	return kind, format
 }
 
 func findNested(prog *Program, f *ast.Field, filePath, pkg string) error {
@@ -809,7 +840,8 @@ start:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 
-	if _, ok := MapTypes[lookup]; ok {
+	// Don't need to add stuff we map to Go primitives.
+	if _, ok := mapTypes[lookup]; ok {
 		return nil
 	}
 
