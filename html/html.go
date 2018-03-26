@@ -53,6 +53,9 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 			background-color: #888;
 			border: 1px solid #888;
 			margin-bottom: -1px;
+
+			/* For buttons */
+			padding-left: 36px;
 		}
 
 		h4 {
@@ -65,54 +68,46 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 		}
 
 		.btn {
-			color: #000;
-			background-color: #ddd;
-			border: 1px solid #aaa;
+			display: block;
+			line-height: 1.1;
+
+			font-weight: normal;
 			border-radius: 1px;
-			width: .8em;
-			display: inline-block;
+			width: 1em;
 			text-align: center;
-			line-height: 1em;
-			padding: .2em;
+			padding: 0 .3em;
+			color: rgb(0, 0, 238);
 		}
 
 		.btn:visited {
-			color: #000;
+			color: rgb(0, 0, 238);
 		}
 
 		.btn:hover {
-			background-color: #777;
-		}
-
-		.btn:first-child {
-			margin-right: -1px;
+			color: #66f;
 		}
 
 		h3 .btn {
 			font-size: 16px;
-			position: relative;
-			top: -3px;
 		}
 
 		.btn-group {
 			position: absolute;
-			left: -1px;
-			top: -4px;
-			display: none;
-		}
-
-		h3:hover .btn-group,
-		.endpoint:hover .btn-group {
-			display: inline;
+			left: 0;
+			top: 0;
+			bottom: 0;
 		}
 
 		.endpoint {
 			position: relative;
 			background-color: #fff;
 			border: 1px solid #b7b7b7;
-			margin-bottom: .5rem;
+			margin-bottom: -1px;
 			padding: .2em .5em;
 			border-radius: 2px;
+
+			/* For buttons */
+			padding-left: 36px
 		}
 
 		.info {
@@ -128,7 +123,15 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 		.resource .method {
 			display: inline-block;
 			min-width: 3.7rem;
+			padding: 0 .3rem;
+			border-radius: 8px;
 		}
+
+		.method-GET    { background-color: #91ff91; }
+		.method-DELETE { background-color: #ffacac; }
+		.method-POST   { background-color: #6363ff; color: #fff; }
+		.method-PUT    { background-color: #f8ff00; }
+		.method-PATCH  { background-color: #ffbe00; }
 
 		.param-name {
 			display: inline-block;
@@ -169,7 +172,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 		{{end}}
 
 		<div class="endpoint" id="{{$e.Method}}-{{$e.Path}}">
-			<code class="resource"><span class="method">{{$e.Method}}</span> {{$e.Path}}</code>
+			<code class="resource"><span class="method method-{{$e.Method}}">{{$e.Method}}</span> {{$e.Path}}</code>
 			{{$e.Tagline}}
 			<span class="btn-group">
 				<a class="btn" href="#{{$e.Method}}-{{$e.Path}}">§</a><a class="btn js-expand" href="#">⬇</a>
@@ -226,7 +229,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 		<div class="endpoint">
 			<p>{{$v.Info}}</p>
 			<ul>
-				{{range $i, $p := $v.Params}}
+				{{range $i, $p := $v.Fields}}
 					<li>
 						<code>{{$p.Name}}</code>
 						<code>{{$p.Kind}}</code>
@@ -238,8 +241,27 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 	{{end}}
 
 	<script>
+		var add = function(endpoint) {
+			endpoint.addEventListener('dblclick', function(e) {
+				e.preventDefault()
+				var info = this.getElementsByClassName('info')
+				for (var i = 0; i < info.length; i++)
+					info[i].style.display = info[i].style.display === 'block' ? '' : 'block'
+			})
+
+			// Prevent text selection on double click.
+			endpoint.addEventListener('mousedown', function(e) {
+				if (e.detail > 1)
+					e.preventDefault()
+			})
+		}
+
+		var ep = document.getElementsByClassName('endpoint')
+		for (var i = 0; i < ep.length; i++) {
+			add(ep[i])
+		}
+
 		document.addEventListener('click', function(e) {
-			window.eee = e
 			if (e.target.className !== 'btn js-expand')
 				return
 
@@ -259,7 +281,6 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 
 // WriteHTML writes w as HTML.
 //
-// TODO: support prog.Config.Prefix
 // TODO: Consider using: https://github.com/valyala/quicktemplate
 func WriteHTML(w io.Writer, prog *docparse.Program) error {
 

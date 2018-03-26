@@ -371,7 +371,7 @@ func TestGetReference(t *testing.T) {
 			File:    "", // TODO
 			Lookup:  "docparse.testObject",
 			Info:    "testObject general documentation.",
-			Params: []Param{
+			Fields: []Param{
 				{Name: "ID", Info: "ID documentation.", Required: true},
 				{Name: "Foo", Info: "Foo is a really cool foo-thing!\nSuch foo!"},
 				{Name: "Bar"},
@@ -385,7 +385,7 @@ func TestGetReference(t *testing.T) {
 			Info: "Address represents a single mail address.\n" +
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
-			Params: []Param{
+			Fields: []Param{
 				{Name: "Name", Info: "Proper name; may be empty."},
 				{Name: "Address", Info: "user@domain"},
 			},
@@ -407,9 +407,9 @@ func TestGetReference(t *testing.T) {
 				out.File = "" // TODO: test this as well.
 			}
 
-			if out != nil && out.Params != nil {
-				for i := range out.Params {
-					out.Params[i].KindField = nil
+			if out != nil && out.Fields != nil {
+				for i := range out.Fields {
+					out.Fields[i].KindField = nil
 				}
 			}
 

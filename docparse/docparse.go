@@ -131,7 +131,7 @@ type Reference struct {
 	File    string  // File this struct resides in.
 	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
-	Params  []Param // Struct fields.
+	Fields  []Param // Struct fields.
 }
 
 const headerDesc = "desc"
@@ -701,7 +701,7 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 				return nil, fmt.Errorf("%v: %v", fName.Name, err)
 			}
 
-			ref.Params = append(ref.Params, p)
+			ref.Fields = append(ref.Fields, p)
 		}
 	}
 

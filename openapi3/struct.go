@@ -11,6 +11,30 @@ import (
 	"github.com/teamwork/utils/sliceutil"
 )
 
+/*
+TODO: Ideally I'd like to convert this to an intermediate format first in
+docparse, so we can keep the output code simpler (like with the rest):
+
+1. Add all references to prog.References (we already do this).
+2. Expand the Fields field to include information instead of *ast.Field. Most of
+   it is there already (just not always populated):
+
+	type Param struct {
+		Name      string     // Parameter name
+		Info      string     // Detailed description
+		Required  bool       // Is this required to always be sent?
+		Kind      string     // Type information
+		KindEnum  []string   // Enum fields, only when Kind=enum.
+		Format    string     // Format, such as "email", "date", etc.
+
+		Ref       string     // Reference another Reference; for Kind=struct and Kind=array
+
+		//KindField *ast.Field // Type information from struct field.
+	}
+
+3. Then this can be simplified to just a simple loop with recursion.
+*/
+
 // Convert a struct to a JSON schema.
 func structToSchema(prog *docparse.Program, name string, ref docparse.Reference) (*Schema, error) {
 	schema := &Schema{
@@ -19,7 +43,7 @@ func structToSchema(prog *docparse.Program, name string, ref docparse.Reference)
 		Properties:  map[string]*Schema{},
 	}
 
-	for _, p := range ref.Params {
+	for _, p := range ref.Fields {
 		if p.KindField == nil {
 			return nil, fmt.Errorf("p.KindField is nil for %v", name)
 		}
