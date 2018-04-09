@@ -43,9 +43,10 @@ type Config struct {
 	ContactSite  string
 
 	// Defaults.
-	DefaultRequest  string
-	DefaultResponse string
-	Prefix          string
+	DefaultRequestCt  string
+	DefaultResponseCt string
+	DefaultResponse   map[int]string
+	Prefix            string
 }
 
 // NewProgram creates a new Program instance.
@@ -55,8 +56,8 @@ func NewProgram(dbg bool) *Program {
 	return &Program{
 		References: make(map[string]Reference),
 		Config: Config{
-			DefaultRequest:  "application/json",
-			DefaultResponse: "application/json",
+			DefaultRequestCt:  "application/json",
+			DefaultResponseCt: "application/json",
 
 			// Override from commandline.
 			Debug: dbg,
@@ -201,7 +202,7 @@ func ParseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, 
 			// Request body (application/json):
 			req := reRequestHeader.FindStringSubmatch(header)
 			if req != nil {
-				e.Request.ContentType = prog.Config.DefaultRequest
+				e.Request.ContentType = prog.Config.DefaultRequestCt
 				if len(req) == 3 && req[2] != "" {
 					e.Request.ContentType = req[2]
 				}
@@ -232,7 +233,7 @@ func ParseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, 
 					}
 				}
 
-				r := Response{ContentType: prog.Config.DefaultResponse}
+				r := Response{ContentType: prog.Config.DefaultResponseCt}
 				if len(resp) > 4 && resp[4] != "" {
 					r.ContentType = resp[4]
 				}
@@ -332,7 +333,8 @@ func getBlocks(comment string) (map[string]string, error) {
 		//  Response 200: $ref: AnObject
 		//  Response 204: $empty
 		//  Response 400: $ref: ErrorObject
-		if line[0] != ' ' && (strings.Contains(line, ": $ref:") || strings.Contains(line, ": $empty")) {
+		//  Response 404: $default
+		if line[0] != ' ' && (strings.Contains(line, ": $ref:") || strings.Contains(line, ": $empty") || strings.Contains(line, ": $default")) {
 			var err error
 			info, err = addBlock(info, header)
 			if err != nil {
@@ -427,6 +429,10 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 			continue
 		} else if name == "$empty" {
 			params.Description = "no data"
+		} else if name == "$default" {
+			// Will be filled in later.
+			// TODO: Move that code here!
+			params.Description = "$default"
 		}
 
 		p := Param{Name: name, Info: info}

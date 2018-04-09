@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"arp242.net/sconfig"
@@ -58,7 +59,22 @@ JSON respectively, and "html" for HTML documentation.`)
 	prog := docparse.NewProgram(*debug)
 
 	if *config != "" {
-		err := sconfig.Parse(&prog.Config, *config, nil)
+		err := sconfig.Parse(&prog.Config, *config, sconfig.Handlers{
+			"DefaultResponse": func(line []string) error {
+				code, err := strconv.ParseInt(line[0], 10, 32)
+				if err != nil {
+					return fmt.Errorf("first word must be response code: %v", err)
+				}
+
+				// TODO: validate rest as well.
+
+				if prog.Config.DefaultResponse == nil {
+					prog.Config.DefaultResponse = make(map[int]string)
+				}
+				prog.Config.DefaultResponse[int(code)] = strings.Join(line[1:], " ")
+				return nil
+			},
+		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, err.Error()+"\n")
 			os.Exit(1)

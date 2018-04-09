@@ -41,7 +41,8 @@ type (
 
 	// Components holds a set of reusable objects.
 	Components struct {
-		Schemas map[string]Schema `json:"schemas" yaml:"schemas"`
+		Schemas   map[string]Schema `json:"schemas" yaml:"schemas"`
+		Responses map[int]Response  `json:"responses,omitempty" yaml:"responses,omitempty"`
 	}
 
 	// Path describes the operations available on a single path.
@@ -141,8 +142,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				URL:   prog.Config.ContactSite,
 			},
 		},
-		Paths:      map[string]*Path{},
-		Components: Components{Schemas: map[string]Schema{}},
+		Paths: map[string]*Path{},
+		Components: Components{
+			Schemas:   map[string]Schema{},
+			Responses: map[int]Response{},
+		},
 	}
 
 	// Add components.
@@ -152,6 +156,26 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			return err
 		}
 		out.Components.Schemas[k] = *schema
+	}
+
+	// Add default responses.
+	for k, v := range prog.Config.DefaultResponse {
+		// TODO: Should get ref in docparse.
+		ref, err := docparse.GetReference(prog, strings.Replace(v, "$ref: ", "", 1), "")
+		if err != nil {
+			return err
+		}
+
+		name := fmt.Sprintf("%v %v", k, http.StatusText(k))
+		schema, err := structToSchema(prog, name, *ref)
+		if err != nil {
+			return err
+		}
+
+		out.Components.Responses[k] = Response{
+			Description: schema.Description,
+			Content:     map[string]MediaType{name: {Schema: *schema}},
+		}
 	}
 
 	// Add endpoints.
@@ -167,6 +191,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 
 		// TODO: Support params.Reference for path, query, and form.
+		// TODO: validate that URL params are in path params, as OpenAPI mandates this
 		addParams(&op.Parameters, "path", e.Request.Path)
 		addParams(&op.Parameters, "query", e.Request.Query)
 		addParams(&op.Parameters, "form", e.Request.Form)
@@ -186,6 +211,15 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		for code, resp := range e.Responses {
 			r := Response{
 				Description: fmt.Sprintf("%v %v", code, http.StatusText(code)),
+			}
+
+			// TODO: hack.
+			if len(resp.Body.Params) > 0 && resp.Body.Params[0].Name == "$default" {
+				r.Content = map[string]MediaType{
+					resp.ContentType: MediaType{
+						Schema: Schema{Reference: fmt.Sprintf("#/components/responses/%v", code)},
+					},
+				}
 			}
 
 			// Link reference.

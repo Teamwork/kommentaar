@@ -10,8 +10,19 @@ version 2.0
 #contact-site  http://developer.teamwork.com/desk/
 
 # Default Content-Type if it's omitted.
-default-request  application/json
-default-response application/json
+default-request-ct application/json
+default-response-ct application/json
+
+# Default response types. With this, you can just use:
+#
+#   // Response 400
+#   // Response 404
+#
+# Or even shorter:
+#
+#   // Response 400, 404
+default-response 400 $ref: github.com/teamwork/validate.Validator
+default-response 404 $ref: github.com/teamwork/echoutil/errorhandler.Error
 
 # Prefix all paths with this.
 prefix /desk/

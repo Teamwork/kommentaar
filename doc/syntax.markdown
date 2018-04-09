@@ -3,6 +3,19 @@ This document is not yet complete!
 Kommentaar syntax
 =================
 
+Description
+-----------
+
+Kommentaar is driven by *comment blocks*, which can appear as either multi-line
+comments (`/* .. */`) or a block of single-line comments (`// ...`).
+
+Although it's customary to put the comment block somewhere near handler being
+documented, it may appear anywhere, even in a different package.
+
+The general structure looks like:
+
+
+
 Opening line, tagline, and description
 --------------------------------------
 
