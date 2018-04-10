@@ -742,12 +742,12 @@ var (
 		"null.Bool":   "bool",
 		"null.Float":  "float64",
 		"null.Int":    "int64",
-		"null.String": "String",
+		"null.String": "string",
 		"null.Time":   "string",
 		"zero.Bool":   "bool",
 		"zero.Float":  "float64",
 		"zero.Int":    "int64",
-		"zero.String": "String",
+		"zero.String": "string",
 		"zero.Time":   "string",
 
 		// TODO: add this to config.
