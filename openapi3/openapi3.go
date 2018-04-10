@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/teamwork/kommentaar/docparse"
@@ -129,8 +130,9 @@ func WriteJSONIndent(w io.Writer, prog *docparse.Program) error {
 	return write("jsonindent", w, prog)
 }
 
-func write(outFormat string, w io.Writer, prog *docparse.Program) error {
+var reParams = regexp.MustCompile(`{\w+}`)
 
+func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	out := OpenAPI{
 		OpenAPI: "3.0.1",
 		Info: Info{
@@ -188,6 +190,34 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			OperationID: makeID(e),
 			Tags:        e.Tags,
 			Responses:   map[int]Response{},
+		}
+
+		// Add any {..} parameters in the path to the parameter list.
+		// OpenAPI spec mandates that they're defines as parameters, but 95% of
+		// the time this is just pointless: "id is the id". Whoopdiedo, such
+		// great docs.
+		if strings.Contains(e.Path, "{") {
+			for _, m := range reParams.FindAllString(e.Path, -1) {
+				m = strings.Trim(m, "{}")
+
+				found := false
+				if e.Request.Path == nil {
+					e.Request.Path = &docparse.Params{}
+				}
+				for _, p := range e.Request.Path.Params {
+					if p.Name == m {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					e.Request.Path.Params = append(e.Request.Path.Params, docparse.Param{
+						Name: m,
+						Kind: "integer",
+					})
+				}
+			}
 		}
 
 		// TODO: Support params.Reference for path, query, and form.
