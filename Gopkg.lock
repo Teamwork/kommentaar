@@ -14,16 +14,16 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kr/pretty"
   packages = ["."]
-  revision = "cfb55aafdaf3ec08f0db22699ab822c50091b1c4"
+  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
+  version = "v0.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kr/text"
   packages = ["."]
-  revision = "7cafcd837844e784b526369c9bce262804aebc60"
+  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
+  version = "v0.1.0"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -38,7 +38,7 @@
     ".",
     "diff"
   ]
-  revision = "6df92b968421b53954eb3b73530c9d9573f7295e"
+  revision = "859eda3cd87ed7713df79c5bb2b2a90601ad0524"
 
 [[projects]]
   branch = "master"
@@ -48,13 +48,13 @@
     "sliceutil",
     "stringutil"
   ]
-  revision = "c212da7afcda2654961486d3e431deb931e71666"
+  revision = "88592529220d29a0ca272142cd4282749384e823"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
