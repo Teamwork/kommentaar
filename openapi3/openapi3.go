@@ -86,8 +86,6 @@ type (
 		Description string          `json:"description,omitempty" yaml:"description,omitempty"`
 		Required    bool            `json:"required,omitempty" yaml:"required,omitempty"`
 		Schema      docparse.Schema `json:"schema" yaml:"schema"`
-
-		Ref string `json:"$ref" yaml:"$ref"`
 	}
 
 	// Response describes a single response from an API Operation.
