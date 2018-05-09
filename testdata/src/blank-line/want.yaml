@@ -1,0 +1,33 @@
+openapi: 3.0.1
+paths:
+  /path/{id}:
+    post:
+      operationId: POST_path_{id}
+      tags:
+      - tag
+      parameters:
+      - $ref: '#/components/parameters/params.pathRef'
+      - $ref: '#/components/parameters/params.queryRef'
+      - $ref: '#/components/parameters/params.formRef'
+      responses:
+        200:
+          description: 200 OK
+          content: {}
+components:
+  schemas: {}
+  parameters:
+    params.formRef:
+      name: formRef
+      in: form
+      schema:
+        title: formRef
+    params.pathRef:
+      name: pathRef
+      in: path
+      schema:
+        title: pathRef
+    params.queryRef:
+      name: queryRef
+      in: query
+      schema:
+        title: queryRef

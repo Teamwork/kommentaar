@@ -1,0 +1,1 @@
+invalid Go syntax

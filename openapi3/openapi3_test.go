@@ -7,7 +7,7 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 )
 
-func TestHTML(t *testing.T) {
+func TestExample(t *testing.T) {
 	prog := docparse.NewProgram(false)
 	prog.Config.Paths = []string{"../example/..."}
 	prog.Config.Output = WriteJSON

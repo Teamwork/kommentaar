@@ -1,6 +1,7 @@
 #!/bin/sh
-
-usage="Run Go linter tools"
+#
+# Generated from https://github.com/Teamwork/skel-go
+# DO NOT EDIT DIRECTLY!
 
 # Setup
 #######
@@ -11,26 +12,12 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 # Run action
 ############
 
-tmpfile="$(mktemp)"
-
-ignore_grep() {
-	local IFS="$(printf '\n\b')"
-	for d in $lint_ignore; do printf "|$d"; done
-}
-
 ignore_metalinter() {
 	local IFS="$(printf '\n\b')"
 	for d in $lint_ignore; do printf " -s $d"; done
 }
 
-paths=$(go list ./... | grep -Ev "/(vendor$(ignore_grep))" | sed -e "s#^$pkgname#.#")
-
-cleanup() {
-	rm -f "$tmpfile"
-}
-trap cleanup EXIT
-
-# Skip the linter if we're on master or beta
+# Skip the linter on Travis if we're on master or beta.
 if [ -n "$TRAVIS" ]; then
 	branch=${TRAVIS_PULL_REQUEST_BRANCH:-${TRAVIS_BRANCH:-}}
 	branch=${branch:-$(git rev-parse --abbrev-ref HEAD)}
@@ -45,8 +32,9 @@ fi
 
 # Ensure generated files are up to date; only run on Travis to prevent
 # clobbering people's working directories.
-if [ -n "$TRAVIS" ]; then
-	go generate $(go list ./... | grep -v /vendor/)
+# TODO: Ideally this would never change the contents in the directory.
+if [ -n "${TRAVIS:-}" ]; then
+	go generate ./...
 	changes="$(git diff)"
 	if [ -n "$changes" ]; then
 		echo
@@ -61,17 +49,15 @@ if [ -n "$TRAVIS" ]; then
 fi
 
 if [ -n "$TRAVIS" ]; then
-	# Set up git for Travis here
-	git fetch -q origin master:refs/remotes/origin/master
-
-	# Install for Travis.
-	go get -u github.com/alecthomas/gometalinter
+	# Install gometalinter if not found.
+    command -v gometalinter >/dev/null || go get -u github.com/alecthomas/gometalinter
 	gometalinter --install > /dev/null
 fi
 
-gometalinter --deadline=120s --vendor --sort=path --tests --disable-all \
+gometalinter --deadline=240s --vendor --sort=path --tests --disable-all \
+	-s testdata \
 	$(ignore_metalinter) \
-	--enable=vet \
+    --enable=vet \
 	--enable=golint \
 	--enable=varcheck \
 	--enable=structcheck \
@@ -79,11 +65,7 @@ gometalinter --deadline=120s --vendor --sort=path --tests --disable-all \
 	--enable=megacheck \
 	--enable=ineffassign \
 	--enable=unconvert \
+	--enable=goconst \
 	--enable=goimports \
 	--enable=lll --line-length=120 \
-	./...
-
-	# disabled for now as "_ = someErrorer()" gives "warning: Errors
-	# unhandled.,LOW,HIGH (gas)", which is annoying and can't be silenced as far
-	# as I can find.
-	#--enable=gas \
+    "$@"

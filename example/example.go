@@ -13,23 +13,7 @@ import (
 // This will create a new foo object for a customer. It's important to remember
 // that only Pro customers have access to foos.
 //
-// Form:
-//   subject: The subject {string, required}.
-//   message: The message {string}.
-//
-// Query:
-//   same_format: {string, optional}
-//   an_array:    {[]string}
-//   woot:        just a desc {enum: one two three}
-//   zxc:         just a desc
-//                {required}
-//   qwe:         {required}
-//   hm:          How about a multi line description? How are we going to do
-//                that? I think just by indentation?
-//
-// Path:
-//   ID: The foo ID.
-//
+// Form: $ref: formParams
 // Request body (application/json): $ref: RequestObj
 // Response 200 (application/json): $ref: AnObject
 // Response 400 (application/json): $ref: ErrorObject
@@ -43,6 +27,10 @@ func MyHandler() {
 	y := AnObject{}
 	_ = exampleimport.Foo{}
 	fmt.Println(x, y)
+}
+
+type formParams struct {
+	ID int64
 }
 
 // POST /second/endpoint

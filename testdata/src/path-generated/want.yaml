@@ -1,0 +1,27 @@
+openapi: 3.0.1
+paths:
+  /path/{companyID}/{id}:
+    post:
+      operationId: POST_path_{companyID}_{id}
+      tags:
+      - tag
+      parameters:
+      - $ref: '#/components/parameters/auto_POST_path_{companyID}_{id}'
+      responses:
+        200:
+          description: 200 OK
+          content: {}
+components:
+  schemas: {}
+  parameters:
+    auto_POST_path_{companyID}_{id}:
+      name: auto_POST_path_{companyID}_{id}
+      in: path
+      schema:
+        properties:
+          companyID:
+            title: companyID
+            type: integer
+          id:
+            title: id
+            type: integer

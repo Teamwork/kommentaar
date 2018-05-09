@@ -35,7 +35,7 @@ func TestFieldToProperty(t *testing.T) {
 	}
 
 	build.Default.GOPATH = "./testdata"
-	ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "foo")
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "foo")
 	if err != nil {
 		t.Fatalf("could not parse file: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestFieldToProperty(t *testing.T) {
 
 	t.Run("nested", func(t *testing.T) {
 		prog := NewProgram(false)
-		ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "nested")
+		ts, _, _, err := findType("./testdata/src/a/a.go", "a", "nested")
 		if err != nil {
 			t.Fatalf("could not parse file: %v", err)
 		}

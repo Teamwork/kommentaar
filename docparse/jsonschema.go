@@ -44,9 +44,15 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			return nil, fmt.Errorf("p.KindField is nil for %v", name)
 		}
 
-		// TODO: doesn't have to be json tag; that's just what Desk happens to
-		// use. We should get it from Content-Type or some such instead.
-		name := goutil.TagName(p.KindField, "json")
+		switch ref.Context {
+		case "path", "query", "form":
+			name = goutil.TagName(p.KindField, ref.Context)
+		default:
+			// TODO: doesn't have to be json tag; that's just what Desk happens to
+			// use. We should get it from Content-Type or some such instead.
+			name = goutil.TagName(p.KindField, "json")
+		}
+
 		if name == "-" {
 			continue
 		}
@@ -133,7 +139,7 @@ func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*S
 	p.Description = strings.TrimSpace(p.Description)
 
 	var tags []string
-	p.Description, tags = parseParamsTags(p.Description)
+	p.Description, tags = parseTags(p.Description)
 	err := setTags(fName, &p, tags)
 	if err != nil {
 		return nil, err
@@ -197,7 +203,7 @@ start:
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, _, err := FindType(ref.File, pkg, name.Name)
+		ts, _, _, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -383,7 +389,7 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 	}
 
 	// Find type.
-	ts, _, _, err := FindType(filePath, pkg, name)
+	ts, _, _, err := findType(filePath, pkg, name)
 	if err != nil {
 		return "", err
 	}

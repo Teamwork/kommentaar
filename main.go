@@ -77,7 +77,7 @@ JSON respectively, and "html" for HTML documentation.`)
 					Lookup:      strings.Replace(strings.Join(line[1:], " "), "$ref: ", "", 1),
 					Description: fmt.Sprintf("%v %v", code, http.StatusText(int(code))),
 				}
-				ref, err := docparse.GetReference(prog, def.Lookup, "")
+				ref, err := docparse.GetReference(prog, "", def.Lookup, "")
 				if err != nil {
 					return err
 				}
