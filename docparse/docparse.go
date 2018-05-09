@@ -45,8 +45,15 @@ type Config struct {
 	// Defaults.
 	DefaultRequestCt  string
 	DefaultResponseCt string
-	DefaultResponse   map[int]string
+	DefaultResponse   map[int]DefaultResponse
 	Prefix            string
+}
+
+// DefaultResponse references.
+type DefaultResponse struct {
+	Lookup      string // e.g. models.Foo
+	Description string // e.g. "200 OK"
+	Schema      Schema
 }
 
 // NewProgram creates a new Program instance.
@@ -82,9 +89,7 @@ type Endpoint struct {
 	Info      string   // More detailed description (optional).
 	Request   Request
 	Responses map[int]Response
-
-	//Location string // Location in the source we found the comment as "<file>:<line>:<col>"
-	Pos, End token.Position
+	Pos, End  token.Position
 }
 
 // Request definition.
@@ -116,13 +121,15 @@ type Params struct {
 
 // Param is a path, query, or form parameter.
 type Param struct {
-	Name      string     // Parameter name
-	Info      string     // Detailed description
-	Required  bool       // Is this required to always be sent?
-	Kind      string     // Type information
+	Name     string   // Parameter name
+	Info     string   // Detailed description
+	Required bool     // Is this required to always be sent?
+	Kind     string   // Type information
+	KindEnum []string // Enum fields, only when Kind=enum.
+	Format   string   // Format, such as "email", "date", etc.
+	Ref      string   // Reference something else; for Kind=struct and Kind=array.
+
 	KindField *ast.Field // Type information from struct field.
-	KindEnum  []string   // Enum fields, only when Kind=enum.
-	Format    string     // Format, such as "email", "date", etc.
 }
 
 // Reference to a Go struct.
@@ -133,6 +140,7 @@ type Reference struct {
 	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
 	Fields  []Param // Struct fields.
+	Schema  *Schema // JSON schema.
 }
 
 const headerDesc = "desc"
@@ -142,8 +150,8 @@ var (
 	reResponseHeader = regexp.MustCompile(`Response( (\d+?))?( \((.+?)\))?:`)
 )
 
-// ParseComment a single comment block in the file filePath.
-func ParseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, error) {
+// parseComment a single comment block in the file filePath.
+func parseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, error) {
 	e := &Endpoint{}
 
 	// Determine if this is a comment block.
@@ -328,13 +336,16 @@ func getBlocks(comment string) (map[string]string, error) {
 			continue
 		}
 
-		// Single-line header, only supported with "$ref" and "$empty":
+		// Single-line header only supported with "$" keyword:
 		//
 		//  Response 200: $ref: AnObject
 		//  Response 204: $empty
 		//  Response 400: $ref: ErrorObject
 		//  Response 404: $default
-		if line[0] != ' ' && (strings.Contains(line, ": $ref:") || strings.Contains(line, ": $empty") || strings.Contains(line, ": $default")) {
+		if line[0] != ' ' && (strings.Contains(line, ": $ref:") ||
+			strings.Contains(line, ": $empty") ||
+			strings.Contains(line, ": $default")) {
+
 			var err error
 			info, err = addBlock(info, header)
 			if err != nil {
@@ -396,7 +407,7 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 
 	for _, line := range collapseIndents(text) {
 		// Get tags from {..} blocks.
-		line, tags := ParseParamsTags(line)
+		line, tags := parseParamsTags(line)
 
 		// Get description and name.
 		var name, info string
@@ -452,8 +463,8 @@ func parseParams(prog *Program, text, filePath string) (*Params, error) {
 	return params, nil
 }
 
-// ParseParamsTags get tags from {..} blocks.
-func ParseParamsTags(line string) (string, []string) {
+// parseParamsTags get tags from {..} blocks.
+func parseParamsTags(line string) (string, []string) {
 	var alltags []string
 
 	for {
@@ -695,14 +706,14 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
-			doc, tags := ParseParamsTags(doc)
+			doc, tags := parseParamsTags(doc)
 			p := Param{
 				Name:      fName.Name,
 				Info:      doc,
 				KindField: f,
 			}
 
-			err := setParamTags(&p, tags)
+			err = setParamTags(&p, tags)
 			if err != nil {
 				return nil, fmt.Errorf("%v: %v", fName.Name, err)
 			}
@@ -725,6 +736,14 @@ func GetReference(prog *Program, lookup, filePath string) (*Reference, error) {
 			return nil, fmt.Errorf("\n  findNested: %v", err)
 		}
 	}
+
+	// Convert to JSON Schema.
+	schema, err := structToSchema(prog, name, ref)
+	if err != nil {
+		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
+	}
+	ref.Schema = schema
+	prog.References[ref.Lookup] = ref
 
 	return &ref, nil
 }

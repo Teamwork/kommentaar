@@ -1,4 +1,4 @@
-package openapi3
+package docparse
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"go/build"
 	"testing"
 
-	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/test/diff"
 )
 
@@ -36,7 +35,7 @@ func TestFieldToProperty(t *testing.T) {
 	}
 
 	build.Default.GOPATH = "./testdata"
-	ts, _, _, err := docparse.FindType("./testdata/src/a/a.go", "a", "foo")
+	ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "foo")
 	if err != nil {
 		t.Fatalf("could not parse file: %v", err)
 	}
@@ -48,8 +47,8 @@ func TestFieldToProperty(t *testing.T) {
 
 	for i, f := range st.Fields.List {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			prog := docparse.NewProgram(false)
-			out, err := fieldToSchema(prog, f.Names[0].Name, docparse.Reference{
+			prog := NewProgram(false)
+			out, err := fieldToSchema(prog, f.Names[0].Name, Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
 			}, f)
@@ -73,8 +72,8 @@ func TestFieldToProperty(t *testing.T) {
 	}
 
 	t.Run("nested", func(t *testing.T) {
-		prog := docparse.NewProgram(false)
-		ts, _, _, err := docparse.FindType("./testdata/src/a/a.go", "a", "nested")
+		prog := NewProgram(false)
+		ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "nested")
 		if err != nil {
 			t.Fatalf("could not parse file: %v", err)
 		}
@@ -85,7 +84,7 @@ func TestFieldToProperty(t *testing.T) {
 		}
 
 		for _, f := range st.Fields.List {
-			out, err := fieldToSchema(prog, f.Names[0].Name, docparse.Reference{
+			out, err := fieldToSchema(prog, f.Names[0].Name, Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
 			}, f)

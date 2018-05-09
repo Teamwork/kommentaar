@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -60,6 +61,7 @@ JSON respectively, and "html" for HTML documentation.`)
 
 	if *config != "" {
 		err := sconfig.Parse(&prog.Config, *config, sconfig.Handlers{
+			// TODO: move this to docparse so it can be called more easily.
 			"DefaultResponse": func(line []string) error {
 				code, err := strconv.ParseInt(line[0], 10, 32)
 				if err != nil {
@@ -69,9 +71,21 @@ JSON respectively, and "html" for HTML documentation.`)
 				// TODO: validate rest as well.
 
 				if prog.Config.DefaultResponse == nil {
-					prog.Config.DefaultResponse = make(map[int]string)
+					prog.Config.DefaultResponse = make(map[int]docparse.DefaultResponse)
 				}
-				prog.Config.DefaultResponse[int(code)] = strings.Join(line[1:], " ")
+				def := docparse.DefaultResponse{
+					Lookup:      strings.Replace(strings.Join(line[1:], " "), "$ref: ", "", 1),
+					Description: fmt.Sprintf("%v %v", code, http.StatusText(int(code))),
+				}
+				ref, err := docparse.GetReference(prog, def.Lookup, "")
+				if err != nil {
+					return err
+				}
+
+				def.Schema = *ref.Schema
+
+				prog.Config.DefaultResponse[int(code)] = def
+
 				return nil
 			},
 		})

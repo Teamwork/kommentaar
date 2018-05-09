@@ -7,7 +7,7 @@ import (
 	"github.com/teamwork/kommentaar/example/exampleimport"
 )
 
-// POST /foo/{id} foobar hello
+// POST /foo/{id} foobar
 // Create a new foo.
 //
 // This will create a new foo object for a customer. It's important to remember

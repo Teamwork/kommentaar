@@ -43,7 +43,7 @@ func FindComments(w io.Writer, prog *Program) error {
 				}
 
 				for _, c := range f.Comments {
-					e, err := ParseComment(prog, c.Text(), p.ImportPath, fullPath)
+					e, err := parseComment(prog, c.Text(), p.ImportPath, fullPath)
 					if err != nil {
 						allErr = append(allErr, fmt.Errorf("%v: %v", relPath, err))
 						continue
@@ -52,8 +52,6 @@ func FindComments(w io.Writer, prog *Program) error {
 						continue
 					}
 
-					//p := fset.Position(c.Pos())
-					//e.Location = fmt.Sprintf("%v:%v:%v", path, p.Line, p.Column)
 					e.Pos = fset.Position(c.Pos())
 					e.End = fset.Position(c.End())
 					prog.Endpoints = append(prog.Endpoints, e)
@@ -98,6 +96,8 @@ var declsCache = make(map[string][]declCache)
 // fully qualified path (i.e. "github.com/user/pkg") or a package from the
 // currentPkg imports (i.e. "models" will resolve to "github.com/desk/models" if
 // that is imported in currentPkg).
+//
+// TODO: unexport once openapi3 no longer references it.
 func FindType(currentFile, pkgPath, name string) (
 	ts *ast.TypeSpec,
 	filePath string,

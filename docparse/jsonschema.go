@@ -1,42 +1,38 @@
-package openapi3
+package docparse
 
 import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"path"
 	"strings"
 
-	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 )
 
-/*
-TODO: Ideally I'd like to convert this to an intermediate format first in
-docparse, so we can keep the output code simpler (like with the rest):
+// The Schema Object allows the definition of input and output data types.
+type Schema struct {
+	Reference   string   `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+	Title       string   `json:"title,omitempty" yaml:"title,omitempty"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Type        string   `json:"type,omitempty" yaml:"type,omitempty"`
+	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Format      string   `json:"format,omitempty" yaml:"format,omitempty"`
+	Required    []string `json:"required,omitempty" yaml:"required,omitempty"`
 
-1. Add all references to prog.References (we already do this).
-2. Expand the Fields field to include information instead of *ast.Field. Most of
-   it is there already (just not always populated):
+	// Store array items; for primitives:
+	//   "items": {"type": "string"}
+	// or custom types:
+	//   "items": {"$ref": "#/definitions/positiveInteger"},
+	Items *Schema `json:"items,omitempty" yaml:"items,omitempty"`
 
-	type Param struct {
-		Name      string     // Parameter name
-		Info      string     // Detailed description
-		Required  bool       // Is this required to always be sent?
-		Kind      string     // Type information
-		KindEnum  []string   // Enum fields, only when Kind=enum.
-		Format    string     // Format, such as "email", "date", etc.
-
-		Ref       string     // Reference another Reference; for Kind=struct and Kind=array
-
-		//KindField *ast.Field // Type information from struct field.
-	}
-
-3. Then this can be simplified to just a simple loop with recursion.
-*/
+	// Store structs.
+	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
+}
 
 // Convert a struct to a JSON schema.
-func structToSchema(prog *docparse.Program, name string, ref docparse.Reference) (*Schema, error) {
+func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) {
 	schema := &Schema{
 		Title:       name,
 		Description: ref.Info,
@@ -79,11 +75,15 @@ func structToSchema(prog *docparse.Program, name string, ref docparse.Reference)
 	return schema, nil
 }
 
+// TODO: merge with setParamTags
 func setTags(name string, p *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
 		case "required":
 			p.Required = append(p.Required, name)
+
+		case "optional":
+			// Do nothing.
 
 		case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
 			if t == "url" {
@@ -120,7 +120,7 @@ func setTags(name string, p *Schema, tags []string) error {
 }
 
 // Convert a struct field to JSON schema.
-func fieldToSchema(prog *docparse.Program, fName string, ref docparse.Reference, f *ast.Field) (*Schema, error) {
+func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*Schema, error) {
 	var p Schema
 
 	// TODO: parse {..} tags from here. That should probably be in docparse
@@ -133,7 +133,7 @@ func fieldToSchema(prog *docparse.Program, fName string, ref docparse.Reference,
 	p.Description = strings.TrimSpace(p.Description)
 
 	var tags []string
-	p.Description, tags = docparse.ParseParamsTags(p.Description)
+	p.Description, tags = parseParamsTags(p.Description)
 	err := setTags(fName, &p, tags)
 	if err != nil {
 		return nil, err
@@ -161,10 +161,7 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		p.Type = typ.Name
-		if k, ok := kindMap[p.Type]; ok {
-			p.Type = k
-		}
+		p.Type = JSONSchemaType(typ.Name)
 
 		// e.g. string, int64, etc.: don't need to look up as struct.
 		if isPrimitive(p.Type) {
@@ -190,21 +187,17 @@ start:
 		name = typ.Sel
 
 		lookup := pkg + "." + name.Name
-		t, f := docparse.MapType(lookup)
+		t, f := MapType(lookup)
 		p.Format = f
 		if t != "" {
-			p.Type = t
-			if k, ok := kindMap[p.Type]; ok {
-				p.Type = k
-			}
-
+			p.Type = JSONSchemaType(t)
 			return &p, nil
 		}
 
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, _, err := docparse.FindType(ref.File, pkg, name.Name)
+		ts, _, _, err := FindType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -249,26 +242,16 @@ start:
 	}
 
 	// Check if the type resolves to a Go primitive.
-	// TODO: don't use GetReference here; has many side-effects!
 	lookup := pkg + "." + name.Name
-	_, err = docparse.GetReference(prog, lookup, ref.File)
+	t, err := getTypeInfo(prog, lookup, ref.File)
 	if err != nil {
-		nsErr, ok := err.(docparse.ErrNotStruct)
-		if ok {
-			id, ok := nsErr.TypeSpec.Type.(*ast.Ident)
-			if ok {
-				p.Type = id.Name
-				if k, ok := kindMap[p.Type]; ok {
-					p.Type = k
-				}
-
-				if isPrimitive(p.Type) {
-					return &p, nil
-				}
-			}
+		return nil, err
+	}
+	if t != "" {
+		p.Type = t
+		if isPrimitive(p.Type) {
+			return &p, nil
 		}
-
-		return nil, fmt.Errorf("GetReference error for %v: %v", lookup, err)
 	}
 
 	if i := strings.LastIndex(lookup, "/"); i > -1 {
@@ -280,7 +263,7 @@ start:
 	return &p, nil
 }
 
-func resolveArray(prog *docparse.Program, ref docparse.Reference, p *Schema, typ ast.Expr) error {
+func resolveArray(prog *Program, ref Reference, p *Schema, typ ast.Expr) error {
 	asw := typ
 
 	pkg := ref.Package
@@ -299,10 +282,7 @@ arrayStart:
 
 		dbg("resolveArray: ident: %#v", typ.Name)
 
-		p.Items = &Schema{Type: typ.Name}
-		if k, ok := kindMap[typ.Name]; ok {
-			p.Items.Type = k
-		}
+		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
 		if typ.Name == "byte" {
 			p.Items = nil
@@ -334,27 +314,16 @@ arrayStart:
 	}
 
 	// Check if the type resolves to a Go primitive.
-	// TODO: don't use GetReference here; has many side-effects!
 	lookup := pkg + "." + name.Name
-	_, err := docparse.GetReference(prog, lookup, ref.File)
+	t, err := getTypeInfo(prog, lookup, ref.File)
 	if err != nil {
-		nsErr, ok := err.(docparse.ErrNotStruct)
-		if ok {
-			id, ok := nsErr.TypeSpec.Type.(*ast.Ident)
-			if ok {
-				p.Type = id.Name
-				if k, ok := kindMap[p.Type]; ok {
-					p.Type = k
-				}
-
-				if isPrimitive(p.Type) {
-					return nil
-				}
-			}
+		return err
+	}
+	if t != "" {
+		p.Type = t
+		if isPrimitive(p.Type) {
+			return nil
 		}
-
-		return fmt.Errorf("resolveArray: GetReference error for %v: %v",
-			lookup, err)
 	}
 
 	if i := strings.LastIndex(pkg, "/"); i > -1 {
@@ -372,4 +341,58 @@ func isPrimitive(n string) bool {
 	return sliceutil.InStringSlice([]string{
 		"null", "boolean", "number", "string", "integer",
 	}, n)
+}
+
+var kindMap = map[string]string{
+	//"":     "string",
+	"int":     "integer",
+	"int8":    "integer",
+	"int16":   "integer",
+	"int32":   "integer",
+	"int64":   "integer",
+	"uint8":   "integer",
+	"uint16":  "integer",
+	"uint32":  "integer",
+	"uint64":  "integer",
+	"float32": "number",
+	"float64": "number",
+	"bool":    "boolean",
+	"byte":    "string",
+	"rune":    "string",
+	"error":   "string",
+}
+
+// JSONSchemaType gets the type name as used in JSON schema.
+func JSONSchemaType(t string) string {
+	if m, ok := kindMap[t]; ok {
+		return m
+	}
+	return t
+}
+
+func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
+	var name, pkg string
+	if c := strings.LastIndex(lookup, "."); c > -1 {
+		// imported path: models.Foo
+		pkg = lookup[:c]
+		name = lookup[c+1:]
+	} else {
+		// Current package: Foo
+		pkg = path.Dir(filePath)
+		name = lookup
+	}
+
+	// Find type.
+	ts, _, _, err := FindType(filePath, pkg, name)
+	if err != nil {
+		return "", err
+	}
+
+	ident, ok := ts.Type.(*ast.Ident)
+	if !ok {
+		return "", nil
+	}
+
+	t := JSONSchemaType(ident.Name)
+	return t, nil
 }

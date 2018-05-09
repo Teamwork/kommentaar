@@ -1,4 +1,4 @@
-// Package openapi3 outputs to OpenAPI 3.
+// Package openapi3 outputs to OpenAPI 3.0.1
 //
 // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.1.md
 // http://json-schema.org/
@@ -42,8 +42,8 @@ type (
 
 	// Components holds a set of reusable objects.
 	Components struct {
-		Schemas   map[string]Schema `json:"schemas" yaml:"schemas"`
-		Responses map[int]Response  `json:"responses,omitempty" yaml:"responses,omitempty"`
+		Schemas   map[string]docparse.Schema `json:"schemas" yaml:"schemas"`
+		Responses map[int]Response           `json:"responses,omitempty" yaml:"responses,omitempty"`
 	}
 
 	// Path describes the operations available on a single path.
@@ -76,36 +76,18 @@ type (
 	// MediaType provides schema and examples for the media type identified by
 	// its key.
 	MediaType struct {
-		Schema Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
-	}
-
-	// The Schema Object allows the definition of input and output data types.
-	Schema struct {
-		Reference   string   `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-		Title       string   `json:"title,omitempty" yaml:"title,omitempty"`
-		Description string   `json:"description,omitempty" yaml:"description,omitempty"`
-		Type        string   `json:"type,omitempty" yaml:"type,omitempty"`
-		Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
-		Format      string   `json:"format,omitempty" yaml:"format,omitempty"`
-		Required    []string `json:"required,omitempty" yaml:"required,omitempty"`
-
-		// Store array items; for primitives:
-		//   "items": {"type": "string"}
-		// or custom types:
-		//   "items": {"$ref": "#/definitions/positiveInteger"},
-		Items *Schema `json:"items,omitempty" yaml:"items,omitempty"`
-
-		// Store structs.
-		Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
+		Schema docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
 	// Parameter describes a single operation parameter.
 	Parameter struct {
-		Name        string `json:"name" yaml:"name"`
-		In          string `json:"in" yaml:"in"` // query, header, path, cookie
-		Description string `json:"description,omitempty" yaml:"description,omitempty"`
-		Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
-		Schema      Schema `json:"schema" yaml:"schema"`
+		Name        string          `json:"name" yaml:"name"`
+		In          string          `json:"in" yaml:"in"` // query, header, path, cookie
+		Description string          `json:"description,omitempty" yaml:"description,omitempty"`
+		Required    bool            `json:"required,omitempty" yaml:"required,omitempty"`
+		Schema      docparse.Schema `json:"schema" yaml:"schema"`
+
+		Ref string `json:"$ref" yaml:"$ref"`
 	}
 
 	// Response describes a single response from an API Operation.
@@ -146,37 +128,25 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		},
 		Paths: map[string]*Path{},
 		Components: Components{
-			Schemas:   map[string]Schema{},
+			Schemas:   map[string]docparse.Schema{},
 			Responses: map[int]Response{},
 		},
 	}
 
 	// Add components.
 	for k, v := range prog.References {
-		schema, err := structToSchema(prog, k, v)
-		if err != nil {
-			return err
+		if v.Schema == nil {
+			return fmt.Errorf("schema is nil for %v", k)
 		}
-		out.Components.Schemas[k] = *schema
+
+		out.Components.Schemas[k] = *v.Schema
 	}
 
 	// Add default responses.
 	for k, v := range prog.Config.DefaultResponse {
-		// TODO: Should get ref in docparse.
-		ref, err := docparse.GetReference(prog, strings.Replace(v, "$ref: ", "", 1), "")
-		if err != nil {
-			return err
-		}
-
-		name := fmt.Sprintf("%v %v", k, http.StatusText(k))
-		schema, err := structToSchema(prog, name, *ref)
-		if err != nil {
-			return err
-		}
-
 		out.Components.Responses[k] = Response{
-			Description: schema.Description,
-			Content:     map[string]MediaType{name: {Schema: *schema}},
+			Description: v.Schema.Description,
+			Content:     map[string]MediaType{v.Description: {Schema: v.Schema}},
 		}
 	}
 
@@ -193,7 +163,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 
 		// Add any {..} parameters in the path to the parameter list.
-		// OpenAPI spec mandates that they're defines as parameters, but 95% of
+		// OpenAPI spec mandates that they're defined as parameters, but 95% of
 		// the time this is just pointless: "id is the id". Whoopdiedo, such
 		// great docs.
 		if strings.Contains(e.Path, "{") {
@@ -220,8 +190,6 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			}
 		}
 
-		// TODO: Support params.Reference for path, query, and form.
-		// TODO: validate that URL params are in path params, as OpenAPI mandates this
 		addParams(&op.Parameters, "path", e.Request.Path)
 		addParams(&op.Parameters, "query", e.Request.Query)
 		addParams(&op.Parameters, "form", e.Request.Form)
@@ -230,7 +198,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			op.RequestBody = RequestBody{
 				Content: map[string]MediaType{
 					e.Request.ContentType: MediaType{
-						Schema: Schema{
+						Schema: docparse.Schema{
 							Reference: "#/components/schemas/" + e.Request.Body.Reference,
 						},
 					},
@@ -247,7 +215,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			if len(resp.Body.Params) > 0 && resp.Body.Params[0].Name == "$default" {
 				r.Content = map[string]MediaType{
 					resp.ContentType: MediaType{
-						Schema: Schema{Reference: fmt.Sprintf("#/components/responses/%v", code)},
+						Schema: docparse.Schema{Reference: fmt.Sprintf("#/components/responses/%v", code)},
 					},
 				}
 			}
@@ -256,7 +224,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			if resp.Body != nil && resp.Body.Reference != "" {
 				r.Content = map[string]MediaType{
 					resp.ContentType: MediaType{
-						Schema: Schema{Reference: "#/components/schemas/" + resp.Body.Reference},
+						Schema: docparse.Schema{Reference: "#/components/schemas/" + resp.Body.Reference},
 					},
 				}
 			}
@@ -310,29 +278,25 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	return err
 }
 
-var kindMap = map[string]string{
-	//"":     "string",
-	"int":     "integer",
-	"int8":    "integer",
-	"int16":   "integer",
-	"int32":   "integer",
-	"int64":   "integer",
-	"uint8":   "integer",
-	"uint16":  "integer",
-	"uint32":  "integer",
-	"uint64":  "integer",
-	"float32": "number",
-	"float64": "number",
-	"bool":    "boolean",
-	"byte":    "string",
-	"rune":    "string",
-	"error":   "string",
-}
-
 func addParams(list *[]Parameter, in string, params *docparse.Params) {
 	if params == nil {
 		return
 	}
+
+	// TODO: support references.
+	//
+	// This is annoying as fuck because Operation.Parameters is defined as
+	// "[Parameter Object | Reference Object]", but this can't easily be
+	// represented in Go :-/
+	//
+	// Perhaps it would be better to *always* use references? It would simplify
+	// parsing quite a lot actually, and we don't use the inline syntax that
+	// much.
+
+	//if params.Reference != "" {
+	//	list.Reference = p.Ref
+	//	return
+	//}
 
 	for _, p := range params.Params {
 		// Path parameters must have required set or SwaggerHub complains.
@@ -343,11 +307,9 @@ func addParams(list *[]Parameter, in string, params *docparse.Params) {
 			}
 		}
 
-		if k, ok := kindMap[p.Kind]; ok {
-			p.Kind = k
-		}
+		p.Kind = docparse.JSONSchemaType(p.Kind)
 
-		s := Schema{Type: p.Kind, Format: p.Format}
+		s := docparse.Schema{Type: p.Kind, Format: p.Format}
 		if p.Kind == "enum" {
 			s.Type = ""
 			s.Enum = p.KindEnum

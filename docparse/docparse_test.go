@@ -16,11 +16,11 @@ func TestParseComments(t *testing.T) {
 	}}
 
 	cases := []struct {
+		name        string
 		in, wantErr string
 		want        *Endpoint
 	}{
-		// Query
-		{`
+		{"inline-query", `
 			POST /path
 
 			Query:
@@ -34,8 +34,7 @@ func TestParseComments(t *testing.T) {
 			}}},
 		}}},
 
-		// Path, Query and Form
-		{`
+		{"inline-query-and-form", `
 			POST /path
 
 			Response 200: $empty
@@ -56,7 +55,7 @@ func TestParseComments(t *testing.T) {
 				}}},
 			}}},
 
-		{`
+		{"req-ref", `
 			POST /path
 
 			Request body: $ref: net/mail.Address
@@ -66,40 +65,35 @@ func TestParseComments(t *testing.T) {
 			Body:        &Params{Reference: "mail.Address"},
 		}}},
 
-		{
-			`
-				POST /path
+		{"req-ref", `
+			POST /path
 
-				Request body (foo): $ref: net/mail.Address
-				Response 200: $empty
+			Request body (foo): $ref: net/mail.Address
+			Response 200: $empty
 			`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-				ContentType: "foo",
-				Body:        &Params{Reference: "mail.Address"},
-			}}},
+			ContentType: "foo",
+			Body:        &Params{Reference: "mail.Address"},
+		}}},
 
-		// Two responses
-		{
-			`
+		{"response-ref", `
 				POST /path
 
 				Response: $empty
 				Response 400 (w00t): $empty
 			`, "", &Endpoint{
-				Method: "POST", Path: "/path",
-				Responses: map[int]Response{
-					200: {
-						ContentType: "application/json",
-						Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
-					},
-					400: {
-						ContentType: "w00t",
-						Body:        &Params{Description: "Bad Request", Params: []Param{{Name: "$empty"}}},
-					},
-				}}},
+			Method: "POST", Path: "/path",
+			Responses: map[int]Response{
+				200: {
+					ContentType: "application/json",
+					Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
+				},
+				400: {
+					ContentType: "w00t",
+					Body:        &Params{Description: "Bad Request", Params: []Param{{Name: "$empty"}}},
+				},
+			}}},
 
-		// Duplicate response codes
-		{
-			`
+		{"err-double-code", `
 				POST /path
 
 				Response 200: $empty
@@ -116,7 +110,7 @@ func TestParseComments(t *testing.T) {
 			}
 			tc.in = test.NormalizeIndent(tc.in)
 
-			out, err := ParseComment(prog, tc.in, ".", "docparse.go")
+			out, err := parseComment(prog, tc.in, ".", "docparse.go")
 			if !test.ErrorContains(err, tc.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
 			}
@@ -319,7 +313,7 @@ func TestParseParamsTags(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
-			outLine, outTags := ParseParamsTags(tc.in)
+			outLine, outTags := parseParamsTags(tc.in)
 			if outLine != tc.wantLine {
 				t.Errorf("\nout:  %#v\nwant: %#v\n", outLine, tc.wantLine)
 			}
@@ -376,6 +370,16 @@ func TestGetReference(t *testing.T) {
 				{Name: "Foo", Info: "Foo is a really cool foo-thing!\nSuch foo!"},
 				{Name: "Bar"},
 			},
+			Schema: &Schema{
+				Title:       "testObject",
+				Description: "testObject general documentation.",
+				Required:    []string{"ID"},
+				Properties: map[string]*Schema{
+					"ID":  {Type: "integer", Description: "ID documentation.", Required: []string{"ID"}},
+					"Foo": {Type: "string", Description: "Foo is a really cool foo-thing!\nSuch foo!"},
+					"Bar": {Type: "array", Items: &Schema{Type: "string"}},
+				},
+			},
 		}},
 		{"net/mail.Address", "", &Reference{
 			Name:    "Address",
@@ -389,6 +393,16 @@ func TestGetReference(t *testing.T) {
 				{Name: "Name", Info: "Proper name; may be empty."},
 				{Name: "Address", Info: "user@domain"},
 			},
+			Schema: &Schema{
+				Title: "Address",
+				Description: "Address represents a single mail address.\n" +
+					"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
+					"as Address{Name: \"Barry Gibbs\", Address: \"bg@example.com\"}.",
+				Properties: map[string]*Schema{
+					"Address": {Type: "string", Description: "user@domain"},
+					"Name":    {Type: "string", Description: "Proper name; may be empty."},
+				},
+			},
 		}},
 
 		{"UnknownObject", "could not find", nil},
@@ -400,7 +414,7 @@ func TestGetReference(t *testing.T) {
 			prog := NewProgram(false)
 			out, err := GetReference(prog, tc.in, ".")
 			if !test.ErrorContains(err, tc.wantErr) {
-				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
+				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tc.wantErr)
 			}
 
 			if out != nil {

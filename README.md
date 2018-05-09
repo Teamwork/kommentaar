@@ -20,13 +20,13 @@ Non-goals:
 Using the tool
 --------------
 
-    $ go install github.com/teamwork/kommentaar
+    $ go get github.com/teamwork/kommentaar
 
-Get all comments from one package:
+Parse one package:
 
     $ kommentaar github.com/teamwork/desk/api/v1/inboxController
 
-Or from a package and all subpackages:
+Or several packages subpackages:
 
     $ kommentaar github.com/teamwork/desk/api/...
 
@@ -39,11 +39,7 @@ Syntax
 ------
 
 The Kommentaar syntax is primarily driven by a simple data format in Go
-comments. While "programming-by-comments" is not always ideal, using comments
-does make it easier to use in some scenarios as it doesn't assume too much about
-how you write your code.
-
-A simple example:
+comments. A simple example:
 
 ```go
 type createResponse struct {
