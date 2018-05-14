@@ -14,6 +14,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
+	"github.com/teamwork/kommentaar/openapi2"
 	"github.com/teamwork/kommentaar/openapi3"
 )
 
@@ -25,9 +26,15 @@ func main() {
 	}
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
-	out := flag.String("out", "openapi3-yaml", `output function. Valid values are "openapi3-yaml", "openapi3-json", and
-"openapi3-jsonindent" for OpenAPI3 output as YAML, JSON, or indented
-JSON respectively, and "html" for HTML documentation.`)
+	out := flag.String("out", "openapi3-yaml", `output function, valid values are:
+	openapi2-yaml		OpenAPI/Swagger 2.0 as YAML
+	openapi2-json		OpenAPI/Swagger 2.0 as JSON
+	openapi2-jsonindent	OpenAPI/Swagger 2.0 as JSON indented
+	openapi3-yaml		OpenAPI 3.0.1 as YAML
+	openapi3-json		OpenAPI 3.0.1 as JSON
+	openapi3-jsonindent	OpenAPI 3.0.1 as JSON indented
+	html			as HTML documentation
+`)
 
 	flag.Parse()
 	paths := flag.Args()
@@ -38,6 +45,12 @@ JSON respectively, and "html" for HTML documentation.`)
 	// TODO: allow setting the default outFunc from the config file as well.
 	var outFunc func(io.Writer, *docparse.Program) error
 	switch strings.ToLower(*out) {
+	case "openapi2-yaml":
+		outFunc = openapi2.WriteYAML
+	case "openapi2-json":
+		outFunc = openapi2.WriteJSON
+	case "openapi2-jsonindent":
+		outFunc = openapi2.WriteJSONIndent
 	case "openapi3-yaml":
 		outFunc = openapi3.WriteYAML
 	case "openapi3-json":
@@ -58,6 +71,11 @@ JSON respectively, and "html" for HTML documentation.`)
 	}
 
 	prog := docparse.NewProgram(*debug)
+
+	if strings.HasPrefix(*out, "openapi2") {
+		// TODO should this be settable or just moved to docparse to figure out and set?
+		prog.Config.SchemaRefPrefix = "#/definitions"
+	}
 
 	if *config != "" {
 		err := sconfig.Parse(&prog.Config, *config, sconfig.Handlers{
