@@ -1,0 +1,30 @@
+openapi: 3.0.1
+paths:
+  /path/{companyID}/{id}:
+    post:
+      operationId: POST_path_{companyID}_{id}
+      tags:
+      - tag
+      parameters:
+      - $ref: '#/components/parameters/path.pathRef'
+      responses:
+        200:
+          description: 200 OK
+          content: {}
+components:
+  schemas: {}
+  parameters:
+    path.pathRef:
+      name: pathRef
+      in: path
+      schema:
+        title: pathRef
+        required:
+        - id
+        - companyID
+        properties:
+          companyID:
+            description: Hello there
+            type: integer
+          id:
+            type: integer

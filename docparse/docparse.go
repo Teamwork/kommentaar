@@ -116,13 +116,13 @@ type Ref struct {
 
 // Param is a path, query, or form parameter.
 type Param struct {
-	Name     string   // Parameter name
-	Info     string   // Detailed description
-	Required bool     // Is this required to always be sent?
-	Kind     string   // Type information
-	KindEnum []string // Enum fields, only when Kind=enum.
-	Format   string   // Format, such as "email", "date", etc.
-	Ref      string   // Reference something else; for Kind=struct and Kind=array.
+	Name string // Parameter name
+	//Info     string   // Detailed description
+	//Required bool     // Is this required to always be sent?
+	//Kind     string   // Type information
+	//KindEnum []string // Enum fields, only when Kind=enum.
+	//Format   string   // Format, such as "email", "date", etc.
+	//Ref      string   // Reference something else; for Kind=struct and Kind=array.
 
 	KindField *ast.Field // Type information from struct field.
 }
@@ -135,8 +135,9 @@ type Reference struct {
 	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
 	Context string  // Context we found it: path, query, form, req, resp.
-	Fields  []Param // Struct fields.
 	Schema  *Schema // JSON schema.
+
+	Fields []Param // Struct fields.
 }
 
 var (
@@ -335,15 +336,19 @@ func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
 	}
 	name = strings.TrimSpace(name)
 
-	// Reference a struct.
-	if name == "$ref" {
+	switch name {
+	case "$empty":
+		params.Description = "no data"
+	case "$default":
+		// Will be filled in later.
+		// TODO: Move that code here!
+		params.Description = "$default"
+	case "$ref":
 		s := strings.Split(line, ":")
 		if len(s) != 2 {
 			return nil, fmt.Errorf("invalid reference: %#v", line)
 		}
 
-		// TODO(param): tell GetReference where this is found, as
-		// form/path/query are stored different in OpenAPI.
 		ref, err := GetReference(prog, context, strings.TrimSpace(s[1]), filePath)
 		if err != nil {
 			return nil, fmt.Errorf("GetReference: %v", err)
@@ -354,13 +359,7 @@ func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
 		// object, which is kind of noisy). We should probably store it as a
 		// pointer once I'm done with the docparse part.
 		params.Reference = ref.Lookup
-	} else if name == "$empty" {
-		params.Description = "no data"
-	} else if name == "$default" {
-		// Will be filled in later.
-		// TODO: Move that code here!
-		params.Description = "$default"
-	} else {
+	default:
 		return nil, fmt.Errorf("invalid keyword: %#v", name)
 	}
 
@@ -408,75 +407,14 @@ func parseTags(line string) (string, []string) {
 	nl = strings.TrimRight(nl, "\n ")
 
 	// So that:
-	//   var: this is now documented {int}.
-	// doesn't show as:
+	//   var: this is now documented {required}.
+	// doesn't show with a space before the full stop:
 	//   this is now documented .
 	if strings.HasSuffix(nl, " .") {
 		nl = nl[:len(nl)-2] + "."
 	}
 
 	return nl, alltags
-}
-
-const (
-	paramOptional  = "optional"
-	paramRequired  = "required"
-	paramOmitEmpty = "omitempty"
-)
-
-func setParamTags(p *Param, tags []string) error {
-	for _, t := range tags {
-		switch t {
-
-		case paramRequired:
-			p.Required = true
-		case paramOptional:
-			p.Required = false
-
-		// TODO: implement this (also load from struct tag?), but I
-		// don't see any way to do that in the OpenAPI spec?
-		case paramOmitEmpty:
-			return fmt.Errorf("omitempty not implemented yet")
-
-		// TODO: support {readonly} to indicate that it cannot be set by the
-		// user.
-
-		// Various string formats.
-		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
-		/*
-			case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
-				if t == "url" {
-					t = "uri"
-				}
-				if t == "email" {
-					t = "idn-email"
-				}
-				if t == "hostname" {
-					t = "idn-hostname"
-				}
-
-				p.Format = t
-		*/
-
-		default:
-			switch {
-			case strings.HasPrefix(t, "enum: "):
-				p.Kind = "enum"
-				for _, e := range strings.Split(t[5:], " ") {
-					e = strings.TrimSpace(e)
-					if e != "" {
-						p.KindEnum = append(p.KindEnum, e)
-					}
-				}
-
-			default:
-				return fmt.Errorf("unknown parameter tag for %#v: %#v",
-					p.Name, t)
-			}
-		}
-	}
-
-	return nil
 }
 
 var (

@@ -262,6 +262,8 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	}
 
 	// Parse all the fields.
+	// TODO(param): only reason we do this is to make things a bit easier during
+	// refactor. We should pass st to structToSchema() or something.
 	for _, f := range st.Fields.List {
 
 		// Skip embedded struct for now.
@@ -271,29 +273,12 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 			//return nil, fmt.Errorf("embeded struct is not yet supported")
 		}
 
-		// Doc is the comment above the field, Comment the inline comment on the
-		// same line.
-		var doc string
-		if f.Doc != nil {
-			doc = f.Doc.Text()
-		} else if f.Comment != nil {
-			doc = f.Comment.Text()
-		}
-
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
-			doc, tags := parseTags(doc)
 			p := Param{
 				Name:      fName.Name,
-				Info:      doc,
 				KindField: f,
 			}
-
-			err = setParamTags(&p, tags)
-			if err != nil {
-				return nil, fmt.Errorf("%v: %v", fName.Name, err)
-			}
-
 			ref.Fields = append(ref.Fields, p)
 		}
 	}

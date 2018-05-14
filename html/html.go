@@ -232,8 +232,8 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 				{{range $i, $p := $v.Fields}}
 					<li>
 						<code>{{$p.Name}}</code>
-						<code>{{$p.Kind}}</code>
-						– {{$p.Info}}
+						{{/*<code>{{$p.Kind}}</code>
+						– {{$p.Info}}*/}}
 					</li>
 				{{end}}
 			</ul>

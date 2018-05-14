@@ -383,8 +383,8 @@ func TestGetReference(t *testing.T) {
 			Lookup:  "docparse.testObject",
 			Info:    "testObject general documentation.",
 			Fields: []Param{
-				{Name: "ID", Info: "ID documentation.", Required: true},
-				{Name: "Foo", Info: "Foo is a really cool foo-thing!\nSuch foo!"},
+				{Name: "ID"},
+				{Name: "Foo"},
 				{Name: "Bar"},
 			},
 			Schema: &Schema{
@@ -392,7 +392,7 @@ func TestGetReference(t *testing.T) {
 				Description: "testObject general documentation.",
 				Required:    []string{"ID"},
 				Properties: map[string]*Schema{
-					"ID":  {Type: "integer", Description: "ID documentation.", Required: []string{"ID"}},
+					"ID":  {Type: "integer", Description: "ID documentation."},
 					"Foo": {Type: "string", Description: "Foo is a really cool foo-thing!\nSuch foo!"},
 					"Bar": {Type: "array", Items: &Schema{Type: "string"}},
 				},
@@ -407,8 +407,8 @@ func TestGetReference(t *testing.T) {
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
 			Fields: []Param{
-				{Name: "Name", Info: "Proper name; may be empty."},
-				{Name: "Address", Info: "user@domain"},
+				{Name: "Name"},
+				{Name: "Address"},
 			},
 			Schema: &Schema{
 				Title: "Address",

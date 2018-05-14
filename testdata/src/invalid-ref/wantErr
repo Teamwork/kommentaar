@@ -1,0 +1,1 @@
+invalid-ref/in.go:5 could not parse Path params: GetReference: could not find type "doesntExist" in package "/home/martin/work/src/github.com/teamwork/kommentaar/testdata/src/invalid-ref"
