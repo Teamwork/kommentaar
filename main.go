@@ -26,14 +26,14 @@ func main() {
 	}
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
-	out := flag.String("out", "openapi3-yaml", `output function, valid values are:
-	openapi2-yaml		OpenAPI/Swagger 2.0 as YAML
-	openapi2-json		OpenAPI/Swagger 2.0 as JSON
-	openapi2-jsonindent	OpenAPI/Swagger 2.0 as JSON indented
-	openapi3-yaml		OpenAPI 3.0.1 as YAML
-	openapi3-json		OpenAPI 3.0.1 as JSON
-	openapi3-jsonindent	OpenAPI 3.0.1 as JSON indented
-	html			as HTML documentation
+	out := flag.String("out", "openapi2-yaml", `output function, valid values are:
+	openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
+	openapi2-json        OpenAPI/Swagger 2.0 as JSON
+	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
+	openapi3-yaml        OpenAPI 3.0.1 as YAML
+	openapi3-json        OpenAPI 3.0.1 as JSON
+	openapi3-jsonindent  OpenAPI 3.0.1 as JSON indented
+	html                 HTML documentation
 `)
 
 	flag.Parse()
