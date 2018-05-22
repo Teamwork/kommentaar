@@ -140,6 +140,15 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		case "form", "query", "path":
 			// Nothing, this will be inline in the operation.
 		default:
+			for _, f := range v.Schema.Properties {
+				if f.Reference != "" {
+					f.Reference = "#/definitions/" + f.Reference
+				}
+				if f.Items != nil && f.Items.Reference != "" {
+					f.Items.Reference = "#/definitions/" + f.Items.Reference
+				}
+			}
+
 			out.Definitions[k] = *v.Schema
 		}
 	}
@@ -283,8 +292,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Reference: "#/definitions/" + lookup[len(lookup)-1],
 				}
 			}
-			op.Responses[code] = r
 
+			op.Responses[code] = r
 			op.Produces = appendIfNotExists(op.Produces, resp.ContentType)
 		}
 
