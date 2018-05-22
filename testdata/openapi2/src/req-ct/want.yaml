@@ -10,13 +10,19 @@ paths:
   /path:
     post:
       operationId: POST_path
-      tags:
-      - tag
       consumes:
-      - application/x-www-form-urlencoded
+      - text/plain
       produces:
       - application/json
+      parameters:
+      - name: req-ct.reqRef
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/req-ct.reqRef'
       responses:
         200:
           description: 200 OK
-definitions: {}
+definitions:
+  req-ct.reqRef:
+    title: reqRef

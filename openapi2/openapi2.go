@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/kr/pretty"
@@ -21,20 +22,18 @@ type (
 	// OpenAPI output.
 	OpenAPI struct {
 		Swagger string `json:"swagger" yaml:"swagger"`
-		Info    Info   `json:"info,omitempty" yaml:"info,omitempty"`
+		Info    Info   `json:"info" yaml:"info"`
 
 		// TODO: do we need this? will have to come from config
 		Host     string   `json:"host,omitempty" yaml:"host,omitempty"`
 		BasePath string   `json:"basePath,omitempty" yaml:"basePath,omitempty"`
 		Schemes  []string `json:"schemes,omitempty" yaml:"schemes,omitempty"`
+		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
+		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 
 		Paths map[string]*Path `json:"paths" yaml:"paths"`
 
-		Parameters  map[string]Parameter       `json:"parameters" yaml:"parameters"`
 		Definitions map[string]docparse.Schema `json:"definitions" yaml:"definitions"`
-
-		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
-		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 	}
 
 	// Info provides metadata about the API.
@@ -78,11 +77,10 @@ type (
 		Tags        []string         `json:"tags,omitempty" yaml:"tags,omitempty"`
 		Summary     string           `json:"summary,omitempty" yaml:"summary,omitempty"`
 		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
-		Parameters  []interface{}    `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+		Consumes    []string         `json:"consumes,omitempty" yaml:"consumes,omitempty"`
+		Produces    []string         `json:"produces,omitempty" yaml:"produces,omitempty"`
+		Parameters  []Parameter      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 		Responses   map[int]Response `json:"responses" yaml:"responses"`
-
-		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
-		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 	}
 
 	// Reference other components in the specification, internally and
@@ -127,12 +125,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				URL:   prog.Config.ContactSite,
 			},
 		},
+		Consumes:    []string{prog.Config.DefaultRequestCt},
+		Produces:    []string{prog.Config.DefaultRequestCt},
 		Paths:       map[string]*Path{},
-		Parameters:  map[string]Parameter{},
 		Definitions: map[string]docparse.Schema{},
-
-		Consumes: []string{prog.Config.DefaultRequestCt},
-		Produces: []string{prog.Config.DefaultRequestCt},
 	}
 
 	// Add components.
@@ -160,6 +156,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			Responses:   map[int]Response{},
 		}
 
+		// Add path params.
 		if e.Request.Path != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
@@ -175,6 +172,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				})
 			}
 		}
+
+		// Add query params.
 		if e.Request.Query != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
@@ -193,10 +192,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					In:          "query",
 					Description: schema.Description,
 					Type:        schema.Type,
-					Required:    f.Required,
+					//Required:    f.Required,
 				})
 			}
 		}
+
+		// Add form params,
 		if e.Request.Form != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
@@ -209,7 +210,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					In:          "formData",
 					Description: schema.Description,
 					Type:        schema.Type,
-					Required:    f.Required,
+					//Required:    f.Required,
 				})
 			}
 			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")
@@ -221,10 +222,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			for _, param := range reParams.FindAllString(e.Path, -1) {
 				param = strings.Trim(param, "{}")
 				op.Parameters = append(op.Parameters, Parameter{
-					Name:     param,
-					In:       "path",
-					Type:     "integer",
-					Format:   "int64",
+					Name: param,
+					In:   "path",
+					Type: "integer",
+					//Format:   "int64",
 					Required: true,
 				})
 			}
@@ -243,6 +244,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			})
 			op.Consumes = append(op.Consumes, e.Request.ContentType)
 		}
+
+		// TODO: preserve order in which they were defined in the struct, but
+		// for now sort it like this so the output is stable.
+		sort.Slice(op.Parameters, func(i, j int) bool {
+			return op.Parameters[i].Type+op.Parameters[i].Name > op.Parameters[j].Type+op.Parameters[j].Name
+		})
 
 		for code, resp := range e.Responses {
 			r := Response{

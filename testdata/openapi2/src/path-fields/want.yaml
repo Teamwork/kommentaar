@@ -7,15 +7,22 @@ consumes:
 produces:
 - application/json
 paths:
-  /path:
+  /path/{companyID}/{id}:
     post:
-      operationId: POST_path
+      operationId: POST_path_{companyID}_{id}
       tags:
       - tag
-      consumes:
-      - application/x-www-form-urlencoded
       produces:
       - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: integer
+      - name: companyID
+        in: path
+        required: true
+        type: integer
       responses:
         200:
           description: 200 OK

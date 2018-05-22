@@ -5,6 +5,7 @@ import (
 	"go/build"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -41,9 +42,12 @@ func TestOpenAPI2(t *testing.T) {
 			}
 			wantErr = bytes.TrimSpace(wantErr)
 
-			build.Default.GOPATH = "./testdata/openapi2"
+			wd, _ := os.Getwd()
+			build.Default.GOPATH = filepath.Join(wd, "/testdata/openapi2")
 
 			prog := docparse.NewProgram(false)
+			prog.Config.Title = "x"
+			prog.Config.Version = "x"
 			prog.Config.Paths = []string{"./testdata/openapi2/src/" + tt.Name()}
 			prog.Config.Output = openapi2.WriteYAML
 

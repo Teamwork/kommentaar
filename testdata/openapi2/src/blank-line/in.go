@@ -6,7 +6,7 @@ type formRef struct{}
 
 // Make sure that any amount of blank lines doesn't change the output.
 
-// POST /path/{id} tag
+// POST /path tag
 //
 //
 // Path: $ref: pathRef
