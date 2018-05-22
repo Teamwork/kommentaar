@@ -390,6 +390,7 @@ start:
 	return nil
 }
 
+// Add the type declaration to references.
 func resolveType(prog *Program, context string, typ *ast.Ident, filePath, pkg string) error {
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {

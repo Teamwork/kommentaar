@@ -189,17 +189,18 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
+		canon := canonicalType(typ)
+		if canon != nil {
+			sw = canon
+			goto start
+		}
+
 		p.Type = JSONSchemaType(typ.Name)
 
-		// e.g. string, int64, etc.: don't need to look up as struct.
+		// e.g. string, int64, etc.: don't need to look up.
 		if isPrimitive(p.Type) {
 			return &p, nil
 		}
-
-		// TODO: won't work if this points at array:
-		//
-		//   type foo struct { bar foo }
-		//   type bar []int64
 
 		p.Type = ""
 		name = typ
@@ -423,4 +424,20 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 
 	t := JSONSchemaType(ident.Name)
 	return t, nil
+}
+
+// Get the canonical type.
+func canonicalType(typ *ast.Ident) ast.Expr {
+	if typ.Obj == nil {
+		return nil
+	}
+
+	ts := typ.Obj.Decl.(*ast.TypeSpec)
+
+	// Don't resolve structs; we do this later.
+	if _, ok := ts.Type.(*ast.StructType); ok {
+		return nil
+	}
+
+	return ts.Type
 }
