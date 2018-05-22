@@ -62,11 +62,6 @@ func main() {
 
 	prog := docparse.NewProgram(*debug)
 
-	if strings.HasPrefix(*out, "openapi2") {
-		// TODO should this be settable or just moved to docparse to figure out and set?
-		prog.Config.SchemaRefPrefix = "#/definitions"
-	}
-
 	if *config != "" {
 		err := sconfig.Parse(&prog.Config, *config, sconfig.Handlers{
 			// TODO: move this to docparse so it can be called more easily.

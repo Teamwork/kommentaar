@@ -65,9 +65,16 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
 
+		// TODO: ugly
 		if len(prop.Required) > 0 {
-			schema.Required = append(schema.Required, name)
-			prop.Required = nil
+			switch ref.Context {
+			case "path", "query", "form":
+			// Do nothing
+			default:
+				name = goutil.TagName(p.KindField, ref.Context)
+				schema.Required = append(schema.Required, name)
+				prop.Required = nil
+			}
 		}
 
 		if prop == nil {
@@ -279,7 +286,7 @@ start:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 
-	p.Reference = fmt.Sprintf("%s/%s", prog.Config.SchemaRefPrefix, lookup)
+	p.Reference = lookup
 
 	return &p, nil
 }
@@ -351,7 +358,7 @@ arrayStart:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 	p.Items = &Schema{
-		Reference: fmt.Sprintf("%s/%s", prog.Config.SchemaRefPrefix, lookup),
+		Reference: lookup,
 	}
 
 	return nil

@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/utils/goutil"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -180,9 +180,14 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			ref := prog.References[e.Request.Query.Reference]
 
 			for _, f := range ref.Fields {
-				schema := ref.Schema.Properties[f.Name]
+				// TODO: this should be done in docparse
+				f.Name = goutil.TagName(f.KindField, "query")
+				if f.Name == "-" {
+					continue
+				}
+
+				schema := ref.Schema.Properties[f.Name] // TODO: use tag!!
 				if schema == nil {
-					_, _ = pretty.Print(ref)
 					return fmt.Errorf("schema is nil for field %v in %v",
 						f.Name, e.Request.Query.Reference)
 				}
@@ -192,7 +197,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					In:          "query",
 					Description: schema.Description,
 					Type:        schema.Type,
-					//Required:    f.Required,
+					Required:    len(schema.Required) > 0,
 				})
 			}
 		}
@@ -204,13 +209,24 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			ref := prog.References[e.Request.Form.Reference]
 
 			for _, f := range ref.Fields {
+				// TODO: this should be done in docparse
+				f.Name = goutil.TagName(f.KindField, "form")
+				if f.Name == "-" {
+					continue
+				}
+
 				schema := ref.Schema.Properties[f.Name]
+				if schema == nil {
+					return fmt.Errorf("schema is nil for field %v in %v",
+						f.Name, e.Request.Query.Reference)
+				}
+
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        f.Name,
 					In:          "formData",
 					Description: schema.Description,
 					Type:        schema.Type,
-					//Required:    f.Required,
+					Required:    len(schema.Required) > 0,
 				})
 			}
 			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")

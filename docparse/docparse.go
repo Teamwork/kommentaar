@@ -38,9 +38,6 @@ type Config struct {
 	ContactEmail string
 	ContactSite  string
 
-	// JSON reference prefix for schemas, e.g #/components/schemas
-	SchemaRefPrefix string
-
 	// Defaults.
 	DefaultRequestCt  string
 	DefaultResponseCt string
@@ -64,7 +61,6 @@ func NewProgram(dbg bool) *Program {
 		Config: Config{
 			DefaultRequestCt:  "application/json",
 			DefaultResponseCt: "application/json",
-			SchemaRefPrefix:   "#/components/schemas",
 
 			// Override from commandline.
 			Debug: dbg,

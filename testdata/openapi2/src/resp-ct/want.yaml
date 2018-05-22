@@ -1,0 +1,22 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - text/plain
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/resp-ct.respRef'
+definitions:
+  resp-ct.respRef:
+    title: respRef
