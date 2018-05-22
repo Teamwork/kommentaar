@@ -12,125 +12,232 @@ import (
 func TestParseComments(t *testing.T) {
 	stdResp := map[int]Response{200: Response{
 		ContentType: "application/json",
-		Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
+		Body:        &Ref{Description: "OK"},
 	}}
 
-	cases := []struct {
+	tests := []struct {
 		name        string
 		in, wantErr string
 		want        *Endpoint
 	}{
-		{"inline-query", `
-			POST /path
+		{"tagline", `
+POST /path
+The tagline!
 
-			Query:
-			  foo: hello
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method:  "POST",
+				Path:    "/path",
+				Tagline: "The tagline!",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
 
-			Response 200: $empty
-		`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-			Query: &Params{Params: []Param{{
-				Name: "foo",
-				Info: "hello",
-			}}},
-		}}},
+		{"single-desc", `
+POST /path
 
-		{"inline-query-and-form", `
-			POST /path
+A description.
 
-			Response 200: $empty
-			Query:
-				foo: hello
-			Form:
-				Hello: WORLD {required}
-		`, "", &Endpoint{
-			Method: "POST", Path: "/path", Request: Request{
-				Query: &Params{Params: []Param{{
-					Name: "foo",
-					Info: "hello",
-				}}},
-				Form: &Params{Params: []Param{{
-					Name:     "Hello",
-					Info:     "WORLD",
-					Required: true,
-				}}},
-			}}},
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Info:   "A description.",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
+
+		{"multi-desc", `
+POST /path
+
+A description.
+Of multiple lines.
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Info:   "A description.\nOf multiple lines.",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
+
+		{"single-desc-and-tagline", `
+POST /path
+The tagline!
+
+A description.
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method:  "POST",
+				Path:    "/path",
+				Tagline: "The tagline!",
+				Info:    "A description.",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
+
+		{"multi-desc-and-tagline", `
+POST /path
+The tagline!
+
+A description.
+Of multiple lines.
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method:  "POST",
+				Path:    "/path",
+				Tagline: "The tagline!",
+				Info:    "A description.\nOf multiple lines.",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
 
 		{"req-ref", `
-			POST /path
+POST /path
 
-			Request body: $ref: net/mail.Address
-			Response 200: $empty
-		`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-			ContentType: "application/json",
-			Body:        &Params{Reference: "mail.Address"},
-		}}},
+Request body: $ref: net/mail.Address
+Response 200: $empty
+		`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Request: Request{
+					ContentType: "application/json",
+					Body:        &Ref{Reference: "mail.Address"},
+				}},
+		},
 
-		{"req-ref", `
-			POST /path
+		{"path-ref", `
+POST /path
 
-			Request body (foo): $ref: net/mail.Address
-			Response 200: $empty
-			`, "", &Endpoint{Method: "POST", Path: "/path", Request: Request{
-			ContentType: "foo",
-			Body:        &Params{Reference: "mail.Address"},
-		}}},
+Path: $ref: net/mail.Address
+Response 200: $empty
+		`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Request: Request{
+					Path: &Ref{Reference: "mail.Address"},
+				}},
+		},
+
+		{"req-content-type", `
+POST /path
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			},
+		},
 
 		{"response-ref", `
-				POST /path
+POST /path
 
-				Response: $empty
-				Response 400 (w00t): $empty
-			`, "", &Endpoint{
-			Method: "POST", Path: "/path",
-			Responses: map[int]Response{
-				200: {
-					ContentType: "application/json",
-					Body:        &Params{Description: "OK", Params: []Param{{Name: "$empty"}}},
+Response: $empty
+Response 400 (w00t): $empty
+			`,
+			"",
+			&Endpoint{
+				Method: "POST",
+				Path:   "/path",
+				Responses: map[int]Response{
+					200: {
+						ContentType: "application/json",
+						Body:        &Ref{Description: "OK"},
+					},
+					400: {
+						ContentType: "w00t",
+						Body:        &Ref{Description: "Bad Request"},
+					},
 				},
-				400: {
-					ContentType: "w00t",
-					Body:        &Params{Description: "Bad Request", Params: []Param{{Name: "$empty"}}},
-				},
-			}}},
+			},
+		},
 
-		{"err-double-code", `
-				POST /path
+		//{"err-double-code", `
+		//		POST /path
 
-				Response 200: $empty
-				Response 200: $empty
-			`, "response", nil},
+		//		Response 200: $empty
+		//		Response 200: $empty
+		//	`, "response", nil},
 	}
 
-	for i, tc := range cases {
-		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			prog := NewProgram(false)
 
-			if tc.want != nil && tc.want.Responses == nil {
-				tc.want.Responses = stdResp
+			if tt.want != nil && tt.want.Responses == nil {
+				tt.want.Responses = stdResp
 			}
-			tc.in = test.NormalizeIndent(tc.in)
+			tt.in = test.NormalizeIndent(tt.in)
 
-			out, err := parseComment(prog, tc.in, ".", "docparse.go")
-			if !test.ErrorContains(err, tc.wantErr) {
-				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
+			out, _, err := parseComment(prog, tt.in, ".", "docparse.go")
+			if !test.ErrorContains(err, tt.wantErr) {
+				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tt.wantErr)
 			}
-			if !reflect.DeepEqual(tc.want, out) {
-				t.Errorf("\n%v", diff.Diff(tc.want, out))
+			if !reflect.DeepEqual(tt.want, out) {
+				t.Errorf("\n%v", diff.Diff(tt.want, out))
 			}
 		})
 	}
 }
 
 func TestGetStartLine(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		in, wantMethod, wantPath string
 		wantTags                 []string
 	}{
 		// Valid
-		{"POST /path", "POST", "/path", nil},
-		{"GET /path tag1", "GET", "/path", []string{"tag1"}},
-		{"DELETE /path/str tag1 tag2", "DELETE", "/path/str", []string{"tag1", "tag2"}},
-		{"PATCH /path/{id}/{var}/x tag1 tag2", "PATCH", "/path/{id}/{var}/x", []string{"tag1", "tag2"}},
+		{"POST /path",
+			"POST", "/path", nil},
+		{"GET /path tag1",
+			"GET", "/path", []string{"tag1"}},
+		{"DELETE /path/str tag1 tag2",
+			"DELETE", "/path/str", []string{"tag1", "tag2"}},
+		{"PATCH /path/{id}/{var}/x tag1 tag2",
+			"PATCH", "/path/{id}/{var}/x", []string{"tag1", "tag2"}},
 
 		// Invalid start lines.
 		{"", "", "", nil},
@@ -140,93 +247,30 @@ func TestGetStartLine(t *testing.T) {
 		{"POST p/ath", "", "", nil},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			method, path, tags := getStartLine(tc.in)
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			method, path, tags := parseStartLine(tt.in)
 
-			if method != tc.wantMethod {
+			if method != tt.wantMethod {
 				t.Errorf("method wrong\nout:  %#v\nwant: %#v\n",
-					method, tc.wantMethod)
+					method, tt.wantMethod)
 			}
 
-			if path != tc.wantPath {
+			if path != tt.wantPath {
 				t.Errorf("path wrong\nout:  %#v\nwant: %#v\n",
-					path, tc.wantPath)
+					path, tt.wantPath)
 			}
 
-			if !reflect.DeepEqual(tc.wantTags, tags) {
-				t.Errorf("tags wrong\nout:  %#v\nwant: %#v\n", tags, tc.wantTags)
-			}
-		})
-	}
-}
-
-func TestGetBlocks(t *testing.T) {
-	cases := []struct {
-		in      string
-		wantErr string
-		want    map[string]string
-	}{
-		{"", "", map[string]string{}},
-		{"Request body:\n", `no content for header "Request body:"`, nil},
-		{"Request body:\nwoot:\n", `no content for header "Request body:"`, nil},
-		{"Request body:\n hello\n world\nRequest body:\n hello\n world\n", "duplicate header", nil},
-
-		{"Request body:\n hello\n world", "", map[string]string{
-			"Request body:": " hello\n world",
-		}},
-		{"Well, this is\na description\n", "", map[string]string{
-			"desc": "Well, this is\na description",
-		}},
-
-		{`
-Well, this is
-a description
-
-Request body (text/plain):
- hello
- world
-
-Query:
- foo
-
-`, "", map[string]string{
-			"desc": "Well, this is\na description",
-			"Request body (text/plain):": " hello\n world",
-			"Query:":                     " foo",
-		}},
-
-		// Single-line blocks
-		{`
-ANOTHER FILE!
-
-Request body: $ref: net/mail.Address
-Response 200: $ref: AnObject
-Response 400: $ref: ErrorObject
-Response 401: $ref: exampleimport.Foo`, "", map[string]string{
-			"desc":          "ANOTHER FILE!",
-			"Request body:": "$ref: net/mail.Address",
-			"Response 200:": "$ref: AnObject",
-			"Response 400:": "$ref: ErrorObject",
-			"Response 401:": "$ref: exampleimport.Foo",
-		}},
-	}
-
-	for i, tc := range cases {
-		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out, err := getBlocks(tc.in)
-			if !test.ErrorContains(err, tc.wantErr) {
-				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
-			}
-			if !reflect.DeepEqual(tc.want, out) {
-				t.Errorf("\n%v", diff.Diff(tc.want, out))
+			if !reflect.DeepEqual(tt.wantTags, tags) {
+				t.Errorf("tags wrong\nout:  %#v\nwant: %#v\n", tags, tt.wantTags)
 			}
 		})
 	}
 }
 
+/*
 func TestParseParams(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		in      string
 		want    Param
 		wantErr string
@@ -254,15 +298,15 @@ func TestParseParams(t *testing.T) {
 		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},
 	}
 
-	for i, tc := range cases {
+	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			prog := NewProgram(false)
-			out, err := parseParams(prog, tc.in, ".")
-			if !test.ErrorContains(err, tc.wantErr) {
-				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tc.wantErr)
+			out, err := parseParams(prog, tt.in, ".")
+			if !test.ErrorContains(err, tt.wantErr) {
+				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tt.wantErr)
 			}
-			if tc.wantErr == "" && !reflect.DeepEqual(tc.want, out.Params[0]) {
-				t.Errorf("\nout:  %#v\nwant: %#v\n", out.Params[0], tc.want)
+			if tt.wantErr == "" && !reflect.DeepEqual(tt.want, out.Params[0]) {
+				t.Errorf("\nout:  %#v\nwant: %#v\n", out.Params[0], tt.want)
 			}
 		})
 	}
@@ -271,10 +315,10 @@ func TestParseParams(t *testing.T) {
 		t.Run("combined", func(t *testing.T) {
 			in := ""
 			want := []Param{}
-			for _, tc := range cases {
-				if tc.wantErr == "" {
-					in += tc.in + "\n"
-					want = append(want, tc.want)
+			for _, tt := range tests {
+				if tt.wantErr == "" {
+					in += tt.in + "\n"
+					want = append(want, tt.want)
 				}
 			}
 
@@ -290,9 +334,10 @@ func TestParseParams(t *testing.T) {
 		})
 	}
 }
+*/
 
 func TestParseParamsTags(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		in, wantLine string
 		wantTags     []string
 	}{
@@ -311,50 +356,22 @@ func TestParseParamsTags(t *testing.T) {
 		{"Hello {enum: one two three}", "Hello", []string{"enum: one two three"}},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			outLine, outTags := parseParamsTags(tc.in)
-			if outLine != tc.wantLine {
-				t.Errorf("\nout:  %#v\nwant: %#v\n", outLine, tc.wantLine)
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			outLine, outTags := parseTags(tt.in)
+			if outLine != tt.wantLine {
+				t.Errorf("\nout:  %#v\nwant: %#v\n", outLine, tt.wantLine)
 			}
 
-			if !reflect.DeepEqual(tc.wantTags, outTags) {
-				t.Errorf("\nout:  %#v\nwant: %#v\n", outTags, tc.wantTags)
-			}
-		})
-	}
-}
-
-func TestCollapseIndent(t *testing.T) {
-	cases := []struct {
-		in   string
-		want []string
-	}{
-		{"", nil},
-		{"Hello", []string{"Hello"}},
-		{"Hello\nWorld", []string{"Hello", "World"}},
-		{"Hello\n World", []string{"Hello World"}},
-		{" Hello\n\tWorld", []string{"Hello World"}},
-		{"Hello\n  World", []string{"Hello World"}},
-		{"Hello\n  World\n  Test", []string{"Hello World Test"}},
-		{"Hello\nworld\n test", []string{"Hello", "world test"}},
-		{"Hello\nworld\n test\nfoo", []string{"Hello", "world test", "foo"}},
-		{"Hello\n\nworld\n test", []string{"Hello", "world test"}},
-		{" Hello\n  world\n foo\n  bar\n", []string{"Hello world", "foo bar"}},
-	}
-
-	for i, tc := range cases {
-		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			out := collapseIndents(tc.in)
-			if !reflect.DeepEqual(tc.want, out) {
-				t.Errorf("\nout:  %#v\nwant: %#v\n", out, tc.want)
+			if !reflect.DeepEqual(tt.wantTags, outTags) {
+				t.Errorf("\nout:  %#v\nwant: %#v\n", outTags, tt.wantTags)
 			}
 		})
 	}
 }
 
 func TestGetReference(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		in      string
 		wantErr string
 		want    *Reference
@@ -366,8 +383,8 @@ func TestGetReference(t *testing.T) {
 			Lookup:  "docparse.testObject",
 			Info:    "testObject general documentation.",
 			Fields: []Param{
-				{Name: "ID", Info: "ID documentation.", Required: true},
-				{Name: "Foo", Info: "Foo is a really cool foo-thing!\nSuch foo!"},
+				{Name: "ID"},
+				{Name: "Foo"},
 				{Name: "Bar"},
 			},
 			Schema: &Schema{
@@ -375,7 +392,7 @@ func TestGetReference(t *testing.T) {
 				Description: "testObject general documentation.",
 				Required:    []string{"ID"},
 				Properties: map[string]*Schema{
-					"ID":  {Type: "integer", Description: "ID documentation.", Required: []string{"ID"}},
+					"ID":  {Type: "integer", Description: "ID documentation."},
 					"Foo": {Type: "string", Description: "Foo is a really cool foo-thing!\nSuch foo!"},
 					"Bar": {Type: "array", Items: &Schema{Type: "string"}},
 				},
@@ -390,8 +407,8 @@ func TestGetReference(t *testing.T) {
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
 			Fields: []Param{
-				{Name: "Name", Info: "Proper name; may be empty."},
-				{Name: "Address", Info: "user@domain"},
+				{Name: "Name"},
+				{Name: "Address"},
 			},
 			Schema: &Schema{
 				Title: "Address",
@@ -409,12 +426,12 @@ func TestGetReference(t *testing.T) {
 		{"net/http.Header", "not a struct", nil},
 	}
 
-	for _, tc := range cases {
-		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v", tt.in), func(t *testing.T) {
 			prog := NewProgram(false)
-			out, err := GetReference(prog, tc.in, ".")
-			if !test.ErrorContains(err, tc.wantErr) {
-				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tc.wantErr)
+			out, err := GetReference(prog, "", tt.in, ".")
+			if !test.ErrorContains(err, tt.wantErr) {
+				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tt.wantErr)
 			}
 
 			if out != nil {
@@ -427,8 +444,8 @@ func TestGetReference(t *testing.T) {
 				}
 			}
 
-			if !reflect.DeepEqual(tc.want, out) {
-				t.Errorf("\n%v", diff.Diff(tc.want, out))
+			if !reflect.DeepEqual(tt.want, out) {
+				t.Errorf("\n%v", diff.Diff(tt.want, out))
 			}
 		})
 	}

@@ -1,4 +1,4 @@
-package openapi3
+package openapi2
 
 import (
 	"bytes"
@@ -7,10 +7,12 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 )
 
-func TestHTML(t *testing.T) {
+func TestExample(t *testing.T) {
 	prog := docparse.NewProgram(false)
+	prog.Config.Title = "Test Example"
+	prog.Config.Version = "v1"
 	prog.Config.Paths = []string{"../example/..."}
-	prog.Config.Output = WriteJSON
+	prog.Config.Output = WriteYAML
 
 	w := bytes.NewBufferString("")
 	err := docparse.FindComments(w, prog)

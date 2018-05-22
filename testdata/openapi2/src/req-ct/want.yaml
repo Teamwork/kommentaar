@@ -1,0 +1,28 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+      - text/plain
+      produces:
+      - application/json
+      parameters:
+      - name: req-ct.reqRef
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/req-ct.reqRef'
+      responses:
+        200:
+          description: 200 OK
+definitions:
+  req-ct.reqRef:
+    title: reqRef

@@ -33,7 +33,7 @@ func TestExampleDir(t *testing.T) {
 
 func TestFindType(t *testing.T) {
 	t.Run("absolute", func(t *testing.T) {
-		ts, path, pkg, err := FindType("", "net/http", "Header")
+		ts, path, pkg, err := findType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +60,7 @@ func TestFindType(t *testing.T) {
 		}
 
 		// Make sure it works from cache as well.
-		tsCached, pathCached, pkgCached, err := FindType("", "net/http", "Header")
+		tsCached, pathCached, pkgCached, err := findType("", "net/http", "Header")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestFindType(t *testing.T) {
 	})
 
 	t.Run("relative", func(t *testing.T) {
-		ts, path, pkg, err := FindType("../example/example.go", "exampleimport", "Foo")
+		ts, path, pkg, err := findType("../example/example.go", "exampleimport", "Foo")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +93,7 @@ func TestFindType(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-		cases := []struct {
+		tests := []struct {
 			name                      string
 			inFile, inPkgPath, inName string
 			wantErr                   string
@@ -115,11 +115,11 @@ func TestFindType(t *testing.T) {
 			},
 		}
 
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				_, _, _, err := FindType(tc.inFile, tc.inPkgPath, tc.inName)
-				if !test.ErrorContains(err, tc.wantErr) {
-					t.Fatalf("\nwant: %v\ngot:  %v", tc.wantErr, err)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, _, _, err := findType(tt.inFile, tt.inPkgPath, tt.inName)
+				if !test.ErrorContains(err, tt.wantErr) {
+					t.Fatalf("\nwant: %v\ngot:  %v", tt.wantErr, err)
 				}
 			})
 		}

@@ -183,17 +183,17 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 
 				{{if $e.Request.Path}}
 					<h4>Path parameters</h4>
-					{{template "paramsTpl" $e.Request.Path}}
+					{{/* {{template "paramsTpl" $e.Request.Path}} */}}
 				{{end}}
 
 				{{if $e.Request.Query}}
 					<h4>Query parameters</h4>
-					{{template "paramsTpl" $e.Request.Query}}
+					{{/* {{template "paramsTpl" $e.Request.Query}} */}}
 				{{end}}
 
 				{{if $e.Request.Form}}
 					<h4>Form parameters</h4>
-					{{template "paramsTpl" $e.Request.Form}}
+					{{/* {{template "paramsTpl" $e.Request.Form}} */}}
 				{{end}}
 
 				{{if $e.Request.Body}}
@@ -232,8 +232,8 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 				{{range $i, $p := $v.Fields}}
 					<li>
 						<code>{{$p.Name}}</code>
-						<code>{{$p.Kind}}</code>
-						– {{$p.Info}}
+						{{/*<code>{{$p.Kind}}</code>
+						– {{$p.Info}}*/}}
 					</li>
 				{{end}}
 			</ul>

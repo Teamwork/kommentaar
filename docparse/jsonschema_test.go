@@ -22,12 +22,12 @@ func TestFieldToProperty(t *testing.T) {
 		"sliceP":    {Type: "array", Items: &Schema{Type: "string"}},
 		"cstr":      {Type: "string"},
 		"cstrP":     {Type: "string"},
-		"bar":       {Reference: "#/components/schemas/a.bar"},
-		"barP":      {Reference: "#/components/schemas/a.bar"},
-		"pkg":       {Reference: "#/components/schemas/mail.Address"},
-		"pkgSlice":  {Type: "array", Items: &Schema{Reference: "#/components/schemas/mail.Address"}},
-		"pkgSliceP": {Type: "array", Items: &Schema{Reference: "#/components/schemas/mail.Address"}},
-		"deeper":    {Reference: "#/components/schemas/a.refAnother"},
+		"bar":       {Reference: "a.bar"},
+		"barP":      {Reference: "a.bar"},
+		"pkg":       {Reference: "mail.Address"},
+		"pkgSlice":  {Type: "array", Items: &Schema{Reference: "mail.Address"}},
+		"pkgSliceP": {Type: "array", Items: &Schema{Reference: "mail.Address"}},
+		"deeper":    {Reference: "a.refAnother"},
 		"docs": {Type: "string", Description: "This has some documentation!",
 			Required: []string{"docs"},
 			Enum:     []string{"one", "two", "three"},
@@ -35,7 +35,7 @@ func TestFieldToProperty(t *testing.T) {
 	}
 
 	build.Default.GOPATH = "./testdata"
-	ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "foo")
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "foo")
 	if err != nil {
 		t.Fatalf("could not parse file: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestFieldToProperty(t *testing.T) {
 
 	t.Run("nested", func(t *testing.T) {
 		prog := NewProgram(false)
-		ts, _, _, err := FindType("./testdata/src/a/a.go", "a", "nested")
+		ts, _, _, err := findType("./testdata/src/a/a.go", "a", "nested")
 		if err != nil {
 			t.Fatalf("could not parse file: %v", err)
 		}

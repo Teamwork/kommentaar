@@ -44,9 +44,15 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			return nil, fmt.Errorf("p.KindField is nil for %v", name)
 		}
 
-		// TODO: doesn't have to be json tag; that's just what Desk happens to
-		// use. We should get it from Content-Type or some such instead.
-		name := goutil.TagName(p.KindField, "json")
+		switch ref.Context {
+		case "path", "query", "form":
+			name = goutil.TagName(p.KindField, ref.Context)
+		default:
+			// TODO: doesn't have to be json tag; that's just what Desk happens to
+			// use. We should get it from Content-Type or some such instead.
+			name = goutil.TagName(p.KindField, "json")
+		}
+
 		if name == "-" {
 			continue
 		}
@@ -59,8 +65,16 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
 
-		if p.Required {
-			schema.Required = append(schema.Required, name)
+		// TODO: ugly
+		if len(prop.Required) > 0 {
+			switch ref.Context {
+			case "path", "query", "form":
+			// Do nothing
+			default:
+				name = goutil.TagName(p.KindField, ref.Context)
+				schema.Required = append(schema.Required, name)
+				prop.Required = nil
+			}
 		}
 
 		if prop == nil {
@@ -75,16 +89,31 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 	return schema, nil
 }
 
-// TODO: merge with setParamTags
+const (
+	paramRequired  = "required"
+	paramOptional  = "optional"
+	paramOmitEmpty = "omitempty"
+	paramReadOnly  = "readonly"
+)
+
 func setTags(name string, p *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
-		case "required":
+
+		case paramRequired:
 			p.Required = append(p.Required, name)
-
-		case "optional":
+		case paramOptional:
 			// Do nothing.
+		// TODO: implement this (also load from struct tag?), but I
+		// don't see any way to do that in the OpenAPI spec?
+		case paramOmitEmpty:
+			return fmt.Errorf("omitempty not implemented yet")
+		// TODO
+		case paramReadOnly:
+			return fmt.Errorf("readonly not implemented yet")
 
+		// Various string formats.
+		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
 		case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
 			if t == "url" {
 				t = "uri"
@@ -123,8 +152,6 @@ func setTags(name string, p *Schema, tags []string) error {
 func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*Schema, error) {
 	var p Schema
 
-	// TODO: parse {..} tags from here. That should probably be in docparse
-	// though(?)
 	if f.Doc != nil {
 		p.Description = f.Doc.Text()
 	} else if f.Comment != nil {
@@ -133,7 +160,8 @@ func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*S
 	p.Description = strings.TrimSpace(p.Description)
 
 	var tags []string
-	p.Description, tags = parseParamsTags(p.Description)
+	p.Description, tags = parseTags(p.Description)
+	_ = tags
 	err := setTags(fName, &p, tags)
 	if err != nil {
 		return nil, err
@@ -197,7 +225,7 @@ start:
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, _, err := FindType(ref.File, pkg, name.Name)
+		ts, _, _, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +286,7 @@ start:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 
-	p.Reference = "#/components/schemas/" + lookup
+	p.Reference = lookup
 
 	return &p, nil
 }
@@ -330,7 +358,7 @@ arrayStart:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 	p.Items = &Schema{
-		Reference: "#/components/schemas/" + lookup,
+		Reference: lookup,
 	}
 
 	return nil
@@ -383,7 +411,7 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 	}
 
 	// Find type.
-	ts, _, _, err := FindType(filePath, pkg, name)
+	ts, _, _, err := findType(filePath, pkg, name)
 	if err != nil {
 		return "", err
 	}

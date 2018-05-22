@@ -1,1 +1,4 @@
 /vendor
+/coverage.txt
+/coverage.html
+.DS_Store
