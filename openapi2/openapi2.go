@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -22,7 +23,7 @@ type (
 		Swagger string `json:"swagger" yaml:"swagger"`
 		Info    Info   `json:"info,omitempty" yaml:"info,omitempty"`
 
-		// TODO: do we need this? wil lhave to come from config
+		// TODO: do we need this? will have to come from config
 		Host     string   `json:"host,omitempty" yaml:"host,omitempty"`
 		BasePath string   `json:"basePath,omitempty" yaml:"basePath,omitempty"`
 		Schemes  []string `json:"schemes,omitempty" yaml:"schemes,omitempty"`
@@ -160,7 +161,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 
 		if e.Request.Path != nil {
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
 			ref := prog.References[e.Request.Path.Reference]
+
 			for name, p := range ref.Schema.Properties {
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        name,
@@ -172,9 +176,18 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			}
 		}
 		if e.Request.Query != nil {
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
 			ref := prog.References[e.Request.Query.Reference]
+
 			for _, f := range ref.Fields {
 				schema := ref.Schema.Properties[f.Name]
+				if schema == nil {
+					_, _ = pretty.Print(ref)
+					return fmt.Errorf("schema is nil for field %v in %v",
+						f.Name, e.Request.Query.Reference)
+				}
+
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        f.Name,
 					In:          "query",
@@ -185,7 +198,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			}
 		}
 		if e.Request.Form != nil {
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
 			ref := prog.References[e.Request.Form.Reference]
+
 			for _, f := range ref.Fields {
 				schema := ref.Schema.Properties[f.Name]
 				op.Parameters = append(op.Parameters, Parameter{
