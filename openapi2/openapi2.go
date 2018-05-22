@@ -1,8 +1,8 @@
-// Package openapi3 outputs to OpenAPI 3.0.1
+// Package openapi2 outputs to OpenAPI 2.0
 //
-// https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.1.md
+// https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md
 // http://json-schema.org/
-package openapi3
+package openapi2
 
 import (
 	"encoding/json"
@@ -10,8 +10,10 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
+	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -19,10 +21,19 @@ import (
 type (
 	// OpenAPI output.
 	OpenAPI struct {
-		OpenAPI    string           `json:"openapi" yaml:"openapi"`
-		Info       Info             `json:"info,omitempty" yaml:"info,omitempty"`
-		Paths      map[string]*Path `json:"paths" yaml:"paths"`
-		Components Components       `json:"components" yaml:"components"`
+		Swagger string `json:"swagger" yaml:"swagger"`
+		Info    Info   `json:"info" yaml:"info"`
+
+		// TODO: do we need this? will have to come from config
+		Host     string   `json:"host,omitempty" yaml:"host,omitempty"`
+		BasePath string   `json:"basePath,omitempty" yaml:"basePath,omitempty"`
+		Schemes  []string `json:"schemes,omitempty" yaml:"schemes,omitempty"`
+		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
+		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
+
+		Paths map[string]*Path `json:"paths" yaml:"paths"`
+
+		Definitions map[string]docparse.Schema `json:"definitions" yaml:"definitions"`
 	}
 
 	// Info provides metadata about the API.
@@ -39,20 +50,15 @@ type (
 		Email string `json:"email,omitempty" yaml:"email,omitempty"`
 	}
 
-	// Components holds a set of reusable objects.
-	Components struct {
-		Schemas    map[string]docparse.Schema `json:"schemas" yaml:"schemas"`
-		Responses  map[int]Response           `json:"responses,omitempty" yaml:"responses,omitempty"`
-		Parameters map[string]Parameter       `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	}
-
 	// Parameter describes a single operation parameter.
 	Parameter struct {
 		Name        string          `json:"name" yaml:"name"`
 		In          string          `json:"in" yaml:"in"` // query, header, path, cookie
 		Description string          `json:"description,omitempty" yaml:"description,omitempty"`
 		Required    bool            `json:"required,omitempty" yaml:"required,omitempty"`
-		Schema      docparse.Schema `json:"schema" yaml:"schema"`
+		Type        string          `json:"type,omitempty" yaml:"type,omitempty"`
+		Format      string          `json:"format,omitempty" yaml:"format,omitempty"`
+		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
 	// Path describes the operations available on a single path.
@@ -71,8 +77,9 @@ type (
 		Tags        []string         `json:"tags,omitempty" yaml:"tags,omitempty"`
 		Summary     string           `json:"summary,omitempty" yaml:"summary,omitempty"`
 		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
-		Parameters  []Reference      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-		RequestBody RequestBody      `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+		Consumes    []string         `json:"consumes,omitempty" yaml:"consumes,omitempty"`
+		Produces    []string         `json:"produces,omitempty" yaml:"produces,omitempty"`
+		Parameters  []Parameter      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 		Responses   map[int]Response `json:"responses" yaml:"responses"`
 	}
 
@@ -82,22 +89,10 @@ type (
 		Ref string `json:"$ref" yaml:"$ref"`
 	}
 
-	// RequestBody describes a single request body.
-	RequestBody struct {
-		Content  map[string]MediaType `json:"content" yaml:"content"`
-		Required bool                 `json:"required,omitempty" yaml:"required,omitempty"`
-	}
-
-	// MediaType provides schema and examples for the media type identified by
-	// its key.
-	MediaType struct {
-		Schema docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
-	}
-
 	// Response describes a single response from an API Operation.
 	Response struct {
 		Description string
-		Content     map[string]MediaType `json:"content" yaml:"content"`
+		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 )
 
@@ -120,7 +115,7 @@ var reParams = regexp.MustCompile(`{\w+}`)
 
 func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	out := OpenAPI{
-		OpenAPI: "3.0.1",
+		Swagger: "2.0",
 		Info: Info{
 			Title:   prog.Config.Title,
 			Version: prog.Config.Version,
@@ -130,12 +125,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				URL:   prog.Config.ContactSite,
 			},
 		},
-		Paths: map[string]*Path{},
-		Components: Components{
-			Schemas:    map[string]docparse.Schema{},
-			Responses:  map[int]Response{},
-			Parameters: map[string]Parameter{},
-		},
+		Consumes:    []string{prog.Config.DefaultRequestCt},
+		Produces:    []string{prog.Config.DefaultRequestCt},
+		Paths:       map[string]*Path{},
+		Definitions: map[string]docparse.Schema{},
 	}
 
 	// Add components.
@@ -144,22 +137,10 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			return fmt.Errorf("schema is nil for %v", k)
 		}
 		switch v.Context {
-		case "path", "query", "form":
-			out.Components.Parameters[k] = Parameter{
-				Name:   v.Schema.Title,
-				In:     v.Context,
-				Schema: *v.Schema,
-			}
+		case "form", "query", "path":
+			// Nothing, this will be inline in the operation.
 		default:
-			out.Components.Schemas[k] = *v.Schema
-		}
-	}
-
-	// Add default responses.
-	for k, v := range prog.Config.DefaultResponse {
-		out.Components.Responses[k] = Response{
-			Description: v.Schema.Description,
-			Content:     map[string]MediaType{v.Description: {Schema: v.Schema}},
+			out.Definitions[k] = *v.Schema
 		}
 	}
 
@@ -175,61 +156,100 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			Responses:   map[int]Response{},
 		}
 
+		// Add path params.
 		if e.Request.Path != nil {
-			op.Parameters = append(op.Parameters, Reference{
-				Ref: "#/components/parameters/" + e.Request.Path.Reference,
-			})
-		}
-		if e.Request.Query != nil {
-			op.Parameters = append(op.Parameters, Reference{
-				Ref: "#/components/parameters/" + e.Request.Query.Reference,
-			})
-		}
-		if e.Request.Form != nil {
-			op.Parameters = append(op.Parameters, Reference{
-				Ref: "#/components/parameters/" + e.Request.Form.Reference,
-			})
-		}
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
+			ref := prog.References[e.Request.Path.Reference]
 
-		// Add any {..} parameters in the path to the parameter list.
-		// OpenAPI spec mandates that they're defined as parameters, but 95% of
-		// the time this is just pointless: "id is the id". Whoopdiedo, such
-		// great docs.
-		if strings.Contains(e.Path, "{") && e.Request.Path == nil {
-			refName := "auto_" + op.OperationID
-			schema := docparse.Schema{
-				Properties: map[string]*docparse.Schema{},
+			for name, p := range ref.Schema.Properties {
+				op.Parameters = append(op.Parameters, Parameter{
+					Name:        name,
+					In:          "path",
+					Description: p.Description,
+					Type:        p.Type,
+					Required:    true,
+				})
 			}
-			op.Parameters = append(op.Parameters, Reference{
-				Ref: "#/components/parameters/" + refName,
-			})
+		}
 
+		// Add query params.
+		if e.Request.Query != nil {
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
+			ref := prog.References[e.Request.Query.Reference]
+
+			for _, f := range ref.Fields {
+				schema := ref.Schema.Properties[f.Name]
+				if schema == nil {
+					_, _ = pretty.Print(ref)
+					return fmt.Errorf("schema is nil for field %v in %v",
+						f.Name, e.Request.Query.Reference)
+				}
+
+				op.Parameters = append(op.Parameters, Parameter{
+					Name:        f.Name,
+					In:          "query",
+					Description: schema.Description,
+					Type:        schema.Type,
+					//Required:    f.Required,
+				})
+			}
+		}
+
+		// Add form params,
+		if e.Request.Form != nil {
+			// TODO: Don't access prog.References directly. This probably
+			// shouldn't be there anyway.
+			ref := prog.References[e.Request.Form.Reference]
+
+			for _, f := range ref.Fields {
+				schema := ref.Schema.Properties[f.Name]
+				op.Parameters = append(op.Parameters, Parameter{
+					Name:        f.Name,
+					In:          "formData",
+					Description: schema.Description,
+					Type:        schema.Type,
+					//Required:    f.Required,
+				})
+			}
+			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")
+		}
+
+		// Add any {..} parameters in the path to the parameter list if they
+		// haven't been specified manually in e.Request.Path.
+		if strings.Contains(e.Path, "{") && e.Request.Path == nil {
 			for _, param := range reParams.FindAllString(e.Path, -1) {
 				param = strings.Trim(param, "{}")
-				schema.Properties[param] = &docparse.Schema{
-					Title: param,
-					Type:  "integer",
-				}
-			}
-
-			out.Components.Parameters[refName] = Parameter{
-				Name:   refName,
-				In:     "path",
-				Schema: schema,
+				op.Parameters = append(op.Parameters, Parameter{
+					Name: param,
+					In:   "path",
+					Type: "integer",
+					//Format:   "int64",
+					Required: true,
+				})
 			}
 		}
 
 		if e.Request.Body != nil {
-			op.RequestBody = RequestBody{
-				Content: map[string]MediaType{
-					e.Request.ContentType: MediaType{
-						Schema: docparse.Schema{
-							Reference: "#/components/schemas/" + e.Request.Body.Reference,
-						},
-					},
+			op.Parameters = append(op.Parameters, Parameter{
+				// TODO: name required, is there a better value to use?
+				Name:        e.Request.Body.Reference,
+				In:          "body",
+				Description: e.Request.Body.Description,
+				Required:    true,
+				Schema: docparse.Schema{
+					Reference: "#/definitions/" + e.Request.Body.Reference,
 				},
-			}
+			})
+			op.Consumes = append(op.Consumes, e.Request.ContentType)
 		}
+
+		// TODO: preserve order in which they were defined in the struct, but
+		// for now sort it like this so the output is stable.
+		sort.Slice(op.Parameters, func(i, j int) bool {
+			return op.Parameters[i].Type+op.Parameters[i].Name > op.Parameters[j].Type+op.Parameters[j].Name
+		})
 
 		for code, resp := range e.Responses {
 			r := Response{
@@ -238,14 +258,18 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 			// Link reference.
 			if resp.Body != nil && resp.Body.Reference != "" {
-				r.Content = map[string]MediaType{
-					resp.ContentType: MediaType{
-						Schema: docparse.Schema{Reference: "#/components/schemas/" + resp.Body.Reference},
-					},
+				r.Schema = docparse.Schema{
+					Reference: "#/definitions/" + resp.Body.Reference,
+				}
+			} else if dr, ok := prog.Config.DefaultResponse[code]; ok {
+				lookup := strings.Split(dr.Lookup, "/")
+				r.Schema = docparse.Schema{
+					Reference: "#/definitions/" + lookup[len(lookup)-1],
 				}
 			}
-
 			op.Responses[code] = r
+
+			op.Produces = appendIfNotExists(op.Produces, resp.ContentType)
 		}
 
 		if out.Paths[e.Path] == nil {
@@ -297,4 +321,13 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 func makeID(e *docparse.Endpoint) string {
 	return strings.Replace(fmt.Sprintf("%v_%v", e.Method,
 		strings.Replace(e.Path, "/", "_", -1)), "__", "_", 1)
+}
+
+func appendIfNotExists(xs []string, y string) []string {
+	for _, x := range xs {
+		if x == y {
+			return xs
+		}
+	}
+	return append(xs, y)
 }

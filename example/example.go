@@ -13,7 +13,6 @@ import (
 // This will create a new foo object for a customer. It's important to remember
 // that only Pro customers have access to foos.
 //
-// Form: $ref: formParams
 // Request body (application/json): $ref: RequestObj
 // Response 200 (application/json): $ref: AnObject
 // Response 400 (application/json): $ref: ErrorObject

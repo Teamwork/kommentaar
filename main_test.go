@@ -5,11 +5,12 @@ import (
 	"go/build"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/teamwork/kommentaar/docparse"
-	"github.com/teamwork/kommentaar/openapi3"
+	"github.com/teamwork/kommentaar/openapi2"
 	"github.com/teamwork/test"
 	"github.com/teamwork/test/diff"
 )
@@ -19,15 +20,15 @@ func TestMain(t *testing.T) {
 	main()
 }
 
-func TestOpenAPI3(t *testing.T) {
-	tests, err := ioutil.ReadDir("./testdata/src")
+func TestOpenAPI2(t *testing.T) {
+	tests, err := ioutil.ReadDir("./testdata/openapi2/src")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.Name(), func(t *testing.T) {
-			path := "./testdata/src/" + tt.Name()
+			path := "./testdata/openapi2/src/" + tt.Name()
 
 			want, err := ioutil.ReadFile(path + "/want.yaml")
 			if err != nil && !os.IsNotExist(err) {
@@ -41,11 +42,14 @@ func TestOpenAPI3(t *testing.T) {
 			}
 			wantErr = bytes.TrimSpace(wantErr)
 
-			build.Default.GOPATH = "./testdata"
+			wd, _ := os.Getwd()
+			build.Default.GOPATH = filepath.Join(wd, "/testdata/openapi2")
 
 			prog := docparse.NewProgram(false)
-			prog.Config.Paths = []string{"./testdata/src/" + tt.Name()}
-			prog.Config.Output = openapi3.WriteYAML
+			prog.Config.Title = "x"
+			prog.Config.Version = "x"
+			prog.Config.Paths = []string{"./testdata/openapi2/src/" + tt.Name()}
+			prog.Config.Output = openapi2.WriteYAML
 
 			outBuf := bytes.NewBuffer(nil)
 			err = docparse.FindComments(outBuf, prog)

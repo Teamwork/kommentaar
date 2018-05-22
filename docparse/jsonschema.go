@@ -279,7 +279,7 @@ start:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 
-	p.Reference = "#/components/schemas/" + lookup
+	p.Reference = fmt.Sprintf("%s/%s", prog.Config.SchemaRefPrefix, lookup)
 
 	return &p, nil
 }
@@ -351,7 +351,7 @@ arrayStart:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 	p.Items = &Schema{
-		Reference: "#/components/schemas/" + lookup,
+		Reference: fmt.Sprintf("%s/%s", prog.Config.SchemaRefPrefix, lookup),
 	}
 
 	return nil

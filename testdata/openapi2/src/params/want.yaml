@@ -1,0 +1,33 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path/{id}:
+    post:
+      operationId: POST_path_{id}
+      tags:
+      - tag
+      consumes:
+      - application/x-www-form-urlencoded
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: id
+        in: query
+        type: string
+      - name: id
+        in: formData
+        type: string
+      responses:
+        200:
+          description: 200 OK
+definitions: {}
