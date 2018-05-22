@@ -15,7 +15,6 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi2"
-	"github.com/teamwork/kommentaar/openapi3"
 )
 
 func main() {
@@ -30,9 +29,6 @@ func main() {
 	openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
 	openapi2-json        OpenAPI/Swagger 2.0 as JSON
 	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
-	openapi3-yaml        OpenAPI 3.0.1 as YAML
-	openapi3-json        OpenAPI 3.0.1 as JSON
-	openapi3-jsonindent  OpenAPI 3.0.1 as JSON indented
 	html                 HTML documentation
 `)
 
@@ -51,12 +47,6 @@ func main() {
 		outFunc = openapi2.WriteJSON
 	case "openapi2-jsonindent":
 		outFunc = openapi2.WriteJSONIndent
-	case "openapi3-yaml":
-		outFunc = openapi3.WriteYAML
-	case "openapi3-json":
-		outFunc = openapi3.WriteJSON
-	case "openapi3-jsonindent":
-		outFunc = openapi3.WriteJSONIndent
 	case "html":
 		outFunc = html.WriteHTML
 
