@@ -189,7 +189,10 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		canon := canonicalType(typ)
+		canon, err := canonicalType(ref.File, ref.Package, typ)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get canonical type: %v", err)
+		}
 		if canon != nil {
 			sw = canon
 			goto start
@@ -217,6 +220,7 @@ start:
 
 		lookup := pkg + "." + name.Name
 		t, f := MapType(lookup)
+
 		p.Format = f
 		if t != "" {
 			p.Type = JSONSchemaType(t)
@@ -306,7 +310,7 @@ arrayStart:
 		asw = typ.X
 		goto arrayStart
 
-	// Simple identifier
+	// Simple identifier: "string", "myCustomType".
 	case *ast.Ident:
 
 		dbg("resolveArray: ident: %#v", typ.Name)
@@ -358,11 +362,11 @@ arrayStart:
 	if i := strings.LastIndex(pkg, "/"); i > -1 {
 		lookup = pkg[i+1:] + "." + name.Name
 	}
-	p.Items = &Schema{
-		Reference: lookup,
-	}
+	p.Items = &Schema{Reference: lookup}
 
-	return nil
+	// Add to prog.References.
+	_, err = GetReference(prog, "", lookup, ref.File)
+	return err
 }
 
 func isPrimitive(n string) bool {
@@ -427,17 +431,26 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 }
 
 // Get the canonical type.
-func canonicalType(typ *ast.Ident) ast.Expr {
-	if typ.Obj == nil {
-		return nil
+func canonicalType(currentFile, pkgPath string, typ *ast.Ident) (ast.Expr, error) {
+	if builtInType(typ.Name) {
+		return nil, nil
 	}
 
-	ts := typ.Obj.Decl.(*ast.TypeSpec)
+	var ts *ast.TypeSpec
+	if typ.Obj == nil {
+		var err error
+		ts, _, _, err = findType(currentFile, pkgPath, typ.Name)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ts = typ.Obj.Decl.(*ast.TypeSpec)
+	}
 
 	// Don't resolve structs; we do this later.
 	if _, ok := ts.Type.(*ast.StructType); ok {
-		return nil
+		return nil, nil
 	}
 
-	return ts.Type
+	return ts.Type, nil
 }
