@@ -34,8 +34,7 @@ Or several packages subpackages:
 
     $ kommentaar github.com/teamwork/desk/api/...
 
-The default output is as an OpenAPI 3 YAML file, which is *not* compatible with
-the OpenAPI 2/Swagger specification.
+The default output is as an OpenAPI 2 YAML file.
 
 See `kommentaar -h` for a list of options. You can also the Go API (see godoc).
 
