@@ -125,7 +125,7 @@ func findType(currentFile, pkgPath, name string) (
 		}
 	}
 	if err != nil {
-		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
+		return nil, "", "", fmt.Errorf("XX could not resolve package: %v", err)
 	}
 
 	// Try to load from cache.
@@ -390,6 +390,7 @@ start:
 	return nil
 }
 
+// Add the type declaration to references.
 func resolveType(prog *Program, context string, typ *ast.Ident, filePath, pkg string) error {
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {

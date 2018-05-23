@@ -1,0 +1,57 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/struct-slice.resp'
+definitions:
+  struct-slice.customFieldValue:
+    title: customFieldValue
+    properties:
+      val:
+        type: string
+  struct-slice.deal:
+    title: deal
+    properties:
+      customFieldValues:
+        type: array
+        items:
+          $ref: '#/definitions/struct-slice.customFieldValue'
+  struct-slice.resp:
+    title: resp
+    properties:
+      another:
+        description: Double comment.
+        type: array
+        items:
+          type: string
+      basic:
+        description: Basic comment.
+        type: array
+        items:
+          type: string
+      custom:
+        description: Custom comment.
+        type: array
+        items:
+          type: string
+      deal:
+        $ref: '#/definitions/struct-slice.deal'
+      structRef:
+        description: structRefComment.
+        type: array
+        items:
+          $ref: '#/definitions/struct-slice.customFieldValue'

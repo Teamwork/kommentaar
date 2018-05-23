@@ -54,7 +54,7 @@ type DefaultResponse struct {
 
 // NewProgram creates a new Program instance.
 func NewProgram(dbg bool) *Program {
-	debug = dbg
+	printDebug = dbg
 
 	return &Program{
 		References: make(map[string]Reference),
@@ -68,10 +68,10 @@ func NewProgram(dbg bool) *Program {
 	}
 }
 
-var debug bool
+var printDebug bool
 
 func dbg(s string, a ...interface{}) {
-	if debug {
+	if printDebug {
 		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
 	}
 }
