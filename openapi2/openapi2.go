@@ -58,6 +58,7 @@ type (
 		Required    bool            `json:"required,omitempty" yaml:"required,omitempty"`
 		Type        string          `json:"type,omitempty" yaml:"type,omitempty"`
 		Format      string          `json:"format,omitempty" yaml:"format,omitempty"`
+		Enum        []string        `json:"enum,omitempty" yaml:"enum,omitempty"`
 		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
@@ -131,7 +132,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		Definitions: map[string]docparse.Schema{},
 	}
 
-	// Add components.
+	// Add definitions.
 	for k, v := range prog.References {
 		if v.Schema == nil {
 			return fmt.Errorf("schema is nil for %v", k)
@@ -191,13 +192,13 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			ref := prog.References[e.Request.Query.Reference]
 
 			for _, f := range ref.Fields {
-				// TODO: this should be done in docparse
+				// TODO: this should be done in docparse.
 				f.Name = goutil.TagName(f.KindField, "query")
 				if f.Name == "-" {
 					continue
 				}
 
-				schema := ref.Schema.Properties[f.Name] // TODO: use tag!!
+				schema := ref.Schema.Properties[f.Name]
 				if schema == nil {
 					return fmt.Errorf("schema is nil for field %v in %v",
 						f.Name, e.Request.Query.Reference)
@@ -209,6 +210,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Description: schema.Description,
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
+					Enum:        schema.Enum,
 				})
 			}
 		}
@@ -238,6 +240,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Description: schema.Description,
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
+					Enum:        schema.Enum,
 				})
 			}
 			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")
