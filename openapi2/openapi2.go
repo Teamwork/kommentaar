@@ -139,12 +139,14 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		switch v.Context {
 		case "form", "query", "path":
 			// Nothing, this will be inline in the operation.
+		case docparse.ContextEmbed:
+			// Skip.
 		default:
 			for _, f := range v.Schema.Properties {
-				if f.Reference != "" {
+				if f.Reference != "" && !strings.HasPrefix(f.Reference, "#/definitions/") {
 					f.Reference = "#/definitions/" + f.Reference
 				}
-				if f.Items != nil && f.Items.Reference != "" {
+				if f.Items != nil && f.Items.Reference != "" && !strings.HasPrefix(f.Items.Reference, "#/definitions/") {
 					f.Items.Reference = "#/definitions/" + f.Items.Reference
 				}
 			}

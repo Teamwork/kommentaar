@@ -15,6 +15,12 @@ import (
 	"github.com/teamwork/utils/goutil"
 )
 
+// Should replace this with boolean once we remove form/query/path from
+// references.
+const (
+	ContextEmbed = "embed"
+)
+
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
 	pkgPaths, err := goutil.Expand(prog.Config.Paths, build.FindOnly)
@@ -240,6 +246,12 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := prog.References[lookup]; ok {
+		// Update context: some structs are embeded but also referenced
+		// directly.
+		if ref.Context == ContextEmbed {
+			ref.Context = context
+			prog.References[lookup] = ref
+		}
 		return &ref, nil
 	}
 
@@ -272,11 +284,9 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	// refactor. We should pass st to structToSchema() or something.
 	for _, f := range st.Fields.List {
 
-		// Skip embedded struct for now.
-		// TODO: we want to support this eventually.
+		// Skip embedded structs; we merge them later.
 		if len(f.Names) == 0 {
 			continue
-			//return nil, fmt.Errorf("embeded struct is not yet supported")
 		}
 
 		// Names is an array in cases like "Foo, Bar string".
@@ -290,17 +300,27 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	}
 
 	prog.References[ref.Lookup] = ref
+	var nested []string
 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
+		nestContext := context
+		if len(f.Names) == 0 {
+			nestContext = ContextEmbed
+		}
+
+		// TODO: tagname should be config.
 		if goutil.TagName(f, "json") == "-" {
 			continue
 		}
 
-		err := findNested(prog, context, f, foundPath, pkg)
+		nestLookup, err := findNested(prog, nestContext, f, foundPath, pkg)
 		if err != nil {
 			return nil, fmt.Errorf("\n  findNested: %v", err)
+		}
+		if nestContext == ContextEmbed {
+			nested = append(nested, nestLookup)
 		}
 	}
 
@@ -310,12 +330,26 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
 	}
 	ref.Schema = schema
+
+	// Merge for embeded structs.
+	for _, n := range nested {
+		ref.Fields = append(ref.Fields, prog.References[n].Fields...)
+
+		if prog.References[n].Schema != nil {
+			for k, v := range prog.References[n].Schema.Properties {
+				if _, ok := ref.Schema.Properties[k]; !ok {
+					ref.Schema.Properties[k] = v
+				}
+			}
+		}
+	}
+
 	prog.References[ref.Lookup] = ref
 
 	return &ref, nil
 }
 
-func findNested(prog *Program, context string, f *ast.Field, filePath, pkg string) error {
+func findNested(prog *Program, context string, f *ast.Field, filePath, pkg string) (string, error) {
 	var name *ast.Ident
 
 	sw := f.Type
@@ -338,7 +372,7 @@ start:
 	case *ast.SelectorExpr:
 		pkgSel, ok := typ.X.(*ast.Ident)
 		if !ok {
-			return fmt.Errorf("typ.X is not ast.Ident: %#v", typ.X)
+			return "", fmt.Errorf("typ.X is not ast.Ident: %#v", typ.X)
 		}
 		name = typ.Sel
 		pkg = pkgSel.Name
@@ -365,7 +399,7 @@ start:
 		case *ast.SelectorExpr:
 			pkgSel, ok := elementType.X.(*ast.Ident)
 			if !ok {
-				return fmt.Errorf("elementType.X is not ast.Ident: %#v",
+				return "", fmt.Errorf("elementType.X is not ast.Ident: %#v",
 					elementType.X)
 			}
 			name = elementType.Sel
@@ -374,7 +408,7 @@ start:
 	}
 
 	if name == nil {
-		return nil
+		return "", nil
 	}
 
 	lookup := pkg + "." + name.Name
@@ -384,16 +418,16 @@ start:
 
 	// Don't need to add stuff we map to Go primitives.
 	if _, ok := mapTypes[lookup]; ok {
-		return nil
+		return lookup, nil
 	}
 
 	if _, ok := prog.References[lookup]; !ok {
 		err := resolveType(prog, context, name, filePath, pkg)
 		if err != nil {
-			return fmt.Errorf("%v.%v: %v", pkg, name, err)
+			return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
 		}
 	}
-	return nil
+	return lookup, nil
 }
 
 // Add the type declaration to references.
