@@ -125,7 +125,7 @@ func findType(currentFile, pkgPath, name string) (
 		}
 	}
 	if err != nil {
-		return nil, "", "", fmt.Errorf("XX could not resolve package: %v", err)
+		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
 	}
 
 	// Try to load from cache.
