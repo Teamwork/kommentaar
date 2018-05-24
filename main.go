@@ -4,16 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
-	"arp242.net/sconfig"
 	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
+	"github.com/teamwork/kommentaar/kconfig"
 	"github.com/teamwork/kommentaar/openapi2"
 )
 
@@ -63,35 +61,7 @@ func main() {
 	prog := docparse.NewProgram(*debug)
 
 	if *config != "" {
-		err := sconfig.Parse(&prog.Config, *config, sconfig.Handlers{
-			// TODO: move this to docparse so it can be called more easily.
-			"DefaultResponse": func(line []string) error {
-				code, err := strconv.ParseInt(line[0], 10, 32)
-				if err != nil {
-					return fmt.Errorf("first word must be response code: %v", err)
-				}
-
-				// TODO: validate rest as well.
-
-				if prog.Config.DefaultResponse == nil {
-					prog.Config.DefaultResponse = make(map[int]docparse.DefaultResponse)
-				}
-				def := docparse.DefaultResponse{
-					Lookup:      strings.Replace(strings.Join(line[1:], " "), "$ref: ", "", 1),
-					Description: fmt.Sprintf("%v %v", code, http.StatusText(int(code))),
-				}
-				ref, err := docparse.GetReference(prog, "", def.Lookup, "")
-				if err != nil {
-					return err
-				}
-
-				def.Schema = *ref.Schema
-
-				prog.Config.DefaultResponse[int(code)] = def
-
-				return nil
-			},
-		})
+		err := kconfig.Load(prog, *config)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, err.Error()+"\n")
 			os.Exit(1)
