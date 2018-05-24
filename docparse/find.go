@@ -48,6 +48,12 @@ func FindComments(w io.Writer, prog *Program) error {
 					}
 				}
 
+				// For debugging one file.
+				// TODO: Should make "kommentaar ./api/v2/users.go" work.
+				//if relPath != "github.com/teamwork/desk/api/v2/users.go" {
+				//	continue
+				//}
+
 				for _, c := range f.Comments {
 					e, relLine, err := parseComment(prog, c.Text(), p.ImportPath, fullPath)
 					if err != nil {

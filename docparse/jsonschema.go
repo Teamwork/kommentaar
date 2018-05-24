@@ -189,7 +189,7 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		canon, err := canonicalType(ref.File, ref.Package, typ)
+		canon, err := canonicalType(ref.File, pkg, typ)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get canonical type: %v", err)
 		}
@@ -218,6 +218,15 @@ start:
 		pkg = pkgSel.Name
 		name = typ.Sel
 
+		canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get canonical type: %v", err)
+		}
+		if canon != nil {
+			sw = canon
+			goto start
+		}
+
 		lookup := pkg + "." + name.Name
 		t, f := MapType(lookup)
 
@@ -238,7 +247,7 @@ start:
 		switch resolvType := ts.Type.(type) {
 		case *ast.ArrayType:
 			p.Type = "array"
-			err := resolveArray(prog, ref, &p, resolvType.Elt)
+			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt)
 			if err != nil {
 				return nil, err
 			}
@@ -259,7 +268,7 @@ start:
 	case *ast.ArrayType:
 		p.Type = "array"
 
-		err := resolveArray(prog, ref, &p, typ.Elt)
+		err := resolveArray(prog, ref, pkg, &p, typ.Elt)
 		if err != nil {
 			return nil, err
 		}
@@ -296,10 +305,9 @@ start:
 	return &p, nil
 }
 
-func resolveArray(prog *Program, ref Reference, p *Schema, typ ast.Expr) error {
+func resolveArray(prog *Program, ref Reference, pkg string, p *Schema, typ ast.Expr) error {
 	asw := typ
 
-	pkg := ref.Package
 	var name *ast.Ident
 
 arrayStart:
