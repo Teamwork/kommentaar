@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
@@ -20,6 +21,9 @@ type Schema struct {
 	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
 	Format      string   `json:"format,omitempty" yaml:"format,omitempty"`
 	Required    []string `json:"required,omitempty" yaml:"required,omitempty"`
+	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
+	Minimum     int      `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	Maximum     int      `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 
 	// Store array items; for primitives:
 	//   "items": {"type": "string"}
@@ -104,9 +108,9 @@ func setTags(name string, p *Schema, tags []string) error {
 			p.Required = append(p.Required, name)
 		case paramOptional:
 			// Do nothing.
-		// TODO: implement this (also load from struct tag?), but I
-		// don't see any way to do that in the OpenAPI spec?
 		case paramOmitEmpty:
+			// TODO: implement this (also load from struct tag?), but I don't
+			// see any way to do that in the OpenAPI spec?
 			return fmt.Errorf("omitempty not implemented yet")
 		// TODO
 		case paramReadOnly:
@@ -127,6 +131,7 @@ func setTags(name string, p *Schema, tags []string) error {
 
 			p.Format = t
 
+		// Params with arguments.
 		default:
 			switch {
 			case strings.HasPrefix(t, "enum: "):
@@ -136,6 +141,32 @@ func setTags(name string, p *Schema, tags []string) error {
 					if e != "" {
 						p.Enum = append(p.Enum, e)
 					}
+				}
+
+			case strings.HasPrefix(t, "default: "):
+				p.Default = strings.TrimSpace(t[8:])
+
+			case strings.HasPrefix(t, "range: "):
+				rng := strings.Split(t[6:], "-")
+				if len(rng) != 2 {
+					return fmt.Errorf("invalid range: %#v; must be as \"min-max\"", t)
+				}
+				rng[0] = strings.TrimSpace(rng[0])
+				rng[1] = strings.TrimSpace(rng[1])
+
+				if rng[0] != "" {
+					n, err := strconv.ParseInt(rng[0], 10, 32)
+					if err != nil {
+						return fmt.Errorf("could not parse range minimum: %v", err)
+					}
+					p.Minimum = int(n)
+				}
+				if rng[1] != "" {
+					n, err := strconv.ParseInt(rng[1], 10, 32)
+					if err != nil {
+						return fmt.Errorf("could not parse range maximum: %v", err)
+					}
+					p.Maximum = int(n)
 				}
 
 			default:

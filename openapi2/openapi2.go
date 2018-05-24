@@ -31,8 +31,7 @@ type (
 		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
 		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 
-		Paths map[string]*Path `json:"paths" yaml:"paths"`
-
+		Paths       map[string]*Path           `json:"paths" yaml:"paths"`
 		Definitions map[string]docparse.Schema `json:"definitions" yaml:"definitions"`
 	}
 
@@ -59,6 +58,9 @@ type (
 		Type        string          `json:"type,omitempty" yaml:"type,omitempty"`
 		Format      string          `json:"format,omitempty" yaml:"format,omitempty"`
 		Enum        []string        `json:"enum,omitempty" yaml:"enum,omitempty"`
+		Default     string          `json:"default,omitempty" yaml:"default,omitempty"`
+		Minimum     int             `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+		Maximum     int             `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
@@ -211,6 +213,9 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
+					Default:     schema.Default,
+					Minimum:     schema.Minimum,
+					Maximum:     schema.Maximum,
 				})
 			}
 		}
@@ -241,6 +246,9 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
+					Default:     schema.Default,
+					Minimum:     schema.Minimum,
+					Maximum:     schema.Maximum,
 				})
 			}
 			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")
