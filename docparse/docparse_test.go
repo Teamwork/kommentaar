@@ -18,7 +18,7 @@ func TestParseComments(t *testing.T) {
 	tests := []struct {
 		name        string
 		in, wantErr string
-		want        *Endpoint
+		want        []*Endpoint
 	}{
 		{"tagline", `
 POST /path
@@ -28,7 +28,7 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method:  "POST",
 				Path:    "/path",
 				Tagline: "The tagline!",
@@ -36,7 +36,77 @@ Response 200: $empty
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
+		},
+
+		{"two-routes", `
+POST /path
+GET /foo
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			[]*Endpoint{{
+				Method: "POST",
+				Path:   "/path",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			}, {
+				Method: "GET",
+				Path:   "/foo",
+			}},
+		},
+
+		{"two-routes-tagline", `
+POST /path
+GET /foo
+The tagline!
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			[]*Endpoint{{
+				Method:  "POST",
+				Path:    "/path",
+				Tagline: "The tagline!",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			}, {
+				Method: "GET",
+				Path:   "/foo",
+			}},
+		},
+
+		{"two-routes-tagline-desc", `
+POST /path
+GET /foo
+The tagline!
+
+Some desc!
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			[]*Endpoint{{
+				Method:  "POST",
+				Path:    "/path",
+				Tagline: "The tagline!",
+				Info:    "Some desc!",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			}, {
+				Method: "GET",
+				Path:   "/foo",
+			}},
 		},
 
 		{"single-desc", `
@@ -48,7 +118,7 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Info:   "A description.",
@@ -56,7 +126,7 @@ Response 200: $empty
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
 		},
 
 		{"multi-desc", `
@@ -69,7 +139,7 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Info:   "A description.\nOf multiple lines.",
@@ -77,7 +147,7 @@ Response 200: $empty
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
 		},
 
 		{"single-desc-and-tagline", `
@@ -90,7 +160,7 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method:  "POST",
 				Path:    "/path",
 				Tagline: "The tagline!",
@@ -99,7 +169,7 @@ Response 200: $empty
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
 		},
 
 		{"multi-desc-and-tagline", `
@@ -113,7 +183,7 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method:  "POST",
 				Path:    "/path",
 				Tagline: "The tagline!",
@@ -122,7 +192,7 @@ Response 200: $empty
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
 		},
 
 		{"req-ref", `
@@ -132,14 +202,14 @@ Request body: $ref: net/mail.Address
 Response 200: $empty
 		`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Request: Request{
 					ContentType: "application/json",
 					Body:        &Ref{Reference: "mail.Address"},
 				}},
-		},
+			}},
 
 		{"path-ref", `
 POST /path
@@ -148,13 +218,13 @@ Path: $ref: net/mail.Address
 Response 200: $empty
 		`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Request: Request{
 					Path: &Ref{Reference: "mail.Address"},
 				}},
-		},
+			}},
 
 		{"req-content-type", `
 POST /path
@@ -163,14 +233,14 @@ Request body (foo): $ref: net/mail.Address
 Response 200: $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Request: Request{
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
 				},
-			},
+			}},
 		},
 
 		{"response-ref", `
@@ -180,7 +250,7 @@ Response: $empty
 Response 400 (w00t): $empty
 			`,
 			"",
-			&Endpoint{
+			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
 				Responses: map[int]Response{
@@ -193,7 +263,7 @@ Response 400 (w00t): $empty
 						Body:        &Ref{Description: "Bad Request"},
 					},
 				},
-			},
+			}},
 		},
 
 		//{"err-double-code", `
@@ -208,8 +278,8 @@ Response 400 (w00t): $empty
 		t.Run(tt.name, func(t *testing.T) {
 			prog := NewProgram(false)
 
-			if tt.want != nil && tt.want.Responses == nil {
-				tt.want.Responses = stdResp
+			if tt.want != nil && tt.want[0].Responses == nil {
+				tt.want[0].Responses = stdResp
 			}
 			tt.in = test.NormalizeIndent(tt.in)
 

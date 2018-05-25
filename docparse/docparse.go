@@ -147,7 +147,7 @@ var (
 )
 
 // parseComment a single comment block in the file filePath.
-func parseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, int, error) {
+func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint, int, error) {
 	e := &Endpoint{}
 
 	// Get start line and determine if this is a comment block.
@@ -157,14 +157,36 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, 
 		return nil, 0, nil
 	}
 
-	// Determine if the second line is the "tagline".
+	// Find more start lines.
 	i := 1
-	line2 := stringutil.GetLine(comment, 2)
-	if line2 != "" {
-		e.Tagline = strings.TrimSpace(line2)
+	start := len(line1)
+	var aliases []*Endpoint
+	for {
+		l := stringutil.GetLine(comment, i+1)
+		method, path, tags := parseStartLine(l)
+		if method == "" {
+			break
+		}
+
+		start += len(l)
+		i++
+		aliases = append(aliases, &Endpoint{
+			Method: method,
+			Path:   path,
+			Tags:   tags,
+		})
+	}
+
+	// Determine if the next line is the "tagline" (that is, a non-blank line).
+	tagline := stringutil.GetLine(comment, i+1)
+	if tagline != "" {
+		e.Tagline = strings.TrimSpace(tagline)
+		start += len(e.Tagline)
 		i++
 	}
-	comment = strings.TrimSpace(comment[len(line1)+len(line2)+1:])
+
+	// Remove startlines and tagline from comment.
+	comment = strings.TrimSpace(comment[start+i:])
 
 	pastDesc := false
 	var err error
@@ -285,7 +307,13 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) (*Endpoint, 
 		return nil, 0, fmt.Errorf("%v: must have at least one response", e.Path)
 	}
 
-	return e, 0, nil
+	r := make([]*Endpoint, len(aliases)+1)
+	r[0] = e
+	for i := range aliases {
+		r[i+1] = aliases[i]
+	}
+
+	return r, 0, nil
 }
 
 var allMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost,

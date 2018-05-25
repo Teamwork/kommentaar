@@ -68,13 +68,23 @@ func FindComments(w io.Writer, prog *Program) error {
 							relPath, p.Line+relLine, err))
 						continue
 					}
-					if e == nil {
+					if e == nil || e[0] == nil {
 						continue
 					}
 
-					e.Pos = fset.Position(c.Pos())
-					e.End = fset.Position(c.End())
-					prog.Endpoints = append(prog.Endpoints, e)
+					e[0].Pos = fset.Position(c.Pos())
+					e[0].End = fset.Position(c.End())
+
+					// Copy info from main endpoint to aliases.
+					for i, a := range e[1:] {
+						s := *e[0]
+						e[i+1] = &s
+						e[i+1].Path = a.Path
+						e[i+1].Method = a.Method
+						e[i+1].Tags = a.Tags
+					}
+
+					prog.Endpoints = append(prog.Endpoints, e...)
 				}
 			}
 		}
