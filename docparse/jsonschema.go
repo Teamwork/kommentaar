@@ -331,6 +331,7 @@ start:
 		lookup = pkg[i+1:] + "." + name.Name
 	}
 
+	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
 	p.Reference = lookup
 
 	return &p, nil
