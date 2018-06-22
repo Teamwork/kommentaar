@@ -18,6 +18,13 @@ paths:
           schema:
             $ref: '#/definitions/struct-embed.resp'
 definitions:
+  struct-embed.Tagged:
+    title: Tagged
+    description: Tagged docs.
+    properties:
+      tagged:
+        description: Tagged.
+        type: string
   struct-embed.resp:
     title: resp
     description: resp docs.
@@ -28,3 +35,5 @@ definitions:
       other:
         description: Other.
         type: string
+      tag:
+        $ref: '#/definitions/struct-embed.Tagged'

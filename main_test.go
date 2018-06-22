@@ -15,9 +15,20 @@ import (
 	"github.com/teamwork/test/diff"
 )
 
+// Just basic sanity test to make sure it doesn't error out or something.
 func TestMain(t *testing.T) {
+	saveout := os.Stdout
+	saveerr := os.Stderr
+	_, stdout, _ := os.Pipe()
+	_, stderr, _ := os.Pipe()
+	os.Stdout = stdout
+	os.Stderr = stderr
+
 	os.Args = []string{"", "-config", "config.example", "./example/..."}
 	main()
+
+	os.Stdout = saveout
+	os.Stderr = saveerr
 }
 
 func TestOpenAPI2(t *testing.T) {

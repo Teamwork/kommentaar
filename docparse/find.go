@@ -294,9 +294,17 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	// refactor. We should pass st to structToSchema() or something.
 	for _, f := range st.Fields.List {
 
-		// Skip embedded structs; we merge them later.
 		if len(f.Names) == 0 {
-			continue
+			// Skip embedded structs without tags; we merge them later.
+			if f.Tag == nil {
+				continue
+			}
+
+			err = resolveType(prog, "", f.Type.(*ast.Ident), "", pkg)
+			if err != nil {
+				return nil, fmt.Errorf("could not lookup %s in %s: %s",
+					err, f.Type, lookup)
+			}
 		}
 
 		// Names is an array in cases like "Foo, Bar string".
@@ -311,6 +319,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 
 	prog.References[ref.Lookup] = ref
 	var nested []string
+	var nestedTagged []*ast.Field
 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
@@ -330,8 +339,24 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 			return nil, fmt.Errorf("\n  findNested: %v", err)
 		}
 		if nestContext == ContextEmbed {
-			nested = append(nested, nestLookup)
+			if f.Tag == nil {
+				nested = append(nested, nestLookup)
+			} else if len(f.Names) == 0 {
+				nestedTagged = append(nestedTagged, f)
+			}
 		}
+	}
+
+	// Add in embeded structs with a tag.
+	for _, n := range nestedTagged {
+		ename := goutil.TagName(n, "json") // TODO: don't hard-code json
+		n.Names = []*ast.Ident{&ast.Ident{
+			Name: ename,
+		}}
+		ref.Fields = append(ref.Fields, Param{
+			Name:      ename,
+			KindField: n,
+		})
 	}
 
 	// Convert to JSON Schema.
@@ -341,7 +366,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	}
 	ref.Schema = schema
 
-	// Merge for embeded structs.
+	// Merge for embeded structs without a tag.
 	for _, n := range nested {
 		ref.Fields = append(ref.Fields, prog.References[n].Fields...)
 
