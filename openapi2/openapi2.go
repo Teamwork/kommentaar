@@ -37,9 +37,10 @@ type (
 
 	// Info provides metadata about the API.
 	Info struct {
-		Title   string  `json:"title,omitempty" yaml:"title,omitempty"`
-		Version string  `json:"version,omitempty" yaml:"version,omitempty"`
-		Contact Contact `json:"contact,omitempty" yaml:"contact,omitempty"`
+		Title       string  `json:"title,omitempty" yaml:"title,omitempty"`
+		Description string  `json:"description,omitempty" yaml:"description,omitempty"`
+		Version     string  `json:"version,omitempty" yaml:"version,omitempty"`
+		Contact     Contact `json:"contact,omitempty" yaml:"contact,omitempty"`
 	}
 
 	// Contact provides contact information for the exposed API.
@@ -120,8 +121,9 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	out := OpenAPI{
 		Swagger: "2.0",
 		Info: Info{
-			Title:   prog.Config.Title,
-			Version: prog.Config.Version,
+			Title:       prog.Config.Title,
+			Description: string(prog.Config.Description),
+			Version:     prog.Config.Version,
 			Contact: Contact{
 				Name:  prog.Config.ContactName,
 				Email: prog.Config.ContactEmail,

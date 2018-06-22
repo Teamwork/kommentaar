@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -33,6 +34,7 @@ type Config struct {
 
 	// General information.
 	Title        string
+	Description  template.HTML
 	Version      string
 	ContactName  string
 	ContactEmail string

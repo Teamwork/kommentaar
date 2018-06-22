@@ -2,10 +2,13 @@
 
 
 [[projects]]
+  branch = "master"
   name = "arp242.net/sconfig"
-  packages = ["."]
-  revision = "733b9df4c03101676f9cbfab02c606078e4409ee"
-  version = "v1.0"
+  packages = [
+    ".",
+    "handlers/html/template"
+  ]
+  revision = "26bf9ff1c510eaa1553c8276ea43618a1fb1141b"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -59,6 +62,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d0cdebc26083569200aa76fa87880b8fa3354fd4756e026acc721b67dfe4dc6f"
+  inputs-digest = "727ca228e789c1b879c3c989af1bb36b0a5e3ccc9408caa5072ec0d51b10db8c"
   solver-name = "gps-cdcl"
   solver-version = 1

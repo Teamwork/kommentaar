@@ -1,6 +1,10 @@
 # Application title.
 title Teamwork Desk
 
+# Application description, as HTML.
+description
+ <strong>woot!</strong>
+
 # API version of your application.
 version 2.0
 

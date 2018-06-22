@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"arp242.net/sconfig"
+	_ "arp242.net/sconfig/handlers/html/template" // template.HTML handler
 	"github.com/teamwork/kommentaar/docparse"
 )
 

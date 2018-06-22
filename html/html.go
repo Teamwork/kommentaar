@@ -143,6 +143,19 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 <body>
 	<h1>{{.Config.Title}} API documentation {{.Config.Version}}</h1>
 
+	{{if .Config.Description}}<p>{{.Config.Description}}</p>{{end}}
+	{{if .Config.ContactEmail}}
+		<p>
+			Contact <a href="mailto:{{.Config.ContactEmail}}">
+				{{if .Config.ContactName}}
+					{{.Config.ContactName}}
+				{{else}}
+					{{.Config.ContactEmail}}
+				{{end}}
+			</a> for questions.
+		</p>
+	{{end}}
+
 	{{define "paramsTpl"}}
 		<ul>
 			{{range $p := .Params}}
