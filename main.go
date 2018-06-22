@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"sort"
 	"strings"
 
@@ -29,8 +31,25 @@ func main() {
 	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
 	html                 HTML documentation
 `)
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
+	memprofile := flag.String("memprofile", "", "write memory profile to `file`")
 
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not create CPU profile: %v\n", err)
+			os.Exit(10)
+		}
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not start CPU profile: %v\n", err)
+			os.Exit(10)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -75,6 +94,21 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
+	}
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not create memory profile: %v\n", err)
+			os.Exit(10)
+		}
+		runtime.GC()
+		err = pprof.WriteHeapProfile(f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not write memory profile: %v\n", err)
+			os.Exit(10)
+		}
+		_ = f.Close()
 	}
 }
 
