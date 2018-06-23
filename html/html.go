@@ -9,12 +9,20 @@ import (
 	"os"
 
 	"github.com/teamwork/kommentaar/docparse"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var funcMap = template.FuncMap{
 	"add":    func(a, b int) int { return a + b },
 	"status": func(c int) string { return http.StatusText(c) },
-	//"dump":   func(x interface{}) string { return pretty.Sprintf("%# v", x) },
+	"schema": func(in interface{}) string {
+		// TODO: link ref?
+		d, err := yaml.Marshal(in)
+		if err != nil {
+			return fmt.Sprintf("yaml.Marshal error: %v", err)
+		}
+		return string(d)
+	},
 }
 
 var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
@@ -51,13 +59,11 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 			margin-bottom: 0;
 			padding: .2rem;
 			padding-left: .5rem;
-			color: #fff;
-			background-color: #888;
-			border: 1px solid #888;
 			margin-bottom: -1px;
+		}
 
-			/* For buttons */
-			padding-left: 36px;
+		h3.js-expand {
+			cursor: pointer;
 		}
 
 		h4 {
@@ -69,35 +75,26 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 			color: #aaa;
 		}
 
-		.btn {
-			display: block;
-			line-height: 1.1;
-
+		.permalink {
 			font-weight: normal;
-			border-radius: 1px;
-			width: 1em;
+			color: rgb(0, 0, 238);
+
+			/* Make it a bit easier to click. */
+			width: 1.5em;
+			display: inline-block;
 			text-align: center;
-			padding: 0 .3em;
+		}
+
+		.permalink:visited {
 			color: rgb(0, 0, 238);
 		}
 
-		.btn:visited {
-			color: rgb(0, 0, 238);
-		}
-
-		.btn:hover {
+		.permalink:hover {
 			color: #66f;
 		}
 
-		h3 .btn {
+		h3 .permalink {
 			font-size: 16px;
-		}
-
-		.btn-group {
-			position: absolute;
-			left: 0;
-			top: 0;
-			bottom: 0;
 		}
 
 		.endpoint {
@@ -107,14 +104,19 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 			margin-bottom: -1px;
 			padding: .2em .5em;
 			border-radius: 2px;
-
-			/* For buttons */
-			padding-left: 36px
 		}
 
-		.info {
+		.endpoint-top {
+			cursor: pointer;
+		}
+
+		.endpoint-info {
 			margin-left: 4.5rem;
 			display: none;
+		}
+
+		.endpoint-info p {
+			max-width: 55em;
 		}
 
 		.resource {
@@ -124,16 +126,8 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 
 		.resource .method {
 			display: inline-block;
-			min-width: 3.7rem;
-			padding: 0 .3rem;
-			border-radius: 8px;
+			min-width: 4rem;
 		}
-
-		.method-GET    { background-color: #91ff91; }
-		.method-DELETE { background-color: #ffacac; }
-		.method-POST   { background-color: #6363ff; color: #fff; }
-		.method-PUT    { background-color: #f8ff00; }
-		.method-PATCH  { background-color: #ffbe00; }
 
 		.param-name {
 			display: inline-block;
@@ -170,30 +164,26 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 	{{range $i, $e := .Endpoints}}
 		{{if eq $i 0}}
 			</div><div>
-			<h3 id="{{index $e.Tags 0}}">
+			<h3 id="{{index $e.Tags 0}}" class="js-expand">
 				{{index $e.Tags 0}}
-				<span class="btn-group">
-					<a class="btn" href="#{{index $e.Tags 0}}">§</a><a class="btn js-expand" href="#">⬇</a>
-				</span>
+				<a class="permalink" href="#{{index $e.Tags 0}}">§</a>
 			</h3>
 		{{else if ne (index (index $.Endpoints (add $i -1)).Tags 0) (index $e.Tags 0)}}
 			</div><div>
-			<h3 id="{{index $e.Tags 0}}">
+			<h3 id="{{index $e.Tags 0}}" class="js-expand">
 				{{index $e.Tags 0}}
-				<span class="btn-group">
-					<a class="btn" href="#{{index $e.Tags 0}}">§</a><a class="btn js-expand" href="#">⬇</a>
-				</span>
+				<a class="permalink" href="#{{index $e.Tags 0}}">§</a>
 			</h3>
 		{{end}}
 
 		<div class="endpoint" id="{{$e.Method}}-{{$e.Path}}">
-			<code class="resource"><span class="method method-{{$e.Method}}">{{$e.Method}}</span> {{$e.Path}}</code>
-			{{$e.Tagline}}
-			<span class="btn-group">
-				<a class="btn" href="#{{$e.Method}}-{{$e.Path}}">§</a><a class="btn js-expand" href="#">⬇</a>
-			</span>
+			<div class="endpoint-top">
+				<code class="resource"><span class="method">{{$e.Method}}</span> {{$e.Path}}</code>
+				{{$e.Tagline}}
+				<a class="permalink" href="#{{$e.Method}}-{{$e.Path}}">§</a>
+			</div>
 
-			<div class="info">
+			<div class="endpoint-info">
 				<p>{{$e.Info}}</p>
 
 				{{if $e.Request.Path}}
@@ -214,7 +204,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 				{{if $e.Request.Body}}
 					<h4>Request body</h4>
 					<ul>
-						<li><a href="#TODO">{{$e.Request.Body.Reference}}</a>
+						<li><a href="#{{$e.Request.Body.Reference}}">{{$e.Request.Body.Reference}}</a>
 							<sup>({{$e.Request.ContentType}})</sup></li>
 					</ul>
 				{{end}}
@@ -225,7 +215,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 						<li><code class="param-name">{{$code}} {{status $code}}</code>
 							{{if $r.Body}}
 								{{if $r.Body.Reference}}
-									<a href="#TODO">{{$r.Body.Reference}}</a>
+									<a href="#{{$r.Body.Reference}}">{{$r.Body.Reference}}</a>
 								{{else}}
 									{{$r.Body.Description}}
 								{{end}}
@@ -240,48 +230,48 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 
 	<h2>Models</h2>
 	{{range $k, $v := .References}}
-		<h3>{{$k}}</h3>
+		<h3 id="{{$k}}">
+			{{$k}}
+			<a class="permalink" href="#{{$k}}">§</a>
+		</h3>
 		<div class="endpoint">
 			<p>{{$v.Info}}</p>
-			<ul>
-				{{range $i, $p := $v.Fields}}
-					<li>
-						<code>{{$p.Name}}</code>
-						{{/*<code>{{$p.Kind}}</code>
-						– {{$p.Info}}*/}}
-					</li>
-				{{end}}
-			</ul>
+			<pre>{{$v.Schema|schema}}</pre>
 		</div>
 	{{end}}
 
 	<script>
 		var add = function(endpoint) {
-			endpoint.addEventListener('dblclick', function(e) {
+			// Expand row on click.
+			var topLine = endpoint.getElementsByClassName('endpoint-top')[0]
+			var info = endpoint.getElementsByClassName('endpoint-info')[0]
+			topLine.addEventListener('click', function(e) {
+				if (e.target.className === 'permalink')
+					return
+
 				e.preventDefault()
-				var info = this.getElementsByClassName('info')
-				for (var i = 0; i < info.length; i++)
-					info[i].style.display = info[i].style.display === 'block' ? '' : 'block'
+				//for (var i = 0; i < topLine.length; i++)
+				info.style.display = info.style.display === 'block' ? '' : 'block'
 			})
 
 			// Prevent text selection on double click.
-			endpoint.addEventListener('mousedown', function(e) {
-				if (e.detail > 1)
-					e.preventDefault()
-			})
+			//endpoint.addEventListener('mousedown', function(e) {
+			//	if (e.detail > 1)
+			//		e.preventDefault()
+			//})
 		}
 
 		var ep = document.getElementsByClassName('endpoint')
-		for (var i = 0; i < ep.length; i++) {
+		for (var i = 0; i < ep.length; i++)
 			add(ep[i])
-		}
 
+		// Expand all rows in the section.
 		document.addEventListener('click', function(e) {
-			if (e.target.className !== 'btn js-expand')
+			if (e.target.className !== 'js-expand')
 				return
 
 			e.preventDefault()
-			var parent = e.target.parentNode.parentNode
+			var parent = e.target.parentNode
 			if (parent.tagName.toLowerCase() === 'h3')
 				parent = parent.parentNode
 
@@ -295,10 +285,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 `))
 
 // WriteHTML writes w as HTML.
-//
-// TODO: Consider using: https://github.com/valyala/quicktemplate
 func WriteHTML(w io.Writer, prog *docparse.Program) error {
-
 	// Too hard to write template otherwise.
 	for i := range prog.Endpoints {
 		prog.Endpoints[i].Path = prog.Config.Prefix + prog.Endpoints[i].Path

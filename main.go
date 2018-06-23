@@ -7,7 +7,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"sort"
 	"strings"
 
 	"github.com/kr/pretty"
@@ -76,8 +75,6 @@ func main() {
 	// These are just for debugging/testing.
 	case "ls":
 		outFunc = lsAll
-	case "ls-ref":
-		outFunc = lsRef
 	default:
 		fmt.Fprintf(os.Stderr, "invalid value for -out: %#v\n\n", *out)
 		flag.Usage()
@@ -122,27 +119,4 @@ func lsAll(_ io.Writer, prog *docparse.Program) error {
 	_, err := pretty.Print(prog)
 	fmt.Println("")
 	return err
-}
-
-func lsRef(_ io.Writer, prog *docparse.Program) error {
-	sp := 0
-	var refs []docparse.Reference
-	for _, ref := range prog.References {
-		refs = append(refs, ref)
-		if len(ref.Package) > sp {
-			sp = len(ref.Package)
-		}
-	}
-
-	key := func(r docparse.Reference) string { return fmt.Sprintf("%v.%v", r.Package, r.Name) }
-	sort.Slice(refs, func(i, j int) bool { return key(refs[i]) < key(refs[j]) })
-
-	for _, ref := range refs {
-		fmt.Printf("%v  %v%v\n",
-			ref.Package,
-			strings.Repeat(" ", sp-len(ref.Package)),
-			ref.Name)
-	}
-
-	return nil
 }
