@@ -2,9 +2,11 @@
 package html
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/teamwork/kommentaar/docparse"
 )
@@ -297,7 +299,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 // TODO: Consider using: https://github.com/valyala/quicktemplate
 func WriteHTML(w io.Writer, prog *docparse.Program) error {
 
-	// Too hard to write template oterwise.
+	// Too hard to write template otherwise.
 	for i := range prog.Endpoints {
 		prog.Endpoints[i].Path = prog.Config.Prefix + prog.Endpoints[i].Path
 
@@ -307,4 +309,34 @@ func WriteHTML(w io.Writer, prog *docparse.Program) error {
 	}
 
 	return mainTpl.Execute(w, prog)
+}
+
+// ServeHTML serves HTML documentation at addr.
+func ServeHTML(addr string) func(io.Writer, *docparse.Program) error {
+	return func(_ io.Writer, prog *docparse.Program) error {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Rescan, but first clear some fields so we don't end up with
+			// duplicate data.
+			prog.Config.Output = func(io.Writer, *docparse.Program) error {
+				return nil
+			}
+			prog.Endpoints = nil
+			prog.References = make(map[string]docparse.Reference)
+
+			err := docparse.FindComments(os.Stdout, prog)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "could not parse comments: %v", err)
+				return
+			}
+
+			err = mainTpl.Execute(w, prog)
+			if err != nil {
+				fmt.Fprintf(w, "could not execute template: %v", err)
+			}
+		})
+
+		fmt.Printf("serving on %v\n", addr)
+		return http.ListenAndServe(addr, nil)
+	}
 }

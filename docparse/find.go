@@ -109,6 +109,7 @@ func FindComments(w io.Writer, prog *Program) error {
 	// It's probably better to call this per package or file, rather than once
 	// for everything (much more memory-efficient for large packages). OTOH,
 	// perhaps this is "good enough"?
+	// Note: making this more efficient means http.ServeHTML is also harder.
 	return prog.Config.Output(w, prog)
 }
 

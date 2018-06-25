@@ -25,6 +25,8 @@ func main() {
 	}
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
+	addr := flag.String("serve", "", "serve HTML output on this address, instead of writing to\n"+
+		"stdout; every page load will rescan the source tree")
 	out := flag.String("out", "openapi2-yaml", `output function, valid values are:
 	openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
 	openapi2-json        OpenAPI/Swagger 2.0 as JSON
@@ -65,7 +67,11 @@ func main() {
 	case "openapi2-jsonindent":
 		outFunc = openapi2.WriteJSONIndent
 	case "html":
-		outFunc = html.WriteHTML
+		if *addr != "" {
+			outFunc = html.ServeHTML(*addr)
+		} else {
+			outFunc = html.WriteHTML
+		}
 
 	// These are just for debugging/testing.
 	case "ls":
