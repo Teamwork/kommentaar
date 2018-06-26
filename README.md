@@ -35,11 +35,11 @@ Or several packages subpackages:
     $ kommentaar github.com/teamwork/desk/api/...
 
 The default output is as an OpenAPI 2 YAML file. You can generate a HTML page
-with `-out html`, or directly serve it with `-out html -serve :8080`. When serving
-the documentation like it will rescan the source tree on every page load, making
-development/proofreading easier.
+with `-out html`, or directly serve it with `-out html -serve :8080`. When
+serving the documentation it will rescan the source tree on every page load,
+making development/proofreading easier.
 
-See `kommentaar -h` for the fill list of options. You can also the Go API (see
+See `kommentaar -h` for the full list of options. You can also the Go API (see
 godoc).
 
 Syntax
