@@ -20,3 +20,4 @@ paths:
 definitions:
   resp-ct.respRef:
     title: respRef
+    type: object

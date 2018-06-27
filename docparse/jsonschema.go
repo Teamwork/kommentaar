@@ -40,6 +40,7 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 	schema := &Schema{
 		Title:       name,
 		Description: ref.Info,
+		Type:        "object",
 		Properties:  map[string]*Schema{},
 	}
 

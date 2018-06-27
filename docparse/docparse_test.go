@@ -460,6 +460,7 @@ func TestGetReference(t *testing.T) {
 			Schema: &Schema{
 				Title:       "testObject",
 				Description: "testObject general documentation.",
+				Type:        "object",
 				Required:    []string{"ID"},
 				Properties: map[string]*Schema{
 					"ID":  {Type: "integer", Description: "ID documentation."},
@@ -485,6 +486,7 @@ func TestGetReference(t *testing.T) {
 				Description: "Address represents a single mail address.\n" +
 					"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 					"as Address{Name: \"Barry Gibbs\", Address: \"bg@example.com\"}.",
+				Type: "object",
 				Properties: map[string]*Schema{
 					"Address": {Type: "string", Description: "user@domain"},
 					"Name":    {Type: "string", Description: "Proper name; may be empty."},

@@ -21,6 +21,7 @@ definitions:
   struct-embed.Tagged:
     title: Tagged
     description: Tagged docs.
+    type: object
     properties:
       tagged:
         description: Tagged.
@@ -28,6 +29,7 @@ definitions:
   struct-embed.resp:
     title: resp
     description: resp docs.
+    type: object
     properties:
       basic:
         description: Basic comment.

@@ -20,11 +20,13 @@ paths:
 definitions:
   struct-slice.customFieldValue:
     title: customFieldValue
+    type: object
     properties:
       val:
         type: string
   struct-slice.deal:
     title: deal
+    type: object
     properties:
       customFieldValues:
         type: array
@@ -32,6 +34,7 @@ definitions:
           $ref: '#/definitions/struct-slice.customFieldValue'
   struct-slice.resp:
     title: resp
+    type: object
     properties:
       another:
         description: Double comment.

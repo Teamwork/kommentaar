@@ -26,3 +26,4 @@ paths:
 definitions:
   req.reqRef:
     title: reqRef
+    type: object
