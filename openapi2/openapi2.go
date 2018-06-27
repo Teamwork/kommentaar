@@ -52,27 +52,27 @@ type (
 
 	// Parameter describes a single operation parameter.
 	Parameter struct {
-		Name        string          `json:"name" yaml:"name"`
-		In          string          `json:"in" yaml:"in"` // query, header, path, cookie
-		Description string          `json:"description,omitempty" yaml:"description,omitempty"`
-		Required    bool            `json:"required,omitempty" yaml:"required,omitempty"`
-		Type        string          `json:"type,omitempty" yaml:"type,omitempty"`
-		Format      string          `json:"format,omitempty" yaml:"format,omitempty"`
-		Enum        []string        `json:"enum,omitempty" yaml:"enum,omitempty"`
-		Default     string          `json:"default,omitempty" yaml:"default,omitempty"`
-		Minimum     int             `json:"minimum,omitempty" yaml:"minimum,omitempty"`
-		Maximum     int             `json:"maximum,omitempty" yaml:"maximum,omitempty"`
-		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
+		Name        string           `json:"name" yaml:"name"`
+		In          string           `json:"in" yaml:"in"` // query, header, path, cookie
+		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
+		Required    bool             `json:"required,omitempty" yaml:"required,omitempty"`
+		Type        string           `json:"type,omitempty" yaml:"type,omitempty"`
+		Format      string           `json:"format,omitempty" yaml:"format,omitempty"`
+		Enum        []string         `json:"enum,omitempty" yaml:"enum,omitempty"`
+		Default     string           `json:"default,omitempty" yaml:"default,omitempty"`
+		Minimum     int              `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+		Maximum     int              `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
 	// Path describes the operations available on a single path.
 	Path struct {
-		Ref    string    `json:"ref,omitempty" yaml:"ref,omitempty"`
-		Get    Operation `json:"get,omitempty" yaml:"get,omitempty"`
-		Post   Operation `json:"post,omitempty" yaml:"post,omitempty"`
-		Put    Operation `json:"put,omitempty" yaml:"put,omitempty"`
-		Patch  Operation `json:"patch,omitempty" yaml:"patch,omitempty"`
-		Delete Operation `json:"delete,omitempty" yaml:"delete,omitempty"`
+		Ref    string     `json:"ref,omitempty" yaml:"ref,omitempty"`
+		Get    *Operation `json:"get,omitempty" yaml:"get,omitempty"`
+		Post   *Operation `json:"post,omitempty" yaml:"post,omitempty"`
+		Put    *Operation `json:"put,omitempty" yaml:"put,omitempty"`
+		Patch  *Operation `json:"patch,omitempty" yaml:"patch,omitempty"`
+		Delete *Operation `json:"delete,omitempty" yaml:"delete,omitempty"`
 	}
 
 	// Operation describes a single API operation on a path.
@@ -95,8 +95,8 @@ type (
 
 	// Response describes a single response from an API Operation.
 	Response struct {
-		Description string
-		Schema      docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
+		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
+		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 )
 
@@ -278,7 +278,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				In:          "body",
 				Description: e.Request.Body.Description,
 				Required:    true,
-				Schema: docparse.Schema{
+				Schema: &docparse.Schema{
 					Reference: "#/definitions/" + e.Request.Body.Reference,
 				},
 			})
@@ -298,12 +298,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 			// Link reference.
 			if resp.Body != nil && resp.Body.Reference != "" {
-				r.Schema = docparse.Schema{
+				r.Schema = &docparse.Schema{
 					Reference: "#/definitions/" + resp.Body.Reference,
 				}
 			} else if dr, ok := prog.Config.DefaultResponse[code]; ok {
 				lookup := strings.Split(dr.Lookup, "/")
-				r.Schema = docparse.Schema{
+				r.Schema = &docparse.Schema{
 					Reference: "#/definitions/" + lookup[len(lookup)-1],
 				}
 			}
@@ -318,15 +318,15 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 		switch e.Method {
 		case "GET":
-			out.Paths[e.Path].Get = op
+			out.Paths[e.Path].Get = &op
 		case "POST":
-			out.Paths[e.Path].Post = op
+			out.Paths[e.Path].Post = &op
 		case "PUT":
-			out.Paths[e.Path].Put = op
+			out.Paths[e.Path].Put = &op
 		case "PATCH":
-			out.Paths[e.Path].Patch = op
+			out.Paths[e.Path].Patch = &op
 		case "DELETE":
-			out.Paths[e.Path].Delete = op
+			out.Paths[e.Path].Delete = &op
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
