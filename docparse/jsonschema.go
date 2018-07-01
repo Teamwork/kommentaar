@@ -1,6 +1,7 @@
 package docparse
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -12,18 +13,59 @@ import (
 	"github.com/teamwork/utils/sliceutil"
 )
 
+type defaultType struct {
+	value, kind string
+}
+
+func (t *defaultType) MarshalJSON() ([]byte, error) {
+	switch t.kind {
+	case "string":
+		return json.Marshal(t.value)
+	case "integer":
+		n, err := strconv.ParseInt(t.value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("MarshalJSON: %v", err)
+		}
+		return json.Marshal(n)
+	default:
+		return nil, fmt.Errorf("MarshalJSON: unknown type: %v", t.kind)
+	}
+}
+
+func (t *defaultType) MarshalYAML() (interface{}, error) {
+	switch t.kind {
+	case "string":
+		return t.value, nil
+	case "integer":
+		n, err := strconv.ParseInt(t.value, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("MarshalYAML: %v", err)
+		}
+		return n, err
+	default:
+		return "", fmt.Errorf("MarshalYAML: unknown type: %v", t.kind)
+	}
+}
+
+func (t *defaultType) String() string {
+	if t == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", t.value)
+}
+
 // The Schema Object allows the definition of input and output data types.
 type Schema struct {
-	Reference   string   `json:"$ref,omitempty" yaml:"$ref,omitempty"`
-	Title       string   `json:"title,omitempty" yaml:"title,omitempty"`
-	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
-	Type        string   `json:"type,omitempty" yaml:"type,omitempty"`
-	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
-	Format      string   `json:"format,omitempty" yaml:"format,omitempty"`
-	Required    []string `json:"required,omitempty" yaml:"required,omitempty"`
-	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
-	Minimum     int      `json:"minimum,omitempty" yaml:"minimum,omitempty"`
-	Maximum     int      `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+	Reference   string       `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+	Title       string       `json:"title,omitempty" yaml:"title,omitempty"`
+	Description string       `json:"description,omitempty" yaml:"description,omitempty"`
+	Type        string       `json:"type,omitempty" yaml:"type,omitempty"`
+	Enum        []string     `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Format      string       `json:"format,omitempty" yaml:"format,omitempty"`
+	Required    []string     `json:"required,omitempty" yaml:"required,omitempty"`
+	Default     *defaultType `json:"default,omitempty" yaml:"default,omitempty"`
+	Minimum     int          `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	Maximum     int          `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 
 	// Store array items; for primitives:
 	//   "items": {"type": "string"}
@@ -101,12 +143,12 @@ const (
 	paramReadOnly  = "readonly"
 )
 
-func setTags(name string, p *Schema, tags []string) error {
+func setTags(name string, s *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
 		case paramRequired:
-			p.Required = append(p.Required, name)
+			s.Required = append(s.Required, name)
 		case paramOptional:
 			// Do nothing.
 		case paramOmitEmpty:
@@ -130,22 +172,22 @@ func setTags(name string, p *Schema, tags []string) error {
 				t = "idn-hostname"
 			}
 
-			p.Format = t
+			s.Format = t
 
 		// Params with arguments.
 		default:
 			switch {
 			case strings.HasPrefix(t, "enum: "):
-				p.Type = "enum"
+				s.Type = "enum"
 				for _, e := range strings.Split(t[5:], " ") {
 					e = strings.TrimSpace(e)
 					if e != "" {
-						p.Enum = append(p.Enum, e)
+						s.Enum = append(s.Enum, e)
 					}
 				}
 
 			case strings.HasPrefix(t, "default: "):
-				p.Default = strings.TrimSpace(t[8:])
+				s.Default = &defaultType{strings.TrimSpace(t[8:]), s.Type}
 
 			case strings.HasPrefix(t, "range: "):
 				rng := strings.Split(t[6:], "-")
@@ -160,14 +202,14 @@ func setTags(name string, p *Schema, tags []string) error {
 					if err != nil {
 						return fmt.Errorf("could not parse range minimum: %v", err)
 					}
-					p.Minimum = int(n)
+					s.Minimum = int(n)
 				}
 				if rng[1] != "" {
 					n, err := strconv.ParseInt(rng[1], 10, 32)
 					if err != nil {
 						return fmt.Errorf("could not parse range maximum: %v", err)
 					}
-					p.Maximum = int(n)
+					s.Maximum = int(n)
 				}
 
 			default:
@@ -193,11 +235,6 @@ func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*S
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)
-	_ = tags
-	err := setTags(fName, &p, tags)
-	if err != nil {
-		return nil, err
-	}
 
 	pkg := ref.Package
 	var name *ast.Ident
@@ -234,7 +271,7 @@ start:
 
 		// e.g. string, int64, etc.: don't need to look up.
 		if isPrimitive(p.Type) {
-			return &p, nil
+			goto end
 		}
 
 		p.Type = ""
@@ -265,7 +302,7 @@ start:
 		p.Format = f
 		if t != "" {
 			p.Type = JSONSchemaType(t)
-			return &p, nil
+			goto end
 		}
 
 		// Deal with array.
@@ -284,7 +321,7 @@ start:
 				return nil, err
 			}
 
-			return &p, nil
+			goto end
 		}
 
 	// Maps
@@ -305,35 +342,43 @@ start:
 			return nil, err
 		}
 
-		return &p, nil
+		goto end
 
 	default:
 		return nil, fmt.Errorf("fieldToSchema: unknown type: %T", typ)
 	}
 
 	if name == nil {
-		return &p, nil
+		goto end
 	}
 
+end:
 	// Check if the type resolves to a Go primitive.
-	lookup := pkg + "." + name.Name
-	t, err := getTypeInfo(prog, lookup, ref.File)
+	if name != nil {
+		lookup := pkg + "." + name.Name
+		t, err := getTypeInfo(prog, lookup, ref.File)
+		if err != nil {
+			return nil, err
+		}
+		if t != "" {
+			p.Type = t
+			if isPrimitive(p.Type) {
+				goto end
+			}
+		}
+
+		if i := strings.LastIndex(lookup, "/"); i > -1 {
+			lookup = pkg[i+1:] + "." + name.Name
+		}
+
+		p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
+		p.Reference = lookup
+	}
+
+	err := setTags(fName, &p, tags)
 	if err != nil {
 		return nil, err
 	}
-	if t != "" {
-		p.Type = t
-		if isPrimitive(p.Type) {
-			return &p, nil
-		}
-	}
-
-	if i := strings.LastIndex(lookup, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
-	}
-
-	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
-	p.Reference = lookup
 
 	return &p, nil
 }

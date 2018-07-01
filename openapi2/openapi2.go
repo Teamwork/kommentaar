@@ -215,7 +215,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
-					Default:     schema.Default,
+					Default:     schema.Default.String(),
 					Minimum:     schema.Minimum,
 					Maximum:     schema.Maximum,
 				})
@@ -248,7 +248,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
-					Default:     schema.Default,
+					Default:     schema.Default.String(),
 					Minimum:     schema.Minimum,
 					Maximum:     schema.Maximum,
 				})

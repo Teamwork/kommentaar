@@ -47,27 +47,24 @@ func TestOpenAPI2(t *testing.T) {
 			}
 			want = append(bytes.TrimSpace(want), '\n')
 
-			wantJSON, err := ioutil.ReadFile(path + "/want.json")
-			if err != nil && !os.IsNotExist(err) {
-				t.Fatalf("could not read output: %v", err)
-			}
-			wantJSON = append(bytes.TrimSpace(wantJSON), '\n')
-
 			wantErr, err := ioutil.ReadFile(path + "/wantErr")
 			if err != nil && !os.IsNotExist(err) {
 				t.Fatalf("could not read wantErr: %v", err)
 			}
 			wantErr = bytes.TrimSpace(wantErr)
 
+			// Adjust GOPATH so package/AST scanning works correctly.
 			wd, _ := os.Getwd()
 			build.Default.GOPATH = filepath.Join(wd, "/testdata/openapi2")
 
+			// Set up Kommentaar.
 			prog := docparse.NewProgram(false)
 			prog.Config.Title = "x"
 			prog.Config.Version = "x"
 			prog.Config.Paths = []string{"./testdata/openapi2/src/" + tt.Name()}
 			prog.Config.Output = openapi2.WriteYAML
 
+			// Run it.
 			outBuf := bytes.NewBuffer(nil)
 			err = docparse.FindComments(outBuf, prog)
 			if !test.ErrorContains(err, string(wantErr)) {
@@ -75,26 +72,36 @@ func TestOpenAPI2(t *testing.T) {
 			}
 			out := strings.TrimSpace(outBuf.String()) + "\n"
 
-			d := diff.TextDiff(string(want), out)
-			if d != "" {
-				t.Fatalf("wrong output\n%v", d)
-			}
-
-			if len(wantJSON) > 1 {
-				prog.Config.Output = openapi2.WriteJSONIndent
-				prog.Endpoints = nil
-				prog.References = make(map[string]docparse.Reference)
-				outBuf := bytes.NewBuffer(nil)
-				err = docparse.FindComments(outBuf, prog)
-				if err != nil {
-					t.Fatalf("JSON error: %v", err)
-				}
-				out := strings.TrimSpace(outBuf.String()) + "\n"
-
-				d := diff.TextDiff(string(wantJSON), out)
+			t.Run("yaml", func(t *testing.T) {
+				d := diff.TextDiff(string(want), out)
 				if d != "" {
-					t.Fatalf("wrong JSON output\n%v", d)
+					t.Fatalf("wrong output\n%v", d)
 				}
+			})
+
+			// Re-run for JSON if there is a want.json file.
+			wantJSON, err := ioutil.ReadFile(path + "/want.json")
+			if err != nil && !os.IsNotExist(err) {
+				t.Fatalf("could not read output: %v", err)
+			}
+			wantJSON = append(bytes.TrimSpace(wantJSON), '\n')
+			if len(wantJSON) > 1 {
+				t.Run("json", func(t *testing.T) {
+					prog.Config.Output = openapi2.WriteJSONIndent
+					prog.Endpoints = nil
+					prog.References = make(map[string]docparse.Reference)
+					outBuf := bytes.NewBuffer(nil)
+					err = docparse.FindComments(outBuf, prog)
+					if err != nil {
+						t.Fatalf("JSON error: %v", err)
+					}
+					out := strings.TrimSpace(outBuf.String()) + "\n"
+
+					d := diff.TextDiff(string(wantJSON), out)
+					if d != "" {
+						t.Fatalf("wrong output\n%v", d)
+					}
+				})
 			}
 		})
 	}

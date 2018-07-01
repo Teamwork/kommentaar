@@ -23,7 +23,7 @@ func TestServe(t *testing.T) {
 	rr = httptest.NewRecorder()
 	JSON(args)(rr, r)
 	if len(rr.Body.String()) < 500 {
-		t.Error("body too short for JSON?")
+		t.Errorf("body too short for JSON:\n%v", rr.Body)
 	}
 
 	rr = httptest.NewRecorder()

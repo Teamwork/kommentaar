@@ -28,7 +28,7 @@ func TestFieldToProperty(t *testing.T) {
 		"pkgSlice":  {Type: "array", Items: &Schema{Reference: "mail.Address"}},
 		"pkgSliceP": {Type: "array", Items: &Schema{Reference: "mail.Address"}},
 		"deeper":    {Reference: "a.refAnother"},
-		"docs": {Type: "string", Description: "This has some documentation!",
+		"docs": {Type: "enum", Description: "This has some documentation!",
 			Required: []string{"docs"},
 			Enum:     []string{"one", "two", "three"},
 		},
