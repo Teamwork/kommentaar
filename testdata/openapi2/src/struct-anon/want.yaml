@@ -1,0 +1,28 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/struct-anon.resp'
+definitions:
+  struct-embed.resp:
+    title: resp
+    description: resp docs.
+    type: object
+    properties:
+      pipeline:
+        description: pipe it!
+        type: object
