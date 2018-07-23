@@ -1,9 +1,12 @@
 package path
 
+// response of a pipeline request
 type resp struct {
 	// pipe it!
 	Pipeline struct {
-		Name string `json:"name"`
+		// Name of the pipeline
+		Name  string `json:"name"`
+		NoTag int64
 	} `json:"pipeline"`
 }
 

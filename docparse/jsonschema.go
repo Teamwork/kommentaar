@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -239,6 +240,26 @@ start:
 
 		p.Type = ""
 		name = typ
+
+	// Anonymous struct
+	case *ast.StructType:
+		p.Type = "object"
+		p.Properties = map[string]*Schema{}
+		for _, f := range typ.Fields.List {
+			prop, err := fieldToSchema(prog, "", ref, f)
+			if err != nil {
+				return nil, fmt.Errorf("anon struct: %v", err)
+			}
+
+			propName := f.Names[0].Name
+			if f.Tag != nil {
+				jsonTag := parseRawTag(f.Tag.Value, "json")
+				if jsonTag != "" {
+					propName = strings.Split(jsonTag, ",")[0]
+				}
+			}
+			p.Properties[propName] = prop
+		}
 
 	// An expression followed by a selector, e.g. "pkg.foo"
 	case *ast.SelectorExpr:
@@ -494,4 +515,9 @@ func canonicalType(currentFile, pkgPath string, typ *ast.Ident) (ast.Expr, error
 	}
 
 	return ts.Type, nil
+}
+
+// parseRawTag returns the value for a tag from an ast.Field Tag value.
+func parseRawTag(v, name string) string {
+	return reflect.StructTag(v[1 : len(v)-1]).Get(name)
 }

@@ -18,11 +18,17 @@ paths:
           schema:
             $ref: '#/definitions/struct-anon.resp'
 definitions:
-  struct-embed.resp:
+  struct-anon.resp:
     title: resp
-    description: resp docs.
+    description: response of a pipeline request
     type: object
     properties:
       pipeline:
         description: pipe it!
         type: object
+        properties:
+          NoTag:
+            type: integer
+          name:
+            description: Name of the pipeline
+            type: string
