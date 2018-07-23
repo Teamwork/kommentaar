@@ -74,7 +74,7 @@ var printDebug bool
 
 func dbg(s string, a ...interface{}) {
 	if printDebug {
-		fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
+		_, _ = fmt.Fprintf(os.Stderr, "\x1b[38;5;244mdbg docparse: "+s+"\x1b[0m\n", a...)
 	}
 }
 

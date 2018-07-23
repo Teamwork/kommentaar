@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
@@ -30,12 +31,18 @@ func YAML(args Args) http.HandlerFunc {
 		out, err := run(args, openapi2.WriteYAML, args.YAMLFile)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error: %v", err)
+			_, wErr := fmt.Fprintf(w, "Error: %v", err)
+			if wErr != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+			}
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprint(w, out)
+		_, wErr := fmt.Fprint(w, out)
+		if wErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+		}
 	}
 }
 
@@ -55,12 +62,18 @@ func JSON(args Args) http.HandlerFunc {
 		out, err := run(args, f, args.JSONFile)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error: %v", err)
+			_, wErr := fmt.Fprintf(w, "Error: %v", err)
+			if wErr != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+			}
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, out)
+		_, wErr := fmt.Fprint(w, out)
+		if wErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+		}
 	}
 }
 
@@ -70,12 +83,18 @@ func HTML(args Args) http.HandlerFunc {
 		out, err := run(args, html.WriteHTML, args.HTMLFile)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error: %v", err)
+			_, wErr := fmt.Fprintf(w, "Error: %v", err)
+			if wErr != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+			}
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, out)
+		_, wErr := fmt.Fprint(w, out)
+		if wErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+		}
 	}
 }
 
