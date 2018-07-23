@@ -97,25 +97,3 @@ func TestFieldToProperty(t *testing.T) {
 		}
 	})
 }
-
-func TestParseRawTag(t *testing.T) {
-	tests := []struct {
-		value string
-		tag   string
-		want  string
-	}{
-		{"`json:\"name\"`", "json", "name"},
-		{"`json:\"name\" db:\"dbName\"`", "json", "name"},
-		{"`db:\"name\"`", "json", ""},
-	}
-
-	for i, tt := range tests {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			out := parseRawTag(tt.value, tt.tag)
-			if out != tt.want {
-				t.Errorf("parseRawTag(%q, %q) => %q; want: %q",
-					tt.value, tt.tag, out, tt.want)
-			}
-		})
-	}
-}
