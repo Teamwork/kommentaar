@@ -18,7 +18,7 @@ import (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: kommentaar [pkg pkg...]\n\n")
+		_, _ = fmt.Fprintf(os.Stderr, "usage: kommentaar [pkg pkg...]\n\n")
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
@@ -40,12 +40,12 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not create CPU profile: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "could not create CPU profile: %v\n", err)
 			os.Exit(10)
 		}
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not start CPU profile: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "could not start CPU profile: %v\n", err)
 			os.Exit(10)
 		}
 		defer pprof.StopCPUProfile()
@@ -76,7 +76,7 @@ func main() {
 	case "ls":
 		outFunc = lsAll
 	default:
-		fmt.Fprintf(os.Stderr, "invalid value for -out: %#v\n\n", *out)
+		_, _ = fmt.Fprintf(os.Stderr, "invalid value for -out: %#v\n\n", *out)
 		flag.Usage()
 	}
 
@@ -85,7 +85,7 @@ func main() {
 	if *config != "" {
 		err := kconfig.Load(prog, *config)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error()+"\n")
+			_, _ = fmt.Fprintf(os.Stderr, err.Error()+"\n")
 			os.Exit(1)
 		}
 	}
@@ -95,20 +95,20 @@ func main() {
 
 	err := docparse.FindComments(os.Stdout, prog)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error()+"\n")
+		_, _ = fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not create memory profile: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "could not create memory profile: %v\n", err)
 			os.Exit(10)
 		}
 		runtime.GC()
 		err = pprof.WriteHeapProfile(f)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not write memory profile: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "could not write memory profile: %v\n", err)
 			os.Exit(10)
 		}
 		_ = f.Close()

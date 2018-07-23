@@ -313,13 +313,20 @@ func ServeHTML(addr string) func(io.Writer, *docparse.Program) error {
 			err := docparse.FindComments(os.Stdout, prog)
 			if err != nil {
 				w.WriteHeader(500)
-				fmt.Fprintf(w, "could not parse comments: %v", err)
+				_, wErr := fmt.Fprintf(w, "could not parse comments: %v", err)
+				if wErr != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+				}
+
 				return
 			}
 
 			err = mainTpl.Execute(w, prog)
 			if err != nil {
-				fmt.Fprintf(w, "could not execute template: %v", err)
+				_, wErr := fmt.Fprintf(w, "could not execute template: %v", err)
+				if wErr != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)
+				}
 			}
 		})
 
