@@ -476,6 +476,8 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 		return "", err
 	}
 
+	// TODO: This is *ast.StructType in cases for anonymous structs.
+	// fmt.Printf("%T, %v -> %v -> %#v\n", ts.Type, ts.Type, ok, ident)
 	ident, ok := ts.Type.(*ast.Ident)
 	if !ok {
 		return "", nil
