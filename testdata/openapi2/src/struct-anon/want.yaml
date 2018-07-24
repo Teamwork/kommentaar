@@ -27,8 +27,13 @@ definitions:
         description: pipe it!
         type: object
         properties:
-          NoTag:
-            type: integer
+          Foo:
+            $ref: struct-anon.Foo
           name:
             description: Name of the pipeline
             type: string
+  struct-anon.Foo:
+    properties:
+      bar:
+        type: string
+
