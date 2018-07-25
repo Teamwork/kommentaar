@@ -240,6 +240,20 @@ start:
 		p.Type = ""
 		name = typ
 
+	// Anonymous struct
+	case *ast.StructType:
+		p.Type = "object"
+		p.Properties = map[string]*Schema{}
+		for _, f := range typ.Fields.List {
+			prop, err := fieldToSchema(prog, fName, ref, f)
+			if err != nil {
+				return nil, fmt.Errorf("anon struct: %v", err)
+			}
+
+			// TODO: Should allow config for json
+			p.Properties[goutil.TagName(f, "json")] = prop
+		}
+
 	// An expression followed by a selector, e.g. "pkg.foo"
 	case *ast.SelectorExpr:
 		pkgSel, ok := typ.X.(*ast.Ident)
@@ -354,7 +368,7 @@ arrayStart:
 	// Simple identifier: "string", "myCustomType".
 	case *ast.Ident:
 
-		dbg("resolveArray: ident: %#v", typ.Name)
+		dbg("resolveArray: ident: %#v in %#v", typ.Name, pkg)
 
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
@@ -400,10 +414,11 @@ arrayStart:
 		}
 	}
 
+	sRef := lookup
 	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
+		sRef = pkg[i+1:] + "." + name.Name
 	}
-	p.Items = &Schema{Reference: lookup}
+	p.Items = &Schema{Reference: sRef}
 
 	// Add to prog.References.
 	_, err = GetReference(prog, "", lookup, ref.File)
@@ -445,6 +460,7 @@ func JSONSchemaType(t string) string {
 }
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
+	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
@@ -462,6 +478,8 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 		return "", err
 	}
 
+	// TODO: This is *ast.StructType in cases for anonymous structs.
+	// fmt.Printf("%T, %v -> %v -> %#v\n", ts.Type, ts.Type, ok, ident)
 	ident, ok := ts.Type.(*ast.Ident)
 	if !ok {
 		return "", nil
