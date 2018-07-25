@@ -368,7 +368,7 @@ arrayStart:
 	// Simple identifier: "string", "myCustomType".
 	case *ast.Ident:
 
-		dbg("resolveArray: ident: %#v in %s", typ.Name, pkg)
+		dbg("resolveArray: ident: %#v in %#v", typ.Name, pkg)
 
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
@@ -460,7 +460,7 @@ func JSONSchemaType(t string) string {
 }
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
-	dbg("getTypeInfo: %s in %s", lookup, filePath)
+	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
