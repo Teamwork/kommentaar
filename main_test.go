@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"go/build"
 	"io/ioutil"
 	"os"
@@ -78,7 +77,6 @@ func TestOpenAPI2(t *testing.T) {
 
 			d := diff.TextDiff(string(want), out)
 			if d != "" {
-				fmt.Println(out)
 				t.Fatalf("wrong output\n%v", d)
 			}
 
