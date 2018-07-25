@@ -245,7 +245,7 @@ start:
 		p.Type = "object"
 		p.Properties = map[string]*Schema{}
 		for _, f := range typ.Fields.List {
-			prop, err := fieldToSchema(prog, "", ref, f)
+			prop, err := fieldToSchema(prog, fName, ref, f)
 			if err != nil {
 				return nil, fmt.Errorf("anon struct: %v", err)
 			}
@@ -368,7 +368,7 @@ arrayStart:
 	// Simple identifier: "string", "myCustomType".
 	case *ast.Ident:
 
-		dbg("resolveArray: ident: %#v", typ.Name)
+		dbg("resolveArray: ident: %#v in %s", typ.Name, pkg)
 
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
@@ -414,10 +414,11 @@ arrayStart:
 		}
 	}
 
+	sRef := lookup
 	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
+		sRef = pkg[i+1:] + "." + name.Name
 	}
-	p.Items = &Schema{Reference: lookup}
+	p.Items = &Schema{Reference: sRef}
 
 	// Add to prog.References.
 	_, err = GetReference(prog, "", lookup, ref.File)
@@ -459,6 +460,7 @@ func JSONSchemaType(t string) string {
 }
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
+	dbg("getTypeInfo: %s in %s", lookup, filePath)
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo

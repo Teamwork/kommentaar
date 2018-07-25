@@ -28,7 +28,7 @@ definitions:
         type: object
         properties:
           Foo:
-            $ref: struct-anon.Foo
+            $ref: '#/definitions/struct-anon.Foo'
           name:
             description: Name of the pipeline
             type: string
@@ -36,4 +36,3 @@ definitions:
     properties:
       bar:
         type: string
-

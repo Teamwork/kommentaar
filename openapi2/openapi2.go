@@ -147,15 +147,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		case docparse.ContextEmbed:
 			// Skip.
 		default:
-			for _, f := range v.Schema.Properties {
-				if f.Reference != "" && !strings.HasPrefix(f.Reference, "#/definitions/") {
-					f.Reference = "#/definitions/" + f.Reference
-				}
-				if f.Items != nil && f.Items.Reference != "" && !strings.HasPrefix(f.Items.Reference, "#/definitions/") {
-					f.Items.Reference = "#/definitions/" + f.Items.Reference
-				}
-			}
-
+			prefixPropertyReferences(v.Schema.Properties)
 			out.Definitions[k] = *v.Schema
 		}
 	}
@@ -370,4 +362,21 @@ func appendIfNotExists(xs []string, y string) []string {
 		}
 	}
 	return append(xs, y)
+}
+
+func prefixPropertyReferences(properties map[string]*docparse.Schema) {
+	for _, s := range properties {
+		if s.Reference != "" && !strings.HasPrefix(s.Reference, "#/definitions/") {
+			s.Reference = "#/definitions/" + s.Reference
+		}
+		if s.Items != nil && s.Items.Reference != "" {
+			if !strings.HasPrefix(s.Items.Reference, "#/definitions/") {
+				s.Items.Reference = "#/definitions/" + s.Items.Reference
+			}
+		}
+
+		if s.Properties != nil {
+			prefixPropertyReferences(s.Properties)
+		}
+	}
 }
