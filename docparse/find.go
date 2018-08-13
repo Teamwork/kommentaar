@@ -272,11 +272,16 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 		return nil, err
 	}
 
-	// Make sure it's a struct.
-	st, ok := ts.Type.(*ast.StructType)
-	if !ok {
+	var st *ast.StructType
+	switch typ := ts.Type.(type) {
+	case *ast.StructType:
+		st = typ
+	case *ast.InterfaceType:
+		// dummy StructType, we'll just be using the doc from the interface.
+		st = &ast.StructType{Fields: &ast.FieldList{}}
+	default:
 		return nil, ErrNotStruct{ts, fmt.Sprintf(
-			"%v is not a struct but a %T", name, ts.Type)}
+			"%v is not a struct or interface but a %T", name, ts.Type)}
 	}
 
 	ref := Reference{

@@ -1,7 +1,6 @@
 package docparse
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"path"
@@ -208,10 +207,19 @@ func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*S
 start:
 	switch typ := sw.(type) {
 
-	// Don't support interface{} for now. We'd have to add a lot of complexity
-	// for it, and not sure if we're ever going to need it.
+	// Interface, only useful for its description.
 	case *ast.InterfaceType:
-		return nil, errors.New("fieldToSchema: interface{} is not supported")
+		field := f.Names[0].Obj.Decl.(*ast.Field)
+		switch typ := field.Type.(type) {
+		case *ast.SelectorExpr:
+			var ok bool
+			name, ok = typ.X.(*ast.Ident)
+			if !ok {
+				return nil, fmt.Errorf("fieldToSchema: ast.InterfaceType.Names[0].Obj.Decl.Type.X is not ast.Ident: %#v", typ.X)
+			}
+		case *ast.Ident:
+			name = typ
+		}
 
 	// Pointer type; we don't really care about this for now, so just read over
 	// it.
