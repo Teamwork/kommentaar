@@ -212,11 +212,13 @@ start:
 		field := f.Names[0].Obj.Decl.(*ast.Field)
 		switch typ := field.Type.(type) {
 		case *ast.SelectorExpr:
-			var ok bool
-			name, ok = typ.X.(*ast.Ident)
+			pkgSel, ok := typ.X.(*ast.Ident)
 			if !ok {
-				return nil, fmt.Errorf("fieldToSchema: ast.InterfaceType.Names[0].Obj.Decl.Type.X is not ast.Ident: %#v", typ.X)
+				return nil, fmt.Errorf("typ.X is not ast.Ident: %#v", typ.X)
 			}
+			pkg = pkgSel.Name
+			name = typ.Sel
+			// FIXME: the type isn't added to definitions
 		case *ast.Ident:
 			name = typ
 		}

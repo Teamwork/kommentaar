@@ -22,6 +22,10 @@ definitions:
     title: fooer
     description: fooer is something.
     type: object
+  otherpkg.I:
+    title: I
+    description: I is an interface in another package.
+    type: object
   interface.resp:
     title: resp
     type: object
@@ -33,3 +37,5 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/interface.fooer'
+      otherPkg:
+        $ref: '#/definitions/otherpkg.I'
