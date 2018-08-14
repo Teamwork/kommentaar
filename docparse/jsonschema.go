@@ -218,7 +218,11 @@ start:
 			}
 			pkg = pkgSel.Name
 			name = typ.Sel
-			// FIXME: the type isn't added to definitions
+
+			lookup := pkg + "." + name.Name
+			if _, err := GetReference(prog, "", lookup, ref.File); err != nil {
+				return nil, fmt.Errorf("GetReference: %v", err)
+			}
 		case *ast.Ident:
 			name = typ
 		}
