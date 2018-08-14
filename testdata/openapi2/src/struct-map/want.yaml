@@ -1,0 +1,50 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/struct-map.resp'
+definitions:
+  otherpkg.OtherStruct:
+    title: OtherStruct
+    description: OtherStruct is a struct in another package.
+    type: object
+    properties:
+      map:
+        description: Map contains some random data :)
+        type: object
+  struct-map.aStruct:
+    title: aStruct
+    type: object
+    properties:
+      bar:
+        type: object
+      foo:
+        type: string
+  struct-map.resp:
+    title: resp
+    type: object
+    properties:
+      aStruct:
+        $ref: '#/definitions/struct-map.aStruct'
+      basic:
+        description: Basic comment.
+        type: object
+      custom:
+        description: Custom comment.
+        type: object
+      otherStruct:
+        $ref: '#/definitions/otherpkg.OtherStruct'
