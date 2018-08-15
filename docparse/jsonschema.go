@@ -304,11 +304,9 @@ start:
 	// Maps
 	case *ast.MapType:
 		// As far as I can find there is no obvious/elegant way to represent
-		// this in JSON schema, so simply don't support it for now. I don't
-		// think we actually use this anywhere.
-		// TODO: We should really support this...
-		//return nil, errors.New("fieldToSchema: maps are not supported due to JSON schema limitations")
+		// this in JSON schema, so it's just an object.
 		p.Type = "object"
+		return &p, nil
 
 	// Array and slices.
 	case *ast.ArrayType:
