@@ -209,6 +209,10 @@ start:
 
 	// Interface, only useful for its description.
 	case *ast.InterfaceType:
+		if len(f.Names) == 0 {
+			return nil, fmt.Errorf("field has no Names: %#v", f)
+		}
+
 		field := f.Names[0].Obj.Decl.(*ast.Field)
 		switch typ := field.Type.(type) {
 		case *ast.SelectorExpr:
