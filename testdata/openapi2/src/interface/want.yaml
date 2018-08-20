@@ -1,0 +1,41 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    get:
+      operationId: GET_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/interface.resp'
+definitions:
+  interface.fooer:
+    title: fooer
+    description: fooer is something.
+    type: object
+  interface.resp:
+    title: resp
+    type: object
+    properties:
+      emptyInterface: {}
+      fooer:
+        $ref: '#/definitions/interface.fooer'
+      fooers:
+        type: array
+        items:
+          $ref: '#/definitions/interface.fooer'
+      otherPkg:
+        $ref: '#/definitions/otherpkg.I'
+  otherpkg.I:
+    title: I
+    description: I is an interface in another package.
+    type: object
