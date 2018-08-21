@@ -189,7 +189,6 @@ func findType(currentFile, pkgPath, name string) (
 								}
 
 								decls = append(decls, declCache{ts, path})
-								break
 							}
 						}
 					}
@@ -257,7 +256,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := prog.References[lookup]; ok {
-		// Update context: some structs are embeded but also referenced
+		// Update context: some structs are embedded but also referenced
 		// directly.
 		if ref.Context == ContextEmbed {
 			ref.Context = context
@@ -353,7 +352,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 		}
 	}
 
-	// Add in embeded structs with a tag.
+	// Add in embedded structs with a tag.
 	for _, n := range nestedTagged {
 		ename := goutil.TagName(n, "json") // TODO: don't hard-code json
 		n.Names = []*ast.Ident{&ast.Ident{
@@ -372,7 +371,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	}
 	ref.Schema = schema
 
-	// Merge for embeded structs without a tag.
+	// Merge for embedded structs without a tag.
 	for _, n := range nested {
 		ref.Fields = append(ref.Fields, prog.References[n].Fields...)
 
