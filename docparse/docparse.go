@@ -45,6 +45,7 @@ type Config struct {
 	DefaultResponseCt string
 	DefaultResponse   map[int]DefaultResponse
 	Prefix            string
+	Basepath          string
 }
 
 // DefaultResponse references.

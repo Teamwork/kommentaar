@@ -119,7 +119,8 @@ var reParams = regexp.MustCompile(`{\w+}`)
 
 func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	out := OpenAPI{
-		Swagger: "2.0",
+		Swagger:  "2.0",
+		BasePath: prog.Config.Basepath,
 		Info: Info{
 			Title:       prog.Config.Title,
 			Description: string(prog.Config.Description),

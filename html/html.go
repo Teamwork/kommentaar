@@ -288,7 +288,7 @@ var mainTpl = template.Must(template.New("mainTpl").Funcs(funcMap).Parse(`
 func WriteHTML(w io.Writer, prog *docparse.Program) error {
 	// Too hard to write template otherwise.
 	for i := range prog.Endpoints {
-		prog.Endpoints[i].Path = prog.Config.Prefix + prog.Endpoints[i].Path
+		prog.Endpoints[i].Path = prog.Config.Basepath + prog.Config.Prefix + prog.Endpoints[i].Path
 
 		if len(prog.Endpoints[i].Tags) == 0 {
 			prog.Endpoints[i].Tags = []string{"default"}
