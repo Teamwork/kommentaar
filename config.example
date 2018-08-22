@@ -29,7 +29,14 @@ default-response-ct application/json
 #default-response 404 $ref: github.com/teamwork/echoutil/errorhandler.Error
 
 # Prefix all paths with this.
-prefix /desk/
+#prefix /desk
+
+# Set output basepath; this is different from "prefix" because the former
+# modifies every path before it gets added to the output, whereas this will only
+# set the basePath attribute in the output if the output format supports it.
+# If the output format doesn't support Basepath, it is added to every endpoint
+# *before* the Prefix.
+basepath /desk
 
 
 # vim:ft=config
