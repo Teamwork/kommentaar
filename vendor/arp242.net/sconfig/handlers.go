@@ -17,18 +17,19 @@ func init() {
 
 func defaultTypeHandlers() {
 	typeHandlers = map[string][]TypeHandler{
-		"string":    {handleString},
-		"bool":      {handleBool},
-		"float32":   {ValidateSingleValue(), handleFloat32},
-		"float64":   {ValidateSingleValue(), handleFloat64},
-		"int64":     {ValidateSingleValue(), handleInt64},
-		"uint64":    {ValidateSingleValue(), handleUint64},
-		"[]string":  {ValidateValueLimit(1, 0), handleStringSlice},
-		"[]bool":    {ValidateValueLimit(1, 0), handleBoolSlice},
-		"[]float32": {ValidateValueLimit(1, 0), handleFloat32Slice},
-		"[]float64": {ValidateValueLimit(1, 0), handleFloat64Slice},
-		"[]int64":   {ValidateValueLimit(1, 0), handleInt64Slice},
-		"[]uint64":  {ValidateValueLimit(1, 0), handleUint64Slice},
+		"string":            {handleString},
+		"bool":              {handleBool},
+		"float32":           {ValidateSingleValue(), handleFloat32},
+		"float64":           {ValidateSingleValue(), handleFloat64},
+		"int64":             {ValidateSingleValue(), handleInt64},
+		"uint64":            {ValidateSingleValue(), handleUint64},
+		"[]string":          {ValidateValueLimit(1, 0), handleStringSlice},
+		"[]bool":            {ValidateValueLimit(1, 0), handleBoolSlice},
+		"[]float32":         {ValidateValueLimit(1, 0), handleFloat32Slice},
+		"[]float64":         {ValidateValueLimit(1, 0), handleFloat64Slice},
+		"[]int64":           {ValidateValueLimit(1, 0), handleInt64Slice},
+		"[]uint64":          {ValidateValueLimit(1, 0), handleUint64Slice},
+		"map[string]string": {ValidateValueLimit(2, 0), handleStringMap},
 	}
 }
 
@@ -147,6 +148,24 @@ func handleUint64Slice(v []string) (interface{}, error) {
 		}
 		a[i] = r
 	}
+	return a, nil
+}
+
+func handleStringMap(v []string) (interface{}, error) {
+	if len(v)%2 != 0 {
+		return nil, fmt.Errorf("uneven number of arguments: %d", len(v))
+	}
+
+	a := make(map[string]string, len(v)/2)
+	k := ""
+	for i := range v {
+		if i%2 == 0 {
+			k = v[i]
+		} else {
+			a[k] = v[i]
+		}
+	}
+
 	return a, nil
 }
 

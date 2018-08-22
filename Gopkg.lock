@@ -3,65 +3,92 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:90e8b29cfaced71582337bd3aa646de1f00853e87fbf3d24b6f9ec8eee5a9cbf"
   name = "arp242.net/sconfig"
   packages = [
     ".",
-    "handlers/html/template"
+    "handlers/html/template",
   ]
-  revision = "26bf9ff1c510eaa1553c8276ea43618a1fb1141b"
+  pruneopts = "NUT"
+  revision = "81257f7853e36a198f50a217080f5ad5041dab02"
 
 [[projects]]
+  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
-  version = "v1.1.0"
+  pruneopts = "NUT"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:7b21c7fc5551b46d1308b4ffa9e9e49b66c7a8b0ba88c0130474b0e7a20d859f"
   name = "github.com/kr/pretty"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
 
 [[projects]]
+  digest = "1:c3a7836b5904db0f8b609595b619916a6831cb35b8b714aec39f96d00c6155d8"
   name = "github.com/kr/text"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
+  pruneopts = "NUT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:68a60a5251c117cda21b1543e3a1c801972616e8840ff628d3a25363ab7b4593"
   name = "github.com/teamwork/test"
   packages = [
     ".",
-    "diff"
+    "diff",
   ]
-  revision = "859eda3cd87ed7713df79c5bb2b2a90601ad0524"
+  pruneopts = "NUT"
+  revision = "fb2f93f656a322dbe851f2aa54921279dfc1a333"
 
 [[projects]]
   branch = "master"
+  digest = "1:75234c2fe99ad6024534c47acf630641053970c9f73d293934c0982df9a58bf7"
   name = "github.com/teamwork/utils"
   packages = [
     "goutil",
+    "jsonutil",
     "sliceutil",
-    "stringutil"
+    "stringutil",
   ]
-  revision = "25cfdf9788fd470f3d664452bfc40ea3750618bb"
+  pruneopts = "NUT"
+  revision = "0ecffb2c832733ada5814effb0cd22e327fbf309"
 
 [[projects]]
+  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "727ca228e789c1b879c3c989af1bb36b0a5e3ccc9408caa5072ec0d51b10db8c"
+  input-imports = [
+    "arp242.net/sconfig",
+    "arp242.net/sconfig/handlers/html/template",
+    "github.com/kr/pretty",
+    "github.com/teamwork/test",
+    "github.com/teamwork/test/diff",
+    "github.com/teamwork/utils/goutil",
+    "github.com/teamwork/utils/sliceutil",
+    "github.com/teamwork/utils/stringutil",
+    "gopkg.in/yaml.v2",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

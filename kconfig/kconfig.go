@@ -47,5 +47,47 @@ func Load(prog *docparse.Program, file string) error {
 		return fmt.Errorf("could not load config: %v", err)
 	}
 
+	// Merge in some defaults.
+	def := map[string]string{
+		// stdlib
+		"sql.NullBool":    "bool",
+		"sql.NullFloat64": "float64",
+		"sql.NullInt64":   "int64",
+		"sql.NullString":  "string",
+		"time.Time":       "string",
+
+		// github.com/guregu/null
+		"null.Bool":   "bool",
+		"null.Float":  "float64",
+		"null.Int":    "int64",
+		"null.String": "string",
+		"null.Time":   "string",
+		"zero.Bool":   "bool",
+		"zero.Float":  "float64",
+		"zero.Int":    "int64",
+		"zero.String": "string",
+		"zero.Time":   "string",
+	}
+	for k, v := range def {
+		if _, ok := prog.Config.MapTypes[k]; !ok {
+			prog.Config.MapTypes[k] = v
+		}
+	}
+
+	def = map[string]string{
+		// stdlib
+		"time.Time": "date-time",
+
+		// github.com/guregu/null
+		"null.Time": "date-time",
+		"zero.Time": "date-time",
+	}
+
+	for k, v := range def {
+		if _, ok := prog.Config.MapFormats[k]; !ok {
+			prog.Config.MapFormats[k] = v
+		}
+	}
+
 	return nil
 }

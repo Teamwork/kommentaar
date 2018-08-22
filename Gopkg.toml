@@ -24,6 +24,10 @@
 #   go-tests = true
 #   unused-packages = true
 
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
 
 [[constraint]]
   branch = "master"
@@ -32,10 +36,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/teamwork/utils"
-
-[prune]
-  go-tests = true
-  unused-packages = true
 
 [[constraint]]
   branch = "master"
