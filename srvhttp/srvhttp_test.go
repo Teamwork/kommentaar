@@ -11,7 +11,7 @@ import (
 func TestServe(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	args := Args{
-		Paths: []string{"../example/..."},
+		Packages: []string{"../example/..."},
 	}
 
 	rr := httptest.NewRecorder()
@@ -36,7 +36,7 @@ func TestServe(t *testing.T) {
 func TestFromFile(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	args := Args{
-		Paths:    []string{"../example/..."},
+		Packages: []string{"../example/..."},
 		NoScan:   true,
 		YAMLFile: "../testdata/openapi2/src/blank-line/want.yaml",
 	}

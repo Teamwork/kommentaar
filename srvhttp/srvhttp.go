@@ -17,7 +17,7 @@ import (
 
 // Args for the HTTP handlers.
 type Args struct {
-	Paths    []string // Paths to scan.
+	Packages []string // Packages to scan.
 	Config   string   // Kommentaar config file.
 	NoScan   bool     // Don't scan the paths, but instead load and output one of the *File.
 	YAMLFile string
@@ -117,7 +117,9 @@ func run(
 		}
 	}
 
-	prog.Config.Packages = args.Paths
+	if len(args.Packages) > 0 {
+		prog.Config.Packages = args.Packages
+	}
 	prog.Config.Output = out
 
 	buf := bytes.NewBuffer(nil)
