@@ -3,6 +3,7 @@ package kconfig
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,11 +11,23 @@ import (
 	"arp242.net/sconfig"
 	_ "arp242.net/sconfig/handlers/html/template" // template.HTML handler
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/kommentaar/html"
+	"github.com/teamwork/kommentaar/openapi2"
 )
 
 // Load the configuration.
 func Load(prog *docparse.Program, file string) error {
 	err := sconfig.Parse(&prog.Config, file, sconfig.Handlers{
+		"Output": func(line []string) error {
+			if len(line) != 1 {
+				return fmt.Errorf("invalid: %q", strings.Join(line, " "))
+			}
+
+			var err error
+			prog.Config.Output, err = Output(line[0], "")
+			return err
+		},
+
 		"DefaultResponse": func(line []string) error {
 			code, err := strconv.ParseInt(line[0], 10, 32)
 			if err != nil {
@@ -22,6 +35,7 @@ func Load(prog *docparse.Program, file string) error {
 			}
 
 			// TODO: validate rest as well.
+			// TODO: change syntax to allow content-type?
 
 			if prog.Config.DefaultResponse == nil {
 				prog.Config.DefaultResponse = make(map[int]docparse.DefaultResponse)
@@ -82,12 +96,38 @@ func Load(prog *docparse.Program, file string) error {
 		"null.Time": "date-time",
 		"zero.Time": "date-time",
 	}
-
 	for k, v := range def {
 		if _, ok := prog.Config.MapFormats[k]; !ok {
 			prog.Config.MapFormats[k] = v
 		}
 	}
 
+	if prog.Config.Output == nil {
+		prog.Config.Output = openapi2.WriteYAML
+	}
+
 	return nil
+}
+
+// Output gets the output function from a string.
+func Output(out, addr string) (func(io.Writer, *docparse.Program) error, error) {
+	var outFunc func(io.Writer, *docparse.Program) error
+	switch strings.ToLower(out) {
+	case "openapi2-yaml":
+		outFunc = openapi2.WriteYAML
+	case "openapi2-json":
+		outFunc = openapi2.WriteJSON
+	case "openapi2-jsonindent":
+		outFunc = openapi2.WriteJSONIndent
+	case "html":
+		if addr != "" {
+			outFunc = html.ServeHTML(addr)
+		} else {
+			outFunc = html.WriteHTML
+		}
+	default:
+		return nil, fmt.Errorf("unknown value: %q", out)
+	}
+
+	return outFunc, nil
 }

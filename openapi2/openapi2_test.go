@@ -11,7 +11,7 @@ func TestExample(t *testing.T) {
 	prog := docparse.NewProgram(false)
 	prog.Config.Title = "Test Example"
 	prog.Config.Version = "v1"
-	prog.Config.Paths = []string{"../example/..."}
+	prog.Config.Packages = []string{"../example/..."}
 	prog.Config.Output = WriteYAML
 
 	w := bytes.NewBufferString("")

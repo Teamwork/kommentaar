@@ -9,7 +9,7 @@ import (
 
 func TestHTML(t *testing.T) {
 	prog := docparse.NewProgram(false)
-	prog.Config.Paths = []string{"../example/..."}
+	prog.Config.Packages = []string{"../example/..."}
 	prog.Config.Output = WriteHTML
 
 	w := bytes.NewBufferString("")

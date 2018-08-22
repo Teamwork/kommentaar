@@ -23,7 +23,7 @@ const (
 
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
-	pkgPaths, err := goutil.Expand(prog.Config.Paths, build.FindOnly)
+	pkgPaths, err := goutil.Expand(prog.Config.Packages, build.FindOnly)
 	if err != nil {
 		return err
 	}

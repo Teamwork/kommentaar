@@ -28,9 +28,9 @@ type Program struct {
 // Config for the program.
 type Config struct {
 	// Kommentaar control.
-	Paths  []string
-	Output func(io.Writer, *Program) error
-	Debug  bool
+	Packages []string
+	Output   func(io.Writer, *Program) error
+	Debug    bool
 
 	// General information.
 	Title        string

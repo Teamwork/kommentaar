@@ -1,54 +1,85 @@
-# Application title.
-title Teamwork Desk
+# vim:ft=config
+#
+# Kommentaar is configured with a sconfig configuration file. See
+# https://arp242.net/code/sconfig for a full description of the syntax, the
+# short of it is:
+#
+# - `#` are for comments
+# - Configuration keys and values are separated by whitespace.
+# - No quotes needed.
+# - Line continuation is done by indenting.
+#
 
-# Application description, as HTML.
-description
- <strong>woot!</strong>
+# Set output format; can be overridden with the -output commandline option.
+#
+# openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
+# openapi2-json        OpenAPI/Swagger 2.0 as JSON
+# openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
+# html                 HTML documentation
+output openapi2-yaml
 
-# API version of your application.
-version 2.0
+# Packages to scan by default; can be overridden from the commandline.
+# Will default to correct directory if omitted.
+#packages github.com/teamwork/desk/api/v2/...
 
-# Contact information.
-#contact-name  Teamwork Desk support
-#contact-email api@teamwork.com
-#contact-site  http://developer.teamwork.com/desk/
+# Application title; this is required.
+title Example title
 
-# Default Content-Type if it's omitted.
-default-request-ct application/json
+# API version; this is treated as a string and required.
+version 1.0
+
+# Description of the application in HTML.
+#description
+
+# Contact details.
+#contact-name
+#contact-email
+#contact-site
+
+# Set the default Content-Type for requests and responses; this means that
+# writing:
+#
+#   Request (application/json): $ref foo
+#
+# can be shortened to:
+#
+#   Request: $ref foo
+default-request-ct  application/json
 default-response-ct application/json
 
-# Default response types. With this, you can just use:
+# Set default response types. With this, you can just use:
 #
-#   // Response 400
-#   // Response 404
+#   // Response 400: $default
+#   // Response 404: $default
 #
-# Or even shorter:
+# Instead of referring to the full types every time.
 #
-#   // Response 400, 404
+# The syntax is:
+#   [HTTP code] $ref: [ref]
+#
+# Examples:
 #default-response 400 $ref: github.com/teamwork/validate.Validator
-#default-response 404 $ref: github.com/teamwork/echoutil/errorhandler.Error
+#default-response 404 $ref: github.com/teamwork/apiutil/errorhandler.Error
 
-# Prefix all paths with this.
-#prefix /desk
+# Prefix all paths with this before adding to the output.
+#prefix
 
 # Set output basepath; this is different from "prefix" because the former
 # modifies every path before it gets added to the output, whereas this will only
-# set the basePath attribute in the output if the output format supports it.
+# set the basePath attribute in the output if that's supported in the format.
 # If the output format doesn't support Basepath, it is added to every endpoint
-# *before* the Prefix.
-basepath /desk
+# *before* the prefix.
+#basepath
 
 # Map types to anoter type. Useful for wrappers around types that don't need to
 # be exposed in the user-facing documentation.
 # sql.Null* is mapped by default.
-map-type
-	twnull.Bool   bool
-	twnull.Int    int64
-	twnull.String string
-	twtime.Time   string
+#map-types              
+#	twnull.Bool   bool
+#	twnull.Int    int64
+#	twnull.String string
+#	twtime.Time string
 
 # Map some times to an OpenAPI format.
-map-format
-	twtime.Time date-time
-
-# vim:ft=config
+#map-format
+#	twtime.Time date-time

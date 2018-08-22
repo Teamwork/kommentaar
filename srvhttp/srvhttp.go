@@ -117,7 +117,7 @@ func run(
 		}
 	}
 
-	prog.Config.Paths = args.Paths
+	prog.Config.Packages = args.Paths
 	prog.Config.Output = out
 
 	buf := bytes.NewBuffer(nil)

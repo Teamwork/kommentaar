@@ -13,7 +13,7 @@ import (
 
 func TestExampleDir(t *testing.T) {
 	prog := NewProgram(false)
-	prog.Config.Paths = []string{"../example"}
+	prog.Config.Packages = []string{"../example"}
 	prog.Config.Output = func(_ io.Writer, p *Program) error {
 		if len(p.Endpoints) < 2 {
 			t.Errorf("len(p.Endpoints) == %v", len(p.Endpoints))
