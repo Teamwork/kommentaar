@@ -20,7 +20,7 @@ func Load(prog *docparse.Program, file string) error {
 	err := sconfig.Parse(&prog.Config, file, sconfig.Handlers{
 		"Output": func(line []string) error {
 			if len(line) != 1 {
-				return fmt.Errorf("invalid: %q", strings.Join(line, " "))
+				return fmt.Errorf("invalid output: %q", strings.Join(line, " "))
 			}
 
 			var err error
@@ -56,52 +56,14 @@ func Load(prog *docparse.Program, file string) error {
 			return nil
 		},
 	})
-
 	if err != nil {
 		return fmt.Errorf("could not load config: %v", err)
 	}
 
-	// Merge in some defaults.
-	def := map[string]string{
-		// stdlib
-		"sql.NullBool":    "bool",
-		"sql.NullFloat64": "float64",
-		"sql.NullInt64":   "int64",
-		"sql.NullString":  "string",
-		"time.Time":       "string",
+	// TODO: validate that MapType is a Go primitive.
+	// TODO: validate that MapFormat is valid.
 
-		// github.com/guregu/null
-		"null.Bool":   "bool",
-		"null.Float":  "float64",
-		"null.Int":    "int64",
-		"null.String": "string",
-		"null.Time":   "string",
-		"zero.Bool":   "bool",
-		"zero.Float":  "float64",
-		"zero.Int":    "int64",
-		"zero.String": "string",
-		"zero.Time":   "string",
-	}
-	for k, v := range def {
-		if _, ok := prog.Config.MapTypes[k]; !ok {
-			prog.Config.MapTypes[k] = v
-		}
-	}
-
-	def = map[string]string{
-		// stdlib
-		"time.Time": "date-time",
-
-		// github.com/guregu/null
-		"null.Time": "date-time",
-		"zero.Time": "date-time",
-	}
-	for k, v := range def {
-		if _, ok := prog.Config.MapFormats[k]; !ok {
-			prog.Config.MapFormats[k] = v
-		}
-	}
-
+	// Set a default output.
 	if prog.Config.Output == nil {
 		prog.Config.Output = openapi2.WriteYAML
 	}

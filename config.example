@@ -69,17 +69,39 @@ default-response-ct application/json
 # set the basePath attribute in the output if that's supported in the format.
 # If the output format doesn't support Basepath, it is added to every endpoint
 # *before* the prefix.
-#basepath
+#basepath /myapp
 
 # Map types to anoter type. Useful for wrappers around types that don't need to
 # be exposed in the user-facing documentation.
-# sql.Null* is mapped by default.
-#map-types              
-#	twnull.Bool   bool
-#	twnull.Int    int64
-#	twnull.String string
-#	twtime.Time string
+#
+# The map target must be a Go built-in type (string, int64, etc.)
+map-types              
+	# Standard library
+	sql.NullBool    bool
+	sql.NullFloat64 float64
+	sql.NullInt64   int64
+	sql.NullString  string
+	time.Time       string
+
+	# github.com/guregu/null
+	null.Bool   bool
+	null.Float  float64
+	null.Int    int64
+	null.String string
+	null.Time   string
+	zero.Bool   bool
+	zero.Float  float64
+	zero.Int    int64
+	zero.String string
+	zero.Time   string
 
 # Map some times to an OpenAPI format.
-#map-format
-#	twtime.Time date-time
+#
+# https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#dataTypeFormat
+map-format
+	# Standard library
+	time.Time date-time
+
+	# github.com/guregu/null
+	null.Time date-time
+	zero.Time date-time

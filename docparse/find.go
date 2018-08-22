@@ -457,7 +457,6 @@ start:
 	}
 
 	// Don't need to add stuff we map to Go primitives.
-	// TODO: this is wrong, as it doesn't need to map to a Go primitive.
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}
