@@ -1,11 +1,9 @@
 // Package kconfig loads the configuration for Kommentaar.
-package kconfig
+package kconfig // import "github.com/teamwork/kommentaar/kconfig"
 
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"strconv"
 	"strings"
 
 	"arp242.net/sconfig"
@@ -30,30 +28,20 @@ func Load(prog *docparse.Program, file string) error {
 		},
 
 		"DefaultResponse": func(line []string) error {
-			code, err := strconv.ParseInt(line[0], 10, 32)
-			if err != nil {
-				return fmt.Errorf("first word must be response code: %v", err)
-			}
-
-			// TODO: validate rest as well.
-			// TODO: change syntax to allow content-type?
-
 			if prog.Config.DefaultResponse == nil {
-				prog.Config.DefaultResponse = make(map[int]docparse.DefaultResponse)
+				prog.Config.DefaultResponse = make(map[int]docparse.Response)
 			}
-			def := docparse.DefaultResponse{
-				Lookup:      strings.Replace(strings.Join(line[1:], " "), "$ref: ", "", 1),
-				Description: fmt.Sprintf("%v %v", code, http.StatusText(int(code))),
-			}
-			ref, err := docparse.GetReference(prog, "", def.Lookup, "")
+
+			code, resp, err := docparse.ParseResponse(prog, "", "Response "+strings.Join(line, " "))
 			if err != nil {
 				return err
 			}
 
-			def.Schema = *ref.Schema
+			if _, ok := prog.Config.DefaultResponse[code]; ok {
+				return fmt.Errorf("default response code %v defined more than once", code)
+			}
 
-			prog.Config.DefaultResponse[int(code)] = def
-
+			prog.Config.DefaultResponse[code] = *resp
 			return nil
 		},
 	})
@@ -67,8 +55,6 @@ func Load(prog *docparse.Program, file string) error {
 			return fmt.Errorf("map-type '%s %s' is not a predeclared type", k, v)
 		}
 	}
-
-	// TODO: validate that MapFormat is valid.
 
 	// Set a default output.
 	if prog.Config.Output == nil {

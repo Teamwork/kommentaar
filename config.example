@@ -54,12 +54,12 @@ default-response-ct application/json
 #
 # Instead of referring to the full types every time.
 #
-# The syntax is:
-#   [HTTP code] $ref: [ref]
+# The syntax is the same as regular Response lines, minus the Response keyword:
+#   [HTTP code] [(optional Content-Type)]: $ref: [type]
 #
 # Examples:
-#default-response 400 $ref: github.com/teamwork/validate.Validator
-#default-response 404 $ref: github.com/teamwork/apiutil/errorhandler.Error
+#default-response 400: $ref: github.com/teamwork/validate.Validator
+#default-response 404 (application/json): $ref: github.com/teamwork/apiutil/errorhandler.Error
 
 # Prefix all paths with this before adding to the output.
 #prefix
@@ -98,6 +98,7 @@ map-types
 # Map some times to an OpenAPI format.
 #
 # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#dataTypeFormat
+# https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
 map-format
 	# Standard library
 	time.Time date-time
