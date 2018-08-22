@@ -202,6 +202,11 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 start:
 	switch typ := sw.(type) {
 
+	// Pointer type; we don't really care about this, so read over it.
+	case *ast.StarExpr:
+		sw = typ.X
+		goto start
+
 	// Interface, only useful for its description.
 	case *ast.InterfaceType:
 		if len(f.Names) == 0 {
@@ -226,12 +231,6 @@ start:
 			name = typ
 		}
 
-	// Pointer type; we don't really care about this for now, so just read over
-	// it.
-	case *ast.StarExpr:
-		sw = typ.X
-		goto start
-
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
 		canon, err := canonicalType(ref.File, pkg, typ)
@@ -253,7 +252,7 @@ start:
 		p.Type = ""
 		name = typ
 
-	// Anonymous struct
+	// Anonymous struct.
 	case *ast.StructType:
 		p.Type = "object"
 		p.Properties = map[string]*Schema{}

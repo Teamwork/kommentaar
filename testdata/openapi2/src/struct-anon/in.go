@@ -7,8 +7,12 @@ type resp struct {
 		// Name of the pipeline
 		Name  string `json:"name"`
 		NoTag int
+		Named t
 	} `json:"pipeline"`
+	Named2 t
 }
+
+type t struct{ i int }
 
 // POST /path
 //

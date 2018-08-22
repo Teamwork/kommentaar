@@ -59,7 +59,7 @@ func TestOpenAPI2(t *testing.T) {
 			wd, _ := os.Getwd()
 			build.Default.GOPATH = filepath.Join(wd, "/testdata/openapi2")
 
-			prog := docparse.NewProgram(false)
+			prog := docparse.NewProgram(os.Getenv("KOMMENTAAR_DEBUG") != "")
 			prog.Config.Title = "x"
 			prog.Config.Version = "x"
 			prog.Config.Packages = []string{"./testdata/openapi2/src/" + tt.Name()}

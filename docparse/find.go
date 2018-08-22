@@ -129,7 +129,7 @@ func findType(currentFile, pkgPath, name string) (
 	importPath string,
 	err error,
 ) {
-	dbg("FindType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
+	dbg("findType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
 
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
@@ -150,7 +150,7 @@ func findType(currentFile, pkgPath, name string) (
 	decls, ok := declsCache[pkgPath]
 	if !ok {
 		fset := token.NewFileSet()
-		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
+		dbg("findType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
 		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
 		if err != nil {
 			return nil, "", "", fmt.Errorf("parse error: %v", err)
@@ -247,7 +247,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		name = lookup
 	}
 
-	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
+	dbg("GetReference: pkg: %#v -> name: %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := prog.References[lookup]; ok {
@@ -517,6 +517,8 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 				typ.Obj.Decl)
 		}
 	}
+
+	dbg("resolveType: %v %v -> %#v", pkg, typ.Name, ts.Type)
 
 	// Only need to add struct types. Stuff like "type Foo string" gets added as
 	// simply a string.

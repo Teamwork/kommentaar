@@ -27,8 +27,15 @@ definitions:
         description: pipe it!
         type: object
         properties:
+          Named:
+            $ref: '#/definitions/struct-anon.t'
           NoTag:
             type: integer
           name:
             description: Name of the pipeline
             type: string
+  struct-anon.t:
+    type: object
+    properties:
+      i:
+        type: integer
