@@ -65,7 +65,7 @@ func TestOpenAPI2(t *testing.T) {
 			prog := docparse.NewProgram(false)
 			prog.Config.Title = "x"
 			prog.Config.Version = "x"
-			prog.Config.Paths = []string{"./testdata/openapi2/src/" + tt.Name()}
+			prog.Config.Packages = []string{"./testdata/openapi2/src/" + tt.Name()}
 			prog.Config.Output = openapi2.WriteYAML
 
 			outBuf := bytes.NewBuffer(nil)

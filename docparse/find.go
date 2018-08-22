@@ -23,7 +23,7 @@ const (
 
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
-	pkgPaths, err := goutil.Expand(prog.Config.Paths, build.FindOnly)
+	pkgPaths, err := goutil.Expand(prog.Config.Packages, build.FindOnly)
 	if err != nil {
 		return err
 	}
@@ -404,7 +404,7 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		if !builtInType(typ.Name) {
+		if !goutil.PredeclaredType(typ.Name) {
 			name = typ
 		}
 
@@ -431,7 +431,7 @@ start:
 
 		// Simple identifier
 		case *ast.Ident:
-			if !builtInType(elementType.Name) {
+			if !goutil.PredeclaredType(elementType.Name) {
 				name = elementType
 			}
 
@@ -457,7 +457,6 @@ start:
 	}
 
 	// Don't need to add stuff we map to Go primitives.
-	// TODO: this is wrong, as it doesn't need to map to a Go primitive.
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}

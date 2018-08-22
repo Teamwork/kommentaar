@@ -39,10 +39,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/kr/pretty"
-
-[[constraint]]
-  branch = "master"
   name = "arp242.net/sconfig"
 
 [[constraint]]

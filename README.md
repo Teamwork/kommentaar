@@ -11,7 +11,7 @@ Goals:
 
 - Easy to use.
 - Good performance.
-- Will not require significant code refactors to use in most cases.
+- Will not require significant code refactors to use in almost all cases.
 
 Non-goals:
 
@@ -47,3 +47,9 @@ Syntax
 
 See [`doc/syntax.markdown`](doc/syntax.markdown) for a full description of the
 syntax.
+
+Configuration
+-------------
+
+Kommentaar can be configured with a configuration file; see
+[`config.example`](config.example) for the documentation.

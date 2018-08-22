@@ -21,22 +21,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:7b21c7fc5551b46d1308b4ffa9e9e49b66c7a8b0ba88c0130474b0e7a20d859f"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-
-[[projects]]
-  digest = "1:c3a7836b5904db0f8b609595b619916a6831cb35b8b714aec39f96d00c6155d8"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
-
-[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -57,7 +41,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:75234c2fe99ad6024534c47acf630641053970c9f73d293934c0982df9a58bf7"
+  digest = "1:1be1188285fe4f6929b3d55c15f14bd9e0dcd83cdfa44105ee341c68bf100c1e"
   name = "github.com/teamwork/utils"
   packages = [
     "goutil",
@@ -66,7 +50,7 @@
     "stringutil",
   ]
   pruneopts = "NUT"
-  revision = "0ecffb2c832733ada5814effb0cd22e327fbf309"
+  revision = "6a0758e3831f7c602bfaec032a313d87846f078c"
 
 [[projects]]
   digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
@@ -82,7 +66,6 @@
   input-imports = [
     "arp242.net/sconfig",
     "arp242.net/sconfig/handlers/html/template",
-    "github.com/kr/pretty",
     "github.com/teamwork/test",
     "github.com/teamwork/test/diff",
     "github.com/teamwork/utils/goutil",

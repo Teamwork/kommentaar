@@ -264,3 +264,19 @@ start:
 		panic(fmt.Sprintf("can't get name for %#v", f))
 	}
 }
+
+// PredeclaredType reports if a type is a predeclared built-in type.
+//
+// Note that this excludes composite types, such as maps, slices, channels, etc.
+//
+// https://golang.org/ref/spec#Predeclared_identifiers
+func PredeclaredType(n string) bool {
+	switch n {
+	case "bool", "byte", "complex64", "complex128", "error", "float32",
+		"float64", "int", "int8", "int16", "int32", "int64", "rune", "string",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr":
+		return true
+	default:
+		return false
+	}
+}

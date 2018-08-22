@@ -3,17 +3,12 @@ package main // import "github.com/teamwork/kommentaar"
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 
-	"github.com/kr/pretty"
 	"github.com/teamwork/kommentaar/docparse"
-	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/kconfig"
-	"github.com/teamwork/kommentaar/openapi2"
 )
 
 func main() {
@@ -26,7 +21,7 @@ func main() {
 	debug := flag.Bool("debug", false, "print debug output to stderr")
 	addr := flag.String("serve", "", "serve HTML output on this address, instead of writing to\n"+
 		"stdout; every page load will rescan the source tree")
-	out := flag.String("out", "openapi2-yaml", `output function, valid values are:
+	output := flag.String("output", "", `output function, valid values are:
 	openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
 	openapi2-json        OpenAPI/Swagger 2.0 as JSON
 	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
@@ -51,35 +46,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	paths := flag.Args()
-	if len(paths) == 0 {
-		paths = []string{"."}
-	}
-
-	// TODO: allow setting the default outFunc from the config file as well.
-	var outFunc func(io.Writer, *docparse.Program) error
-	switch strings.ToLower(*out) {
-	case "openapi2-yaml":
-		outFunc = openapi2.WriteYAML
-	case "openapi2-json":
-		outFunc = openapi2.WriteJSON
-	case "openapi2-jsonindent":
-		outFunc = openapi2.WriteJSONIndent
-	case "html":
-		if *addr != "" {
-			outFunc = html.ServeHTML(*addr)
-		} else {
-			outFunc = html.WriteHTML
-		}
-
-	// These are just for debugging/testing.
-	case "ls":
-		outFunc = lsAll
-	default:
-		_, _ = fmt.Fprintf(os.Stderr, "invalid value for -out: %#v\n\n", *out)
-		flag.Usage()
-	}
-
 	prog := docparse.NewProgram(*debug)
 
 	if *config != "" {
@@ -90,8 +56,21 @@ func main() {
 		}
 	}
 
-	prog.Config.Paths = paths
-	prog.Config.Output = outFunc
+	if *output != "" {
+		var err error
+		prog.Config.Output, err = kconfig.Output(*output, *addr)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "-output: %v\n\n", err)
+			flag.Usage()
+		}
+	}
+	pkgs := flag.Args()
+	if len(pkgs) > 0 {
+		prog.Config.Packages = pkgs
+	}
+	if len(prog.Config.Packages) == 0 {
+		prog.Config.Packages = []string{"."}
+	}
 
 	err := docparse.FindComments(os.Stdout, prog)
 	if err != nil {
@@ -113,10 +92,4 @@ func main() {
 		}
 		_ = f.Close()
 	}
-}
-
-func lsAll(_ io.Writer, prog *docparse.Program) error {
-	_, err := pretty.Print(prog)
-	fmt.Println("")
-	return err
 }

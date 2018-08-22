@@ -1,54 +1,108 @@
-# Application title.
-title Teamwork Desk
+# vim:ft=config
+#
+# Kommentaar is configured with a sconfig configuration file. See
+# https://arp242.net/code/sconfig for a full description of the syntax, the
+# short of it is:
+#
+# - `#` are for comments
+# - Configuration keys and values are separated by whitespace.
+# - No quotes needed.
+# - Line continuation is done by indenting.
+#
 
-# Application description, as HTML.
-description
- <strong>woot!</strong>
+# Set output format; can be overridden with the -output commandline option.
+#
+# openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
+# openapi2-json        OpenAPI/Swagger 2.0 as JSON
+# openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
+# html                 HTML documentation
+output openapi2-yaml
 
-# API version of your application.
-version 2.0
+# Packages to scan by default; can be overridden from the commandline.
+# Will default to correct directory if omitted.
+#packages github.com/teamwork/desk/api/v2/...
 
-# Contact information.
-#contact-name  Teamwork Desk support
-#contact-email api@teamwork.com
-#contact-site  http://developer.teamwork.com/desk/
+# Application title; this is required.
+title Example title
 
-# Default Content-Type if it's omitted.
-default-request-ct application/json
+# API version; this is treated as a string and required.
+version 1.0
+
+# Description of the application in HTML.
+#description
+
+# Contact details.
+#contact-name
+#contact-email
+#contact-site
+
+# Set the default Content-Type for requests and responses; this means that
+# writing:
+#
+#   Request (application/json): $ref foo
+#
+# can be shortened to:
+#
+#   Request: $ref foo
+default-request-ct  application/json
 default-response-ct application/json
 
-# Default response types. With this, you can just use:
+# Set default response types. With this, you can just use:
 #
-#   // Response 400
-#   // Response 404
+#   // Response 400: $default
+#   // Response 404: $default
 #
-# Or even shorter:
+# Instead of referring to the full types every time.
 #
-#   // Response 400, 404
-#default-response 400 $ref: github.com/teamwork/validate.Validator
-#default-response 404 $ref: github.com/teamwork/echoutil/errorhandler.Error
+# The syntax is the same as regular Response lines, minus the Response keyword:
+#   [HTTP code] [(optional Content-Type)]: $ref: [type]
+#
+# Examples:
+#default-response 400: $ref: github.com/teamwork/validate.Validator
+#default-response 404 (application/json): $ref: github.com/teamwork/apiutil/errorhandler.Error
 
-# Prefix all paths with this.
-#prefix /desk
+# Prefix all paths with this before adding to the output.
+#prefix
 
 # Set output basepath; this is different from "prefix" because the former
 # modifies every path before it gets added to the output, whereas this will only
-# set the basePath attribute in the output if the output format supports it.
+# set the basePath attribute in the output if that's supported in the format.
 # If the output format doesn't support Basepath, it is added to every endpoint
-# *before* the Prefix.
-basepath /desk
+# *before* the prefix.
+#basepath /myapp
 
 # Map types to anoter type. Useful for wrappers around types that don't need to
 # be exposed in the user-facing documentation.
-# sql.Null* is mapped by default.
-map-type
-	twnull.Bool   bool
-	twnull.Int    int64
-	twnull.String string
-	twtime.Time   string
+#
+# The map target must be a Go built-in type (string, int64, etc.)
+map-types              
+	# Standard library
+	sql.NullBool    bool
+	sql.NullFloat64 float64
+	sql.NullInt64   int64
+	sql.NullString  string
+	time.Time       string
+
+	# github.com/guregu/null
+	null.Bool   bool
+	null.Float  float64
+	null.Int    int64
+	null.String string
+	null.Time   string
+	zero.Bool   bool
+	zero.Float  float64
+	zero.Int    int64
+	zero.String string
+	zero.Time   string
 
 # Map some times to an OpenAPI format.
+#
+# https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#dataTypeFormat
+# https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
 map-format
-	twtime.Time date-time
+	# Standard library
+	time.Time date-time
 
-# vim:ft=config
+	# github.com/guregu/null
+	null.Time date-time
+	zero.Time date-time

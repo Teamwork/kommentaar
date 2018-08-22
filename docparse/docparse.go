@@ -28,9 +28,9 @@ type Program struct {
 // Config for the program.
 type Config struct {
 	// Kommentaar control.
-	Paths  []string
-	Output func(io.Writer, *Program) error
-	Debug  bool
+	Packages []string
+	Output   func(io.Writer, *Program) error
+	Debug    bool
 
 	// General information.
 	Title        string
@@ -43,7 +43,7 @@ type Config struct {
 	// Defaults.
 	DefaultRequestCt  string
 	DefaultResponseCt string
-	DefaultResponse   map[int]DefaultResponse
+	DefaultResponse   map[int]Response
 	Prefix            string
 	Basepath          string
 	MapTypes          map[string]string
@@ -261,43 +261,22 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 		// Response 200 (application/json):
 		// Response 200:
 		// Response:
-		resp := reResponseHeader.FindStringSubmatch(line)
+		code, resp, err := ParseResponse(prog, filePath, line)
+		if err != nil {
+			return nil, i, err
+		}
 		if resp != nil {
 			pastDesc = true
-			code := int64(http.StatusOK)
-			if resp[1] != "" {
-				var err error
-				code, err = strconv.ParseInt(strings.TrimSpace(resp[1]), 10, 32)
-				if err != nil {
-					return nil, i, fmt.Errorf("invalid status code %#v: %v",
-						resp[1], err)
-				}
-			}
-
-			r := Response{ContentType: prog.Config.DefaultResponseCt}
-			if resp[4] != "" {
-				r.ContentType = resp[4]
-			}
-
-			r.Body, err = parseRefLine(prog, "resp", resp[5], filePath)
-			if err != nil {
-				return nil, i, fmt.Errorf("could not parse response %v params: %v", code, err)
-			}
-			if r.Body.Description != "" {
-				r.Body.Description = http.StatusText(int(code))
-			}
-
 			if e.Responses == nil {
 				e.Responses = make(map[int]Response)
 			}
 
-			if _, ok := e.Responses[int(code)]; ok {
+			if _, ok := e.Responses[code]; ok {
 				return nil, i, fmt.Errorf("%v: response code %v defined more than once",
 					e.Path, code)
 			}
 
-			e.Responses[int(code)] = r
-
+			e.Responses[code] = *resp
 			continue
 		}
 
@@ -321,6 +300,42 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	}
 
 	return r, 0, nil
+}
+
+// ParseResponse parses a Response line.
+//
+// Exported so it can be used in the config, too.
+func ParseResponse(prog *Program, filePath, line string) (int, *Response, error) {
+	resp := reResponseHeader.FindStringSubmatch(line)
+	if resp == nil {
+		return 0, nil, nil
+	}
+
+	code := int64(http.StatusOK)
+	if resp[1] != "" {
+		var err error
+		code, err = strconv.ParseInt(strings.TrimSpace(resp[1]), 10, 32)
+		if err != nil {
+			return 0, nil, fmt.Errorf("invalid status code %#v: %v",
+				resp[1], err)
+		}
+	}
+
+	r := Response{ContentType: prog.Config.DefaultResponseCt}
+	if resp[4] != "" {
+		r.ContentType = resp[4]
+	}
+
+	var err error
+	r.Body, err = parseRefLine(prog, "resp", resp[5], filePath)
+	if err != nil {
+		return 0, nil, fmt.Errorf("could not parse response %v params: %v", code, err)
+	}
+	if r.Body.Description != "" {
+		r.Body.Description = http.StatusText(int(code))
+	}
+
+	return int(code), &r, nil
 }
 
 var allMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost,
@@ -464,11 +479,4 @@ func MapType(prog *Program, in string) (kind, format string) {
 	}
 
 	return kind, format
-}
-
-func builtInType(n string) bool {
-	return sliceutil.InStringSlice([]string{"bool", "byte", "complex64",
-		"complex128", "error", "float32", "float64", "int", "int8", "int16",
-		"int32", "int64", "rune", "string", "uint", "uint8", "uint16", "uint32",
-		"uint64", "uintptr"}, n)
 }

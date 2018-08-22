@@ -295,9 +295,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Reference: "#/definitions/" + resp.Body.Reference,
 				}
 			} else if dr, ok := prog.Config.DefaultResponse[code]; ok {
-				lookup := strings.Split(dr.Lookup, "/")
 				r.Schema = &docparse.Schema{
-					Reference: "#/definitions/" + lookup[len(lookup)-1],
+					Reference: "#/definitions/" + dr.Body.Reference,
+				}
+				if dr.ContentType != "" {
+					resp.ContentType = dr.ContentType
 				}
 			}
 
