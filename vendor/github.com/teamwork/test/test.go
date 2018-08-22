@@ -1,5 +1,4 @@
-// Package test contains various small helper functions that are useful when
-// writing tests.
+// Package test contains helper functions that are useful for writing tests.
 package test
 
 import (

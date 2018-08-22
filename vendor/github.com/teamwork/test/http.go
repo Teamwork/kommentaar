@@ -2,11 +2,58 @@ package test
 
 import (
 	"bytes"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/teamwork/utils/jsonutil"
+	"github.com/teamwork/utils/stringutil"
 )
+
+// Code checks if the error code in the recoder matches the desired one, and
+// will stop the test with t.Fatal() if it doesn't.
+func Code(t *testing.T, recorder *httptest.ResponseRecorder, want int) {
+	t.Helper()
+	if recorder.Code != want {
+		t.Fatalf("wrong response code\nwant: %d %s\ngot:  %d %s\nbody: %v",
+			want, http.StatusText(want),
+			recorder.Code, http.StatusText(recorder.Code),
+			stringutil.Left(recorder.Body.String(), 150))
+	}
+}
+
+// Default values for NewRequest()
+var (
+	DefaultHost        = "test.teamwork.dev"
+	DefaultContentType = "application/json"
+)
+
+// NewRequest returns a new incoming server Request, suitable for passing to an
+// echo.HandlerFunc for testing.
+func NewRequest(method, target string, body io.Reader) *http.Request {
+	req := httptest.NewRequest(method, target, body)
+
+	if req.Host == "" || req.Host == "example.com" {
+		req.Host = DefaultHost
+	}
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", DefaultContentType)
+	}
+
+	return req
+}
+
+// Body returns the JSON representation of the passed in argument as an
+// io.Reader. This is useful for creating a request body. For example:
+//
+//   NewRequest("POST", "/", echotest.Body(someStruct{
+//       Foo: "bar",
+//   }))
+func Body(a interface{}) *bytes.Reader {
+	return bytes.NewReader(jsonutil.MustMarshal(a))
+}
 
 // HTTP sets up a HTTP test. A GET request will be made for you if req is nil.
 //

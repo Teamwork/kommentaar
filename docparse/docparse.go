@@ -46,6 +46,8 @@ type Config struct {
 	DefaultResponse   map[int]DefaultResponse
 	Prefix            string
 	Basepath          string
+	MapTypes          map[string]string
+	MapFormats        map[string]string
 }
 
 // DefaultResponse references.
@@ -64,6 +66,8 @@ func NewProgram(dbg bool) *Program {
 		Config: Config{
 			DefaultRequestCt:  "application/json",
 			DefaultResponseCt: "application/json",
+			MapTypes:          make(map[string]string),
+			MapFormats:        make(map[string]string),
 
 			// Override from commandline.
 			Debug: dbg,
@@ -448,50 +452,14 @@ func parseTags(line string) (string, []string) {
 	return nl, alltags
 }
 
-var (
-	mapTypes = map[string]string{
-		// stdlib
-		"sql.NullBool":    "bool",
-		"sql.NullFloat64": "float64",
-		"sql.NullInt64":   "int64",
-		"sql.NullString":  "string",
-		"time.Time":       "string",
-
-		// http://github.com/guregu/null
-		"null.Bool":   "bool",
-		"null.Float":  "float64",
-		"null.Int":    "int64",
-		"null.String": "string",
-		"null.Time":   "string",
-		"zero.Bool":   "bool",
-		"zero.Float":  "float64",
-		"zero.Int":    "int64",
-		"zero.String": "string",
-		"zero.Time":   "string",
-
-		// TODO: add this to config.
-		"twnull.Bool":   "bool",
-		"twnull.Int":    "int64",
-		"twnull.String": "string",
-		"twtime.Time":   "string",
-	}
-
-	mapFormats = map[string]string{
-		"null.Time":   "date-time",
-		"time.Time":   "date-time",
-		"twtime.Time": "date-time",
-		"zero.Time":   "date-time",
-	}
-)
-
 // MapType maps some Go types to primitives, so they appear as such in the
 // output. Most of the time users of the API don't really care if it's a
 // "sql.NullString" or just a string.
-func MapType(in string) (kind, format string) {
-	if v, ok := mapTypes[in]; ok {
+func MapType(prog *Program, in string) (kind, format string) {
+	if v, ok := prog.Config.MapTypes[in]; ok {
 		kind = v
 	}
-	if v, ok := mapFormats[in]; ok {
+	if v, ok := prog.Config.MapFormats[in]; ok {
 		format = v
 	}
 

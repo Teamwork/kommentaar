@@ -292,7 +292,7 @@ start:
 		}
 
 		lookup := pkg + "." + name.Name
-		t, f := MapType(lookup)
+		t, f := MapType(prog, lookup)
 
 		p.Format = f
 		if t != "" {

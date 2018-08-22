@@ -38,5 +38,17 @@ default-response-ct application/json
 # *before* the Prefix.
 basepath /desk
 
+# Map types to anoter type. Useful for wrappers around types that don't need to
+# be exposed in the user-facing documentation.
+# sql.Null* is mapped by default.
+map-type
+	twnull.Bool   bool
+	twnull.Int    int64
+	twnull.String string
+	twtime.Time   string
+
+# Map some times to an OpenAPI format.
+map-format
+	twtime.Time date-time
 
 # vim:ft=config

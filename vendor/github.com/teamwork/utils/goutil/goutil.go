@@ -212,8 +212,8 @@ func ResolveImport(file, pkgName string) (string, error) {
 	return r, nil
 }
 
-// TagName gets the tag name for a struct field any attributes (like omitempty)
-// removed. It will return the struct field name if there is no tag.
+// TagName gets the tag name for a struct field with all attributes (like
+// omitempty) removed. It will return the struct field name if there is no tag.
 //
 // This function does not do any validation on the tag format. Use "go vet"!
 func TagName(f *ast.Field, n string) string {
