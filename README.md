@@ -11,7 +11,7 @@ Goals:
 
 - Easy to use.
 - Good performance.
-- Will not require significant code refactors to use in most cases.
+- Will not require significant code refactors to use in almost all cases.
 
 Non-goals:
 

@@ -404,7 +404,7 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		if !builtInType(typ.Name) {
+		if !goutil.PredeclaredType(typ.Name) {
 			name = typ
 		}
 
@@ -431,7 +431,7 @@ start:
 
 		// Simple identifier
 		case *ast.Ident:
-			if !builtInType(elementType.Name) {
+			if !goutil.PredeclaredType(elementType.Name) {
 				name = elementType
 			}
 

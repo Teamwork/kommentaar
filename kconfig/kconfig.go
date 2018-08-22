@@ -13,6 +13,7 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi2"
+	"github.com/teamwork/utils/goutil"
 )
 
 // Load the configuration.
@@ -60,7 +61,13 @@ func Load(prog *docparse.Program, file string) error {
 		return fmt.Errorf("could not load config: %v", err)
 	}
 
-	// TODO: validate that MapType is a Go primitive.
+	// Validate that MapType is a Go primitive.
+	for k, v := range prog.Config.MapTypes {
+		if !goutil.PredeclaredType(v) {
+			return fmt.Errorf("map-type '%s %s' is not a predeclared type", k, v)
+		}
+	}
+
 	// TODO: validate that MapFormat is valid.
 
 	// Set a default output.

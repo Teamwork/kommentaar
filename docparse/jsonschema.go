@@ -507,7 +507,7 @@ func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 
 // Get the canonical type.
 func canonicalType(currentFile, pkgPath string, typ *ast.Ident) (ast.Expr, error) {
-	if builtInType(typ.Name) {
+	if goutil.PredeclaredType(typ.Name) {
 		return nil, nil
 	}
 

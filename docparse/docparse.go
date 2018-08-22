@@ -465,10 +465,3 @@ func MapType(prog *Program, in string) (kind, format string) {
 
 	return kind, format
 }
-
-func builtInType(n string) bool {
-	return sliceutil.InStringSlice([]string{"bool", "byte", "complex64",
-		"complex128", "error", "float32", "float64", "int", "int8", "int16",
-		"int32", "int64", "rune", "string", "uint", "uint8", "uint16", "uint32",
-		"uint64", "uintptr"}, n)
-}
