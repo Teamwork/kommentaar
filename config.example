@@ -19,7 +19,7 @@
 output openapi2-yaml
 
 # Packages to scan by default; can be overridden from the commandline.
-# Will default to correct directory if omitted.
+# Will default to current directory if omitted.
 #packages github.com/teamwork/desk/api/v2/...
 
 # Application title; this is required.
