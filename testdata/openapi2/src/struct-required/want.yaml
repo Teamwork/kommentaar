@@ -15,13 +15,13 @@ paths:
       parameters:
       - name: id
         in: query
-        required: true
         type: integer
+        required: true
       - name: companyID
         in: query
         description: Hello there
-        required: true
         type: integer
+        required: true
       responses:
         200:
           description: 200 OK

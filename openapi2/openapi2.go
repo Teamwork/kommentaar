@@ -55,9 +55,9 @@ type (
 		Name        string           `json:"name" yaml:"name"`
 		In          string           `json:"in" yaml:"in"` // query, header, path, cookie
 		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
-		Required    bool             `json:"required,omitempty" yaml:"required,omitempty"`
 		Type        string           `json:"type,omitempty" yaml:"type,omitempty"`
 		Format      string           `json:"format,omitempty" yaml:"format,omitempty"`
+		Required    bool             `json:"required,omitempty" yaml:"required,omitempty"`
 		Enum        []string         `json:"enum,omitempty" yaml:"enum,omitempty"`
 		Default     string           `json:"default,omitempty" yaml:"default,omitempty"`
 		Minimum     int              `json:"minimum,omitempty" yaml:"minimum,omitempty"`
