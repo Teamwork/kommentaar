@@ -19,8 +19,8 @@ paths:
       parameters:
       - name: id
         in: path
-        required: true
         type: string
+        required: true
       - name: id
         in: query
         type: string

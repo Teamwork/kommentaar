@@ -17,12 +17,12 @@ paths:
       parameters:
       - name: id
         in: path
-        required: true
         type: integer
+        required: true
       - name: companyID
         in: path
-        required: true
         type: integer
+        required: true
       responses:
         200:
           description: 200 OK
