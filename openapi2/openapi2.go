@@ -56,6 +56,7 @@ type (
 		In          string           `json:"in" yaml:"in"` // query, header, path, cookie
 		Description string           `json:"description,omitempty" yaml:"description,omitempty"`
 		Type        string           `json:"type,omitempty" yaml:"type,omitempty"`
+		Items       *docparse.Schema `json:"items,omitempty" yaml:"items,omitempty"`
 		Format      string           `json:"format,omitempty" yaml:"format,omitempty"`
 		Required    bool             `json:"required,omitempty" yaml:"required,omitempty"`
 		Enum        []string         `json:"enum,omitempty" yaml:"enum,omitempty"`
@@ -140,7 +141,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	// Add definitions.
 	for k, v := range prog.References {
 		if v.Schema == nil {
-			return fmt.Errorf("schema is nil for %v", k)
+			return fmt.Errorf("schema is nil for %q", k)
 		}
 		switch v.Context {
 		case "form", "query", "path":
@@ -197,7 +198,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 				schema := ref.Schema.Properties[f.Name]
 				if schema == nil {
-					return fmt.Errorf("schema is nil for field %v in %v",
+					return fmt.Errorf("schema is nil for field %q in %q",
 						f.Name, e.Request.Query.Reference)
 				}
 
@@ -206,6 +207,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					In:          "query",
 					Description: schema.Description,
 					Type:        schema.Type,
+					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
 					Default:     schema.Default,
@@ -239,6 +241,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					In:          "formData",
 					Description: schema.Description,
 					Type:        schema.Type,
+					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
 					Enum:        schema.Enum,
 					Default:     schema.Default,
