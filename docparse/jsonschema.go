@@ -52,8 +52,8 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 		case "path", "query", "form":
 			name = goutil.TagName(p.KindField, ref.Context)
 		default:
-			// TODO: doesn't have to be json tag; that's just what Desk happens to
-			// use. We should get it from Content-Type or some such instead.
+			// TODO: doesn't have to be json tag; that's just what Desk happens
+			// to use. We should get it from Content-Type or some such instead.
 			name = goutil.TagName(p.KindField, "json")
 		}
 
@@ -224,7 +224,7 @@ start:
 			name = typ.Sel
 
 			lookup := pkg + "." + name.Name
-			if _, err := GetReference(prog, "", lookup, ref.File); err != nil {
+			if _, err := GetReference(prog, "", false, lookup, ref.File); err != nil {
 				return nil, fmt.Errorf("GetReference: %v", err)
 			}
 		case *ast.Ident:
@@ -441,7 +441,7 @@ arrayStart:
 	p.Items = &Schema{Reference: sRef}
 
 	// Add to prog.References.
-	_, err = GetReference(prog, "", lookup, ref.File)
+	_, err = GetReference(prog, "", false, lookup, ref.File)
 	return err
 }
 

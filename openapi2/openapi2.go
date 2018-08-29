@@ -146,11 +146,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		switch v.Context {
 		case "form", "query", "path":
 			// Nothing, this will be inline in the operation.
-		case docparse.ContextEmbed:
-			// Skip.
 		default:
-			prefixPropertyReferences(v.Schema.Properties)
-			out.Definitions[k] = *v.Schema
+			if !v.IsEmbed {
+				prefixPropertyReferences(v.Schema.Properties)
+				out.Definitions[k] = *v.Schema
+			}
 		}
 	}
 
