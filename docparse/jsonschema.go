@@ -388,16 +388,20 @@ arrayStart:
 
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
+		// Map []byte to []string.
 		if typ.Name == "byte" {
 			p.Items = nil
 			p.Type = "string"
 			return nil
 		}
 
+		// Only list primitives as type.
 		if isPrimitive(p.Items.Type) {
 			return nil
 		}
 
+		// Rest is assumed to be a custom type, and references with $ref after
+		// the switch.
 		p.Items.Type = ""
 		name = typ
 
