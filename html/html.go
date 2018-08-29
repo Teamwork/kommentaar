@@ -1,5 +1,5 @@
 // Package html outputs to HTML.
-package html
+package html // import "github.com/teamwork/kommentaar/html"
 
 import (
 	"fmt"

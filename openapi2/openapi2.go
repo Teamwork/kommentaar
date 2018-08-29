@@ -2,7 +2,7 @@
 //
 // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md
 // http://json-schema.org/
-package openapi2
+package openapi2 // import "github.com/teamwork/kommentaar/openapi2"
 
 import (
 	"encoding/json"

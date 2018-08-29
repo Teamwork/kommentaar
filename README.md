@@ -1,3 +1,4 @@
+[![GoDoc](https://godoc.org/github.com/teamwork/kommentaar?status.svg)](https://godoc.org/github.com/teamwork/kommentaar)
 [![Build Status](https://travis-ci.org/Teamwork/kommentaar.svg?branch=master)](https://travis-ci.org/Teamwork/kommentaar)
 [![codecov](https://codecov.io/gh/Teamwork/kommentaar/branch/master/graph/badge.svg)](https://codecov.io/gh/Teamwork/kommentaar)
 
@@ -30,17 +31,19 @@ Parse one package:
 
     $ kommentaar github.com/teamwork/desk/api/v1/inboxController
 
-Or several packages subpackages:
+Or several packages:
 
     $ kommentaar github.com/teamwork/desk/api/...
 
 The default output is as an OpenAPI 2 YAML file. You can generate a HTML page
-with `-out html`, or directly serve it with `-out html -serve :8080`. When
+with `-output html`, or directly serve it with `-output html -serve :8080`. When
 serving the documentation it will rescan the source tree on every page load,
 making development/proofreading easier.
 
-See `kommentaar -h` for the full list of options. You can also the Go API (see
-godoc).
+See `kommentaar -h` for the full list of options.
+
+You can also the [Go API](https://godoc.org/github.com/teamwork/kommentaar), for
+example to serve documentation in a HTTP endpoint.
 
 Syntax
 ------

@@ -1,5 +1,5 @@
 // Package srvhttp contains HTTP handlers for serving Kommentaar documentation.
-package srvhttp
+package srvhttp // import "github.com/teamwork/kommentaar/srvhttp"
 
 import (
 	"bytes"
