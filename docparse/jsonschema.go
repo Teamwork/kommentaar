@@ -170,7 +170,7 @@ func setTags(name string, p *Schema, tags []string) error {
 				}
 
 			default:
-				return fmt.Errorf("unknown parameter tag for %#v: %#v",
+				return fmt.Errorf("unknown parameter property for %#v: %#v",
 					name, t)
 			}
 		}

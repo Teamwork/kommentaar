@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
 	"github.com/teamwork/utils/stringutil"
 )
@@ -99,7 +100,7 @@ type Endpoint struct {
 type Request struct {
 	ContentType string // Content-Type that this request accepts for the body.
 	Body        *Ref   // Request body; usually a JSON body.
-	Path        *Ref   // Path parameters (e.g. /foo/:ID).
+	Path        *Ref   // Path parameters (e.g. /foo/{id}).
 	Query       *Ref   // Query parameters  (e.g. ?foo=id).
 	Form        *Ref   // Form parameters.
 }
@@ -219,6 +220,30 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 					return nil, i, fmt.Errorf("%v already present", h[1])
 				}
 				e.Request.Path, err = parseRefLine(prog, "path", h[2], filePath)
+
+				if err == nil {
+					pathRef, err := GetReference(prog, "query", false, e.Request.Path.Reference, filePath)
+					if err != nil {
+						return nil, i, err
+					}
+
+					pp := PathParams(e.Path)
+					for _, p := range pathRef.Fields {
+						name := goutil.TagName(p.KindField, "path") // TODO: hardcoded path
+						if name == "-" {
+							continue
+						}
+						if name == "" {
+							name = p.Name
+						}
+
+						if !sliceutil.InStringSlice(pp, name) {
+							return nil, i, fmt.Errorf("parameter %q is not in the path %q",
+								name, e.Path)
+						}
+					}
+				}
+
 			case "Query":
 				if e.Request.Query != nil {
 					return nil, i, fmt.Errorf("%v already present", h[1])
@@ -303,6 +328,22 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	return r, 0, nil
 }
 
+var reParams = regexp.MustCompile(`{\w+}`)
+
+// PathParams returns all {..} delimited path parameters.
+func PathParams(path string) []string {
+	if !strings.Contains(path, "{") {
+		return nil
+	}
+
+	var params []string
+	for _, p := range reParams.FindAllString(path, -1) {
+		params = append(params, strings.Trim(p, "{}"))
+	}
+
+	return params
+}
+
 // ParseResponse parses a Response line.
 //
 // Exported so it can be used in the config, too.
@@ -332,7 +373,17 @@ func ParseResponse(prog *Program, filePath, line string) (int, *Response, error)
 	if err != nil {
 		return 0, nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 	}
-	if r.Body.Description != "" {
+	switch r.Body.Description {
+	case "":
+		r.Body.Description = http.StatusText(int(code))
+	case "$empty":
+		r.Body.Description = http.StatusText(int(code)) + " (no data)"
+	case "$default":
+		// Make sure it's defined.
+		if _, ok := prog.Config.DefaultResponse[int(code)]; !ok {
+			return 0, nil, fmt.Errorf("no default response for %v in %v: %q",
+				code, filePath, line)
+		}
 		r.Body.Description = http.StatusText(int(code))
 	}
 
@@ -388,12 +439,8 @@ func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
 	name = strings.TrimSpace(name)
 
 	switch name {
-	case "$empty":
-		params.Description = "no data"
-	case "$default":
-		// Will be filled in later.
-		// TODO: Move that code here!
-		params.Description = "$default"
+	case "$empty", "$default":
+		params.Description = name // Filled in later.
 	case "$ref":
 		s := strings.Split(line, ":")
 		if len(s) != 2 {
