@@ -36,6 +36,9 @@ func Load(prog *docparse.Program, file string) error {
 			if err != nil {
 				return err
 			}
+			if resp == nil {
+				return fmt.Errorf("malformed default response: %q", strings.Join(line, " "))
+			}
 
 			if _, ok := prog.Config.DefaultResponse[code]; ok {
 				return fmt.Errorf("default response code %v defined more than once", code)

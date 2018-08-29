@@ -522,3 +522,42 @@ func TestGetReference(t *testing.T) {
 		})
 	}
 }
+
+func TestParseResponse(t *testing.T) {
+	tests := []struct {
+		in       string
+		wantCode int
+		wantResp *Response
+		wantErr  string
+	}{
+		{
+			"Response 400: $ref: net/mail.Address",
+			400,
+			&Response{ContentType: "application/json", Body: &Ref{Reference: "mail.Address"}},
+			"",
+		},
+		{
+			"Response 400 $ref: net/mail.Address",
+			0,
+			nil,
+			"",
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			prog := NewProgram(false)
+			code, resp, err := ParseResponse(prog, "", tt.in)
+
+			if !test.ErrorContains(err, tt.wantErr) {
+				t.Fatalf("wrong error\nwant: %v\ngot:  %v", tt.wantErr, err)
+			}
+			if code != tt.wantCode {
+				t.Errorf("wrong code\nwant: %v\ngot:  %v", tt.wantCode, code)
+			}
+			if d := diff.Diff(tt.wantResp, resp); d != "" {
+				t.Errorf(d)
+			}
+		})
+	}
+}
