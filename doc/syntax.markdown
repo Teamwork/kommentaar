@@ -1,109 +1,235 @@
-This document is not yet complete!
-
 Kommentaar syntax
 =================
 
-ABNF description
-----------------
+Introduction
+------------
 
-Syntax as [ABNF](https://tools.ietf.org/html/rfc5234).
-
-    path-description   = verb path [ tag ] LF
-    verb               = "GET" / "HEAD" / "POST" / "PUT" / "PATCH" / "DELETE" / "CONNECT" / "OPTIONS" / "TRACE"
-    path               = path-absolute  ; https://tools.ietf.org/html/rfc3986#section-3.3
-    tag                = *(ALPHA / DIGIT)
-
-    param-alpha        = ; any Unicode character except "{", "}", ",", " "
-    param-property     = ("{" param-alpha [":" param-alpha [param-alpha] ] *("," param-property) "}"
-
-Description
------------
-
-Kommentaar is driven by *comment blocks*, which can appear as either multi-line
-comments (`/* .. */`) or a block of single-line comments (`// ...`).
+Kommentaar is a program to document Go APIs driven by a special syntax inside
+comment blocks. This document describes the syntax as recognized by Kommentaar.
 
 While "programming-by-comments" is not always ideal, it can be easier to use
-than getting all information from the Go code as it doesn't assume too much
-about how you write your code.
+than getting all information from the Go code, as it doesn't assume too much
+about how the code is written. Also see the [Motivation and
+rationale][rationale] section in the README file.
 
-It's customary to put the comment block somewhere near the handler being
-documented, but it may appear anywhere – even in a different package.
+Augmented Backus-Naur Form (ABNF) is used as described in [RFC 5234][rfc5234].
+
+Quick overview
+--------------
+
+Kommentaar is driven by a special syntax inside comment blocks, which can appear
+as either multi-line comments (`/* .. */`) or a continues block of single-line
+comments (`// ...`).
+
+It's customary to put the comment block somewhere near the handler or route
+definition being documented, but it may appear anywhere – including a different
+package.
 
 The general structure looks like:
 
-    // POST /foo/{id} tag
-    // One-line description.
+    type bikeRequest struct {
+        // Frame colour {enum: black red blue, default: black}.
+        Color string
+
+        // Frame size in centimetres {required, range: 40-62}.
+        Size int
+    }
+
+    type bikeResponse struct {
+        // Price in Eurocents.
+        Price int
+
+        // Estimated delivery date {date}.
+        DeliveryTime int
+    }
+
+    type errorResponse struct {
+        Error []string `json:"errors"`
+    }
+
+    // POST /bike/{id} bikes
+    // Order a new bike.
     //
     // A more detailed multi-line description.
     //
-    // Query: $ref: QueryObj
-    // Request body: $ref: RequestObj
-    // Response 200: $ref: AnObject
-    // Response 400: $ref: ErrorObject
+    // Request body: $ref: bikeRequest
+    // Response 200: $ref: bikeResponse
+    // Response 400: $ref: errorResonse
+
+This describes the endpoint `POST /bike/{id}`, which will be grouped under
+`bikes`. It describes the JSON request body in the `bikeRequest` struct and the
+different responses for the various HTTP codes in `bikeResponse` and
+`errorResonse`.
+
+The request and response structs have various properties for validation
+(`{required, range: 40-62}`) and formatting (`{date}`).
 
 Path description, tagline, and description
 ------------------------------------------
-Every Kommentaar comment block must start with a description of the path as:
 
-    VERB /path [tag]
+Every Kommentaar comment block must start with a description of the path as
+follows (and will be ignored if it doesn't):
 
-- The `VERB` is a valid HTTP verb; it *must* be in upper-case.
+    VERB /path [tag] [tag2...]
+
+- The `VERB` is a valid HTTP verb; it must be in upper-case.
 - The `/path` is a HTTP path. Path parameters can be added as `{..}`.
-- An optional tag can be added for categorisation.
+- One or more optional tags can be added for categorisation.
 
-You can use multiple path descriptions:
+Multiple path descriptions are allowed:
 
     VERB /path [tag]
     OTHER /anotherpath [tag]
 
 The line immediately following the path descriptions is used as a "tagline".
-This can only be a single line and *must* immediately follow the path
-description with no extra newlines. This line is optional but highly recommended
-to use.
-
-The tagline can be of any length, but it is highly recommended that it is kept
-short and concise.
+This can only be a single line and must immediately follow the path description
+with no extra newlines. This line is optional but highly recommended to use. The
+tagline can be of any length, but it is highly recommended that it is kept short
+and concise.
 
 After a single blank line any further text will be treated as the endpoint's
 description. This is free-form text and may be omitted (especially in cases
 where it just repeats the tagline it's not useful to add).
 
+The description will end once the first reference directive is found. The
+description cannot continue after reference directives.
+
+    path-description   = verb path [ tag *( " " tag ) ] LF
+    verb               = "GET" / "HEAD" / "POST" / "PUT" / "PATCH" / "DELETE" / "CONNECT" / "OPTIONS" / "TRACE"
+    path               = path-absolute  ; https://tools.ietf.org/html/rfc3986#section-3.3
+    tag                = *(ALPHA / DIGIT)
+
 Full example:
 
-    POST /bike/{shedID} bikes
-    Create a new bike and store it in the given shed.
+    POST /bike/{id} bikes
+    Order a new bike.
 
     It's important to remember that newly created bikes are *not* automatically
     fit with a steering wheel or seat, as the customer will have to choose one
     later on.
 
-Path, query, and form parameters
---------------------------------
-
-    Form: $ref: formParams
-    Path: $ref: formParams
-    Query: $ref: formParams
-
-Request body
-------------
-
-    Request body: $ref: createRequest
-    Request body (application/json): $ref: createRequest
-
-Responses
----------
-
-    Response: $ref: createResponse
-    Response 200: $ref: createResponse
-    Response 204: $empty
-    Response 400: $default
-    Response 404 (application/json): $default
-
-Parameter properties
+Reference directives
 --------------------
 
+The general structure for referencing types is:
+
+    <keyword>: $ref: <ref>
+
+The various values for `<keyword>` are described below.
+
+`<ref>` can be in three formats:
+
+- `t`                 – type in the current package.
+- `pkg.t`             – type in an imported package (e.g. `import "import/path/pkg"`).
+- `import/path/foo.t` – full import path; when the package isn't imported.
+
+Only `struct` and `interface` types can be referenced. Interfaces don't have
+fields and only the documentation for the interface will be added to the
+output.
+
+References are looked up in the customary locations (vendor, GOPATH). Invalid
+references are an error.
+
+    ; https://golang.org/ref/spec#identifier
+    ; https://golang.org/ref/spec#Qualified_identifiers
+    ; https://golang.org/ref/spec#Import_declarations
+    ref            = identifier / QualifiedIdent / ( ImportPath "." identifier )
+
+### Path, Query, and Form references
+
+A `Path` reference can be used to document path parameters; for example:
+
+    type pathParams {
+        // Bike ID from the manufacturer.
+        ID int `path:"id"`
+    }
+
+    // GET /bike/{id}
+    //
+    // Path: $ref: pathParams
+
+Attempting to document path parameters that don't exist as `{..}` placeholders
+in the path is an error.
+
+The OpenAPI specification states that all parameters inside the path must have a
+corresponding path parameter. Missing path parameters will be automatically
+added in the (OpenAPI) output since explicitly documenting these is often
+useless.
+
+A `Query` reference can be used to document parameters from URLs; a `Form`
+reference can be used to document form data (`application/x-www-form-urlencoded`
+or `multipart/form-data`).
+
+The `Form` and `Query` parameters follow the same format:
+
+    Form: $ref: formParams
+    Query: $ref: queryParams
+
+Referencing Form, Path, or Query parameters will always use the `form`, `path`,
+and `query` struct tags. A value of `-` means it will be ignored; no struct tag
+means it will add the field name as-is.
+
+    param-ref      = ( "Form" / "Path" / "Query" ) ": $ref: " ref LF
+
+### Request body
+
+The request body is any request body that is not a form; for example JSON, XML,
+YAML, or something else.
+
+    Request body: $ref: createRequest
+    Request body (application/xml): $ref: createRequest
+
+The first form will use the configured default Content-Type; the second form
+explicitly defines it for this request body.
+
+    content-type   = type-name "/" subtype-name  ; https://tools.ietf.org/html/rfc6838#section-4.2
+    request-ref    = "Request body" [ "(" content-type ")" ] ": $ref:" ref LF
+
+### Responses
+
+Response bodies are mapped to a HTTP status code:
+
+    Response 200: $ref: createResponse
+
+Every endpoint must have at least one defined response.
+
+The response code `200` will be used it it's omitted:
+
+    Response: $ref: createResponse
+
+You can define a Content-Type like with Request bodies; it will use the
+configured default Content-Type if omitted:
+
+    Response 404 (application/json): $ref: createResponse
+
+The `$empty` keyword indicates that this response code may be returned, but
+without any code. In general this should only be used for `204 No Content`:
+
+    Response 204: $empty
+
+The `$default` keyword indicates it should use the default reference for this
+response code:
+
+    Response 400: $default
+
+It is an error if no default reference is configured for this response code.
+
+    response-ref   = "Response" [ 3DIGIT ] ":" [ "(" content-type ")" ] ( "$empty" / "$default" / ": $ref:" ref ) LF
+
+References
+----------
+
+Any struct or interface can be referenced.
+
+Anonymous structs are merged in to the parent struct.
+
+Embedded structs are merged in to the parent struct, unless they have a `json`
+tag, in which case they're added as reference in the output.
+
+### Parameter properties
+
 Comments documenting struct fields can have *parameter properties* with special
-keywords to document them. These must appear within `{` and `}` characters, and
+keywords to document them. These must appear within `{` and `}` characters and
 may appear multiple times. A single `{..}` block may also contain multiple
 properties separated by a `,`.
 
@@ -120,7 +246,7 @@ Supported parameters:
 - `range: n-n`      – parameter must be within this range; either number can be
                       `0` to indicate there is no lower or upper limit (only
                       useful for numeric parameters).
-- Any [format from JSON schema](https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3)
+- Any [format from JSON schema][json-schema-format].
 
 Examples:
 
@@ -137,3 +263,14 @@ Examples:
         // Only fetch results updated since this time {date-time}.
         UpdatedSince time.Time
     }
+
+Using unknown keywords is an error.
+
+    param-alpha    = ; any Unicode character except "{", "}", ",", " "
+    param-property = "{" param-alpha [ ":" param-alpha [ param-alpha ] ] *( "," param-property ) "}"
+
+
+[rationale]: https://github.com/Teamwork/kommentaar#motivation-and-rationale
+[rfc2119]: https://tools.ietf.org/html/rfc2119
+[rfc5234]: https://tools.ietf.org/html/rfc5234
+[json-schema-format]: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
