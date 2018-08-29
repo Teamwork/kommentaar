@@ -9,6 +9,7 @@ import (
 
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/kconfig"
+	"github.com/teamwork/kommentaar/openapi2"
 )
 
 func main() {
@@ -56,6 +57,9 @@ func main() {
 		}
 	}
 
+	if prog.Config.Output == nil {
+		prog.Config.Output = openapi2.WriteYAML
+	}
 	if *output != "" {
 		var err error
 		prog.Config.Output, err = kconfig.Output(*output, *addr)
@@ -64,6 +68,7 @@ func main() {
 			flag.Usage()
 		}
 	}
+
 	pkgs := flag.Args()
 	if len(pkgs) > 0 {
 		prog.Config.Packages = pkgs
