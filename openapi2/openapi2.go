@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -115,8 +114,6 @@ func WriteJSON(w io.Writer, prog *docparse.Program) error {
 func WriteJSONIndent(w io.Writer, prog *docparse.Program) error {
 	return write("jsonindent", w, prog)
 }
-
-var reParams = regexp.MustCompile(`{\w+}`)
 
 func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	out := OpenAPI{
@@ -255,7 +252,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		// Add any {..} parameters in the path to the parameter list if they
 		// haven't been specified manually in e.Request.Path.
 		if strings.Contains(e.Path, "{") && e.Request.Path == nil {
-			for _, param := range reParams.FindAllString(e.Path, -1) {
+			for _, param := range docparse.PathParams(e.Path) {
 				param = strings.Trim(param, "{}")
 				op.Parameters = append(op.Parameters, Parameter{
 					Name: param,

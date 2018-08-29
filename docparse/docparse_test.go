@@ -12,7 +12,7 @@ import (
 func TestParseComments(t *testing.T) {
 	stdResp := map[int]Response{200: Response{
 		ContentType: "application/json",
-		Body:        &Ref{Description: "OK"},
+		Body:        &Ref{Description: "OK (no data)"},
 	}}
 
 	tests := []struct {
@@ -212,7 +212,7 @@ Response 200: $empty
 			}},
 
 		{"path-ref", `
-POST /path
+POST /path/{Name}/{Address}
 
 Path: $ref: net/mail.Address
 Response 200: $empty
@@ -220,7 +220,7 @@ Response 200: $empty
 			"",
 			[]*Endpoint{{
 				Method: "POST",
-				Path:   "/path",
+				Path:   "/path/{Name}/{Address}",
 				Request: Request{
 					Path: &Ref{Reference: "mail.Address"},
 				}},
@@ -256,11 +256,11 @@ Response 400 (w00t): $empty
 				Responses: map[int]Response{
 					200: {
 						ContentType: "application/json",
-						Body:        &Ref{Description: "OK"},
+						Body:        &Ref{Description: "OK (no data)"},
 					},
 					400: {
 						ContentType: "w00t",
-						Body:        &Ref{Description: "Bad Request"},
+						Body:        &Ref{Description: "Bad Request (no data)"},
 					},
 				},
 			}},
@@ -364,7 +364,7 @@ func TestParseParams(t *testing.T) {
 		{"hello: {int} {required}", Param{Name: "hello", Kind: "int", Required: true}, ""},
 		{"Hello {enum: one two three}", Param{Name: "Hello", Kind: "enum", KindEnum: []string{"one", "two", "three"}}, ""},
 
-		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter tag"},
+		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter property"},
 		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},
 	}
 
@@ -533,7 +533,10 @@ func TestParseResponse(t *testing.T) {
 		{
 			"Response 400: $ref: net/mail.Address",
 			400,
-			&Response{ContentType: "application/json", Body: &Ref{Reference: "mail.Address"}},
+			&Response{
+				ContentType: "application/json",
+				Body:        &Ref{Reference: "mail.Address", Description: "Bad Request"},
+			},
 			"",
 		},
 		{

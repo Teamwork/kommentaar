@@ -68,10 +68,27 @@ func TestOpenAPI2(t *testing.T) {
 			prog.Config.Packages = []string{"./testdata/openapi2/src/" + tt.Name()}
 			prog.Config.Output = openapi2.WriteYAML
 
+			// Only add for tests that need it.
+			if tt.Name() == "resp-default" {
+				prog.Config.DefaultResponse = map[int]docparse.Response{
+					418: docparse.Response{
+						ContentType: "application/teapot",
+						Body: &docparse.Ref{
+							Description: "A little teapot, short and stout.",
+							Reference:   "mail.Address",
+						},
+					},
+				}
+				_, err := docparse.GetReference(prog, "resp", false, "net/mail.Address", "")
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
 			outBuf := bytes.NewBuffer(nil)
 			err = docparse.FindComments(outBuf, prog)
 			if !test.ErrorContains(err, string(wantErr)) {
-				t.Fatalf("wrong error\nout:  %v\nwant: %v", err.Error(), string(wantErr))
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, string(wantErr))
 			}
 			out := strings.TrimSpace(outBuf.String()) + "\n"
 

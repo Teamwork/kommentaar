@@ -37,7 +37,7 @@ type QueryParams struct {
 // List of entities paginated.
 //
 // Query: $ref: QueryParams
-// Response 400: $default
+// Response 400: $empty
 func ListEntities() {}
 
 // GET /entities/{id}.json
@@ -45,7 +45,7 @@ func ListEntities() {}
 //
 // Query: $ref: QueryParams
 // Response 200: $ref: entityResponse
-// Response 400: $default
+// Response 400: $empty
 func GetEntity() {}
 
 // POST /entities.json
@@ -53,7 +53,7 @@ func GetEntity() {}
 //
 // Request body: $ref: entity
 // Response 200: $ref: entityResponse
-// Response 400: $default
+// Response 400: $empty
 func PostEntity() {}
 
 // PATCH /entities/{id}.json
@@ -61,7 +61,7 @@ func PostEntity() {}
 //
 // Request body: $ref: entity
 // Response 200: $ref: entityResponse
-// Response 400: $default
+// Response 400: $empty
 func PatchEntity() {}
 
 // overriding the docs for id
@@ -74,5 +74,5 @@ type deletePathParams struct {
 //
 // Path: $ref: deletePathParams
 // Response 204: $empty
-// Response 400: $default
+// Response 400: $empty
 func DeleteEntity() {}
