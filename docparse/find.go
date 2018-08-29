@@ -15,12 +15,6 @@ import (
 	"github.com/teamwork/utils/goutil"
 )
 
-// Should replace this with boolean once we remove form/query/path from
-// references.
-const (
-	ContextEmbed = "embed"
-)
-
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
 	pkgPaths, err := goutil.Expand(prog.Config.Packages, build.FindOnly)
@@ -238,7 +232,7 @@ func (err ErrNotStruct) Error() string {
 //
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
-func GetReference(prog *Program, context, lookup, filePath string) (*Reference, error) {
+func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
 	var name, pkg string
@@ -258,8 +252,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	if ref, ok := prog.References[lookup]; ok {
 		// Update context: some structs are embedded but also referenced
 		// directly.
-		if ref.Context == ContextEmbed {
-			ref.Context = context
+		if ref.IsEmbed {
 			prog.References[lookup] = ref
 		}
 		return &ref, nil
@@ -289,6 +282,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 		Lookup:  filepath.Base(pkg) + "." + name,
 		File:    foundPath,
 		Context: context,
+		IsEmbed: isEmbed,
 	}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
@@ -305,7 +299,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 				continue
 			}
 
-			err = resolveType(prog, "", f.Type.(*ast.Ident), "", pkg)
+			err = resolveType(prog, "", false, f.Type.(*ast.Ident), "", pkg)
 			if err != nil {
 				return nil, fmt.Errorf("could not lookup %s in %s: %s",
 					err, f.Type, lookup)
@@ -329,9 +323,9 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
-		nestContext := context
+		var isEmbed bool
 		if len(f.Names) == 0 {
-			nestContext = ContextEmbed
+			isEmbed = true
 		}
 
 		// TODO: tagname should be config.
@@ -339,11 +333,11 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 			continue
 		}
 
-		nestLookup, err := findNested(prog, nestContext, f, foundPath, pkg)
+		nestLookup, err := findNested(prog, context, isEmbed, f, foundPath, pkg)
 		if err != nil {
 			return nil, fmt.Errorf("\n  findNested: %v", err)
 		}
-		if nestContext == ContextEmbed {
+		if isEmbed {
 			if f.Tag == nil {
 				nested = append(nested, nestLookup)
 			} else if len(f.Names) == 0 {
@@ -389,7 +383,7 @@ func GetReference(prog *Program, context, lookup, filePath string) (*Reference, 
 	return &ref, nil
 }
 
-func findNested(prog *Program, context string, f *ast.Field, filePath, pkg string) (string, error) {
+func findNested(prog *Program, context string, isEmbed bool, f *ast.Field, filePath, pkg string) (string, error) {
 	var name *ast.Ident
 
 	sw := f.Type
@@ -462,7 +456,7 @@ start:
 	}
 
 	if _, ok := prog.References[lookup]; !ok {
-		err := resolveType(prog, context, name, filePath, pkg)
+		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
 		if err != nil {
 			return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
 		}
@@ -471,7 +465,7 @@ start:
 }
 
 // Add the type declaration to references.
-func resolveType(prog *Program, context string, typ *ast.Ident, filePath, pkg string) error {
+func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, filePath, pkg string) error {
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {
 		var err error
@@ -497,6 +491,6 @@ func resolveType(prog *Program, context string, typ *ast.Ident, filePath, pkg st
 
 	// This sets prog.References
 	lookup := pkg + "." + typ.Name
-	_, err := GetReference(prog, context, lookup, filePath)
+	_, err := GetReference(prog, context, isEmbed, lookup, filePath)
 	return err
 }

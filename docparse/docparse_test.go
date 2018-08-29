@@ -501,7 +501,7 @@ func TestGetReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v", tt.in), func(t *testing.T) {
 			prog := NewProgram(false)
-			out, err := GetReference(prog, "", tt.in, ".")
+			out, err := GetReference(prog, "", false, tt.in, ".")
 			if !test.ErrorContains(err, tt.wantErr) {
 				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tt.wantErr)
 			}

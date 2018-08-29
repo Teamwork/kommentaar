@@ -142,6 +142,7 @@ type Reference struct {
 	Lookup  string  // Identifier as pkg.type.
 	Info    string  // Comment of the struct itself.
 	Context string  // Context we found it: path, query, form, req, resp.
+	IsEmbed bool    // Is an embedded struct.
 	Schema  *Schema // JSON schema.
 
 	Fields []Param // Struct fields.
@@ -399,7 +400,7 @@ func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
 			return nil, fmt.Errorf("invalid reference: %#v", line)
 		}
 
-		ref, err := GetReference(prog, context, strings.TrimSpace(s[1]), filePath)
+		ref, err := GetReference(prog, context, false, strings.TrimSpace(s[1]), filePath)
 		if err != nil {
 			return nil, fmt.Errorf("GetReference: %v", err)
 		}
