@@ -1,8 +1,14 @@
 package params
 
-type pathRef struct{ id string }
-type queryRef struct{ id string }
-type formRef struct{ id string }
+type pathRef struct {
+	ID string `path:"id"`
+}
+type queryRef struct {
+	ID string `query:"id"`
+}
+type formRef struct {
+	ID string `form:"id"`
+}
 
 // POST /path/{id} tag
 //

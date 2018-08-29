@@ -1,0 +1,35 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: exported
+        in: query
+        type: string
+      - name: export.ref2
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/export.ref2'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  export.ref2:
+    title: ref2
+    type: object
+    properties:
+      exported:
+        type: string

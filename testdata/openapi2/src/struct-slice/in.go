@@ -5,7 +5,7 @@ type resp struct {
 	Custom    mySlice           `json:"custom"`    // Custom comment.
 	Double    anotherSlice      `json:"another"`   // Double comment.
 	StructRef customFieldValues `json:"structRef"` // structRefComment.
-	deal      deal
+	Deal      deal              `json:"deal"`
 }
 
 // mySlice comment.
@@ -17,11 +17,11 @@ type anotherSlice mySlice
 type customFieldValues []*customFieldValue
 
 type customFieldValue struct {
-	val string
+	Val string `json:"val"`
 }
 
 type deal struct {
-	customFieldValues []*customFieldValue
+	CustomFieldValues []*customFieldValue
 }
 
 // POST /path

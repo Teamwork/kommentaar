@@ -127,6 +127,10 @@ Only `struct` and `interface` types can be referenced. Interfaces don't have
 fields and only the documentation for the interface will be added to the
 output.
 
+Embedded structs are merged in to the parent struct, unless they have the
+applicable struct tag (as configured with `struct-tag`), in which case they're
+added as reference in the output.
+
 References are looked up in the customary locations (vendor, GOPATH). Invalid
 references are an error.
 
@@ -134,6 +138,9 @@ references are an error.
     ; https://golang.org/ref/spec#Qualified_identifiers
     ; https://golang.org/ref/spec#Import_declarations
     ref            = identifier / QualifiedIdent / ( ImportPath "." identifier )
+
+Unexported fields are ignored; unexported fields with an applicable struct tag
+are considered an error.
 
 ### Path, Query, and Form references
 
@@ -224,14 +231,6 @@ It is an error if no default reference is configured for this response code.
 
 References
 ----------
-
-Any struct or interface can be referenced.
-
-Anonymous structs are merged in to the parent struct.
-
-Embedded structs are merged in to the parent struct, unless they have the
-applicable struct tag (as configured with `struct-tag`), in which case they're
-added as reference in the output.
 
 ### Parameter properties
 
