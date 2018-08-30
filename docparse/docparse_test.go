@@ -12,7 +12,7 @@ import (
 func TestParseComments(t *testing.T) {
 	stdResp := map[int]Response{200: Response{
 		ContentType: "application/json",
-		Body:        &Ref{Description: "OK (no data)"},
+		Body:        &Ref{Description: "200 OK (no data)"},
 	}}
 
 	tests := []struct {
@@ -256,11 +256,11 @@ Response 400 (w00t): $empty
 				Responses: map[int]Response{
 					200: {
 						ContentType: "application/json",
-						Body:        &Ref{Description: "OK (no data)"},
+						Body:        &Ref{Description: "200 OK (no data)"},
 					},
 					400: {
 						ContentType: "w00t",
-						Body:        &Ref{Description: "Bad Request (no data)"},
+						Body:        &Ref{Description: "400 Bad Request (no data)"},
 					},
 				},
 			}},
@@ -535,7 +535,7 @@ func TestParseResponse(t *testing.T) {
 			400,
 			&Response{
 				ContentType: "application/json",
-				Body:        &Ref{Reference: "mail.Address", Description: "Bad Request"},
+				Body:        &Ref{Reference: "mail.Address", Description: "400 Bad Request"},
 			},
 			"",
 		},

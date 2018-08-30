@@ -25,5 +25,5 @@ paths:
         required: true
       responses:
         200:
-          description: 200 OK
+          description: 200 OK (no data)
 definitions: {}

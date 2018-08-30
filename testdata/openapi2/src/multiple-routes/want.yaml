@@ -31,7 +31,7 @@ paths:
         type: string
       responses:
         200:
-          description: 200 OK
+          description: 200 OK (no data)
   /foo:
     get:
       operationId: GET_foo
@@ -56,7 +56,7 @@ paths:
         type: string
       responses:
         200:
-          description: 200 OK
+          description: 200 OK (no data)
   /path/{id}:
     post:
       operationId: POST_path_{id}
@@ -81,5 +81,5 @@ paths:
         type: string
       responses:
         200:
-          description: 200 OK
+          description: 200 OK (no data)
 definitions: {}

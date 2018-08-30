@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"sort"
 	"strings"
 
@@ -286,7 +285,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 		for code, resp := range e.Responses {
 			r := Response{
-				Description: fmt.Sprintf("%v %v", code, http.StatusText(code)),
+				Description: resp.Body.Description,
 			}
 
 			// Link reference.

@@ -149,6 +149,13 @@ type Reference struct {
 	Fields []Param // Struct fields.
 }
 
+const (
+	refRef     = "$ref"
+	refDefault = "$default"
+	refEmpty   = "$empty"
+	refData    = "$data"
+)
+
 var (
 	reBasicHeader    = regexp.MustCompile(`^(Path|Form|Query): (.+)`)
 	reRequestHeader  = regexp.MustCompile(`^Request body( \((.+?)\))?: (.+)`)
@@ -373,18 +380,27 @@ func ParseResponse(prog *Program, filePath, line string) (int, *Response, error)
 	if err != nil {
 		return 0, nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 	}
+
+	codeText := fmt.Sprintf("%d %s", code, http.StatusText(int(code)))
 	switch r.Body.Description {
 	case "":
-		r.Body.Description = http.StatusText(int(code))
-	case "$empty":
-		r.Body.Description = http.StatusText(int(code)) + " (no data)"
-	case "$default":
+		r.Body.Description = codeText
+	case refEmpty:
+		r.Body.Description = codeText + " (no data)"
+	case refData:
+		if resp[4] == "" {
+			return 0, nil, fmt.Errorf("explicit Content-Type required for $data in %v: %q",
+				filePath, line)
+		}
+
+		r.Body.Description = fmt.Sprintf("%s (%s data)", codeText, r.ContentType)
+	case refDefault:
 		// Make sure it's defined.
 		if _, ok := prog.Config.DefaultResponse[int(code)]; !ok {
 			return 0, nil, fmt.Errorf("no default response for %v in %v: %q",
 				code, filePath, line)
 		}
-		r.Body.Description = http.StatusText(int(code))
+		r.Body.Description = codeText
 	}
 
 	return int(code), &r, nil
@@ -439,9 +455,9 @@ func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
 	name = strings.TrimSpace(name)
 
 	switch name {
-	case "$empty", "$default":
+	case refEmpty, refDefault, refData:
 		params.Description = name // Filled in later.
-	case "$ref":
+	case refRef:
 		s := strings.Split(line, ":")
 		if len(s) != 2 {
 			return nil, fmt.Errorf("invalid reference: %#v", line)

@@ -207,6 +207,12 @@ without any code. In general this should only be used for `204 No Content`:
 
     Response 204: $empty
 
+The `$data` keyword indicates that this response returns unstructured data, such
+as text, HTML, an image, spreadsheet document, etc. An explicit Content-Type is
+required when using `$data`.
+
+    Response 200 (text/plain): $data
+
 The `$default` keyword indicates it should use the default reference for this
 response code:
 
