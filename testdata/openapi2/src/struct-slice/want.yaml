@@ -28,7 +28,7 @@ definitions:
     title: deal
     type: object
     properties:
-      customFieldValues:
+      CustomFieldValues:
         type: array
         items:
           $ref: '#/definitions/struct-slice.customFieldValue'

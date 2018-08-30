@@ -9,6 +9,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -288,6 +289,16 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
 	}
 
+	var tagName string
+	switch ref.Context {
+	case "path", "query", "form":
+		tagName = ref.Context
+	case "req", "resp":
+		tagName = prog.Config.StructTag
+	default:
+		return nil, fmt.Errorf("invalid context: %q", context)
+	}
+
 	// Parse all the fields.
 	// TODO(param): only reason we do this is to make things a bit easier during
 	// refactor. We should pass st to structToSchema() or something.
@@ -308,6 +319,18 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
+			if !fName.IsExported() {
+				if f.Tag != nil {
+					tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
+					if tag != "" {
+						return nil, fmt.Errorf("not exported but has %q tag: %s.%s field %v",
+							tagName, pkg, name, f.Names)
+					}
+				}
+
+				continue
+			}
+
 			p := Param{
 				Name:      fName.Name,
 				KindField: f,
@@ -317,18 +340,10 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 
 	prog.References[ref.Lookup] = ref
-	var nested []string
-	var nestedTagged []*ast.Field
-
-	var tagName string
-	switch ref.Context {
-	case "path", "query", "form":
-		tagName = ref.Context
-	case "req", "resp":
-		tagName = prog.Config.StructTag
-	default:
-		return nil, fmt.Errorf("invalid context: %q", context)
-	}
+	var (
+		nested       []string
+		nestedTagged []*ast.Field
+	)
 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
@@ -340,6 +355,18 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 		if goutil.TagName(f, tagName) == "-" {
 			continue
+		}
+		if !isEmbed {
+			exp := false
+			for _, fName := range f.Names {
+				if fName.IsExported() {
+					exp = true
+					break
+				}
+			}
+			if !exp {
+				continue
+			}
 		}
 
 		nestLookup, err := findNested(prog, context, isEmbed, f, foundPath, pkg)
