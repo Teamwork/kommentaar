@@ -22,7 +22,7 @@ paths:
           $ref: '#/definitions/req-ct.reqRef'
       responses:
         200:
-          description: 200 OK
+          description: 200 OK (no data)
 definitions:
   req-ct.reqRef:
     title: reqRef
