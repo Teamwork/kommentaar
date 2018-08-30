@@ -35,7 +35,7 @@ type Schema struct {
 }
 
 // Convert a struct to a JSON schema.
-func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) {
+func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema, error) {
 	schema := &Schema{
 		Title:       name,
 		Description: ref.Info,
@@ -48,14 +48,7 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			return nil, fmt.Errorf("p.KindField is nil for %v", name)
 		}
 
-		switch ref.Context {
-		case "path", "query", "form":
-			name = goutil.TagName(p.KindField, ref.Context)
-		default:
-			// TODO: doesn't have to be json tag; that's just what Desk happens
-			// to use. We should get it from Content-Type or some such instead.
-			name = goutil.TagName(p.KindField, "json")
-		}
+		name = goutil.TagName(p.KindField, tagName)
 
 		if name == "-" {
 			continue
@@ -64,7 +57,7 @@ func structToSchema(prog *Program, name string, ref Reference) (*Schema, error) 
 			name = p.Name
 		}
 
-		prop, err := fieldToSchema(prog, name, ref, p.KindField)
+		prop, err := fieldToSchema(prog, name, tagName, ref, p.KindField)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
@@ -180,7 +173,7 @@ func setTags(name string, p *Schema, tags []string) error {
 }
 
 // Convert a struct field to JSON schema.
-func fieldToSchema(prog *Program, fName string, ref Reference, f *ast.Field) (*Schema, error) {
+func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.Field) (*Schema, error) {
 	var p Schema
 
 	if f.Doc != nil {
@@ -224,7 +217,7 @@ start:
 			name = typ.Sel
 
 			lookup := pkg + "." + name.Name
-			if _, err := GetReference(prog, "", false, lookup, ref.File); err != nil {
+			if _, err := GetReference(prog, ref.Context, false, lookup, ref.File); err != nil {
 				return nil, fmt.Errorf("GetReference: %v", err)
 			}
 		case *ast.Ident:
@@ -263,13 +256,12 @@ start:
 		p.Type = "object"
 		p.Properties = map[string]*Schema{}
 		for _, f := range typ.Fields.List {
-			prop, err := fieldToSchema(prog, fName, ref, f)
+			prop, err := fieldToSchema(prog, fName, tagName, ref, f)
 			if err != nil {
 				return nil, fmt.Errorf("anon struct: %v", err)
 			}
 
-			// TODO: Should allow config for json
-			p.Properties[goutil.TagName(f, "json")] = prop
+			p.Properties[goutil.TagName(f, tagName)] = prop
 		}
 
 	// An expression followed by a selector, e.g. "pkg.foo"
@@ -441,7 +433,7 @@ arrayStart:
 	p.Items = &Schema{Reference: sRef}
 
 	// Add to prog.References.
-	_, err = GetReference(prog, "", false, lookup, ref.File)
+	_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
 	return err
 }
 

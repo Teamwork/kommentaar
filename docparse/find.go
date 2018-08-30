@@ -299,7 +299,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				continue
 			}
 
-			err = resolveType(prog, "", false, f.Type.(*ast.Ident), "", pkg)
+			err = resolveType(prog, context, false, f.Type.(*ast.Ident), "", pkg)
 			if err != nil {
 				return nil, fmt.Errorf("could not lookup %s in %s: %s",
 					err, f.Type, lookup)
@@ -320,6 +320,16 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	var nested []string
 	var nestedTagged []*ast.Field
 
+	var tagName string
+	switch ref.Context {
+	case "path", "query", "form":
+		tagName = ref.Context
+	case "req", "resp":
+		tagName = prog.Config.StructTag
+	default:
+		return nil, fmt.Errorf("invalid context: %q", context)
+	}
+
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
@@ -328,8 +338,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			isEmbed = true
 		}
 
-		// TODO: tagname should be config.
-		if goutil.TagName(f, "json") == "-" {
+		if goutil.TagName(f, tagName) == "-" {
 			continue
 		}
 
@@ -348,7 +357,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// Add in embedded structs with a tag.
 	for _, n := range nestedTagged {
-		ename := goutil.TagName(n, "json") // TODO: don't hard-code json
+		ename := goutil.TagName(n, tagName)
 		n.Names = []*ast.Ident{&ast.Ident{
 			Name: ename,
 		}}
@@ -359,7 +368,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 
 	// Convert to JSON Schema.
-	schema, err := structToSchema(prog, name, ref)
+	schema, err := structToSchema(prog, name, tagName, ref)
 	if err != nil {
 		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
 	}

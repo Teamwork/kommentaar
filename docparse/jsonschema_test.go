@@ -48,9 +48,10 @@ func TestFieldToProperty(t *testing.T) {
 	for i, f := range st.Fields.List {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			prog := NewProgram(false)
-			out, err := fieldToSchema(prog, f.Names[0].Name, Reference{
+			out, err := fieldToSchema(prog, f.Names[0].Name, "json", Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
+				Context: "req",
 			}, f)
 			if err != nil {
 				t.Fatal(err)
@@ -84,7 +85,7 @@ func TestFieldToProperty(t *testing.T) {
 		}
 
 		for _, f := range st.Fields.List {
-			out, err := fieldToSchema(prog, f.Names[0].Name, Reference{
+			out, err := fieldToSchema(prog, f.Names[0].Name, "json", Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
 			}, f)

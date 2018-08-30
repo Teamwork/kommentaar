@@ -50,7 +50,7 @@
     "stringutil",
   ]
   pruneopts = "NUT"
-  revision = "6a0758e3831f7c602bfaec032a313d87846f078c"
+  revision = "68176443984665b694aa6ee2f6ec5972883bdafd"
 
 [[projects]]
   digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"

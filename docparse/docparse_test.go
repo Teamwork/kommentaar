@@ -451,6 +451,7 @@ func TestGetReference(t *testing.T) {
 			Package: "github.com/teamwork/kommentaar/docparse",
 			File:    "", // TODO
 			Lookup:  "docparse.testObject",
+			Context: "req",
 			Info:    "testObject general documentation.",
 			Fields: []Param{
 				{Name: "ID"},
@@ -474,6 +475,7 @@ func TestGetReference(t *testing.T) {
 			Package: "net/mail",
 			File:    "", // TODO
 			Lookup:  "mail.Address",
+			Context: "req",
 			Info: "Address represents a single mail address.\n" +
 				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
 				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
@@ -501,7 +503,7 @@ func TestGetReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v", tt.in), func(t *testing.T) {
 			prog := NewProgram(false)
-			out, err := GetReference(prog, "", false, tt.in, ".")
+			out, err := GetReference(prog, "req", false, tt.in, ".")
 			if !test.ErrorContains(err, tt.wantErr) {
 				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tt.wantErr)
 			}
