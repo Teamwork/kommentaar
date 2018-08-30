@@ -71,24 +71,11 @@ default-response-ct application/json
 # *before* the prefix.
 #basepath /myapp
 
-# Struct tag to use for the output names; this is mapping of Content-Type to a
+# Struct tag to use for the output names; should change this if you want to
+# output something other than JSON.
+# For query, form, and path parameters it'll always use those names as the
 # struct tag.
-# For query, form, and path parameters it'll use those names as a faux
-# Content-Type.
-map-tags
-	application/json   json
-
-	application/x-yaml yaml
-	text/yaml          yaml
-	text/x-yaml        yaml
-	text/vnd.yaml      yaml
-
-	text/xml           xml
-	application/xml    xml
-
-	query              query
-	form               form
-	path               path
+#struct-tag json
 
 # Map types to anoter type. Useful for wrappers around types that don't need to
 # be exposed in the user-facing documentation.

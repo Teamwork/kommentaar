@@ -64,6 +64,10 @@ func Load(prog *docparse.Program, file string) error {
 		prog.Config.Output = openapi2.WriteYAML
 	}
 
+	if prog.Config.StructTag == "" {
+		prog.Config.StructTag = "json"
+	}
+
 	return nil
 }
 

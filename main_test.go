@@ -67,6 +67,7 @@ func TestOpenAPI2(t *testing.T) {
 			prog.Config.Version = "x"
 			prog.Config.Packages = []string{"./testdata/openapi2/src/" + tt.Name()}
 			prog.Config.Output = openapi2.WriteYAML
+			prog.Config.StructTag = "json"
 
 			// Only add for tests that need it.
 			if tt.Name() == "resp-default" {
@@ -83,6 +84,10 @@ func TestOpenAPI2(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+			}
+
+			if tt.Name() == "struct-tag" {
+				prog.Config.StructTag = "sometag"
 			}
 
 			outBuf := bytes.NewBuffer(nil)

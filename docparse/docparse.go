@@ -47,7 +47,7 @@ type Config struct {
 	DefaultResponse   map[int]Response
 	Prefix            string
 	Basepath          string
-	MapTags           map[string]string
+	StructTag         string
 	MapTypes          map[string]string
 	MapFormats        map[string]string
 }

@@ -324,15 +324,10 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	switch ref.Context {
 	case "path", "query", "form":
 		tagName = ref.Context
-	case "req":
-		// TODO: hardcoded json; should get it from Content-Type/MapTags, but that's
-		// not really available here :-/
-		tagName = "json"
-	case "resp":
-		// TODO: idem.
-		tagName = "json"
+	case "req", "resp":
+		tagName = prog.Config.StructTag
 	default:
-		panic(fmt.Sprintf("invalid context: %q", context))
+		return nil, fmt.Errorf("invalid context: %q", context)
 	}
 
 	// Scan all fields of f if it refers to a struct. Do this after storing the

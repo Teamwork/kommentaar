@@ -229,8 +229,9 @@ Any struct or interface can be referenced.
 
 Anonymous structs are merged in to the parent struct.
 
-Embedded structs are merged in to the parent struct, unless they have a `json`
-tag, in which case they're added as reference in the output.
+Embedded structs are merged in to the parent struct, unless they have the
+applicable struct tag (as configured with `struct-tag`), in which case they're
+added as reference in the output.
 
 ### Parameter properties
 
