@@ -3,6 +3,7 @@ package main // import "github.com/teamwork/kommentaar"
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -18,6 +19,19 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
+
+	showUsage, err := start()
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "kommentaar: %s\n", err)
+		if showUsage {
+			flag.Usage()
+		}
+	}
+}
+
+var stdout io.Writer = os.Stdout
+
+func start() (bool, error) {
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
 	addr := flag.String("serve", "", "serve HTML output on this address, instead of writing to\n"+
@@ -36,13 +50,11 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "could not create CPU profile: %v\n", err)
-			os.Exit(10)
+			return false, err
 		}
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "could not start CPU profile: %v\n", err)
-			os.Exit(10)
+			return false, err
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -52,8 +64,7 @@ func main() {
 	if *config != "" {
 		err := kconfig.Load(prog, *config)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, err.Error()+"\n")
-			os.Exit(1)
+			return false, err
 		}
 	}
 
@@ -64,8 +75,7 @@ func main() {
 		var err error
 		prog.Config.Output, err = kconfig.Output(*output, *addr)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "-output: %v\n\n", err)
-			flag.Usage()
+			return true, fmt.Errorf("-output: %s", err)
 		}
 	}
 
@@ -77,24 +87,23 @@ func main() {
 		prog.Config.Packages = []string{"."}
 	}
 
-	err := docparse.FindComments(os.Stdout, prog)
+	err := docparse.FindComments(stdout, prog)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		os.Exit(1)
+		return false, err
 	}
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "could not create memory profile: %v\n", err)
-			os.Exit(10)
+			return false, fmt.Errorf("could not create memory profile: %v", err)
 		}
 		runtime.GC()
 		err = pprof.WriteHeapProfile(f)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "could not write memory profile: %v\n", err)
-			os.Exit(10)
+			return false, fmt.Errorf("could not write memory profile: %v", err)
 		}
 		_ = f.Close()
 	}
+
+	return false, nil
 }

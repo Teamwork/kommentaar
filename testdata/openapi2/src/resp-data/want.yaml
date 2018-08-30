@@ -11,8 +11,8 @@ paths:
     post:
       operationId: POST_path
       produces:
-      - text/plain
       - application/json
+      - text/plain
       responses:
         200:
           description: 200 OK (text/plain data)

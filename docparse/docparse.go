@@ -63,6 +63,10 @@ type DefaultResponse struct {
 func NewProgram(dbg bool) *Program {
 	printDebug = dbg
 
+	// Clear cache; otherwise tests with -count 2 fail.
+	// TODO: figure out why; should work really.
+	declsCache = make(map[string][]declCache)
+
 	return &Program{
 		References: make(map[string]Reference),
 		Config: Config{

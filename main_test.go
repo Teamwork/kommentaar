@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"go/build"
 	"io/ioutil"
 	"os"
@@ -16,19 +17,15 @@ import (
 )
 
 // Just basic sanity test to make sure it doesn't error out or something.
-func TestMain(t *testing.T) {
-	saveout := os.Stdout
-	saveerr := os.Stderr
-	_, stdout, _ := os.Pipe()
-	_, stderr, _ := os.Pipe()
-	os.Stdout = stdout
-	os.Stderr = stderr
-
+func TestStart(t *testing.T) {
 	os.Args = []string{"", "-config", "config.example", "./example/..."}
-	main()
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	os.Stdout = saveout
-	os.Stderr = saveerr
+	stdout = bytes.NewBufferString("")
+	_, err := start()
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestOpenAPI2(t *testing.T) {
