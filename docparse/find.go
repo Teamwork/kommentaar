@@ -320,6 +320,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		// Names is an array in cases like "Foo, Bar string".
 		for _, fName := range f.Names {
 			if !fName.IsExported() {
+				fmt.Printf("%s -> %#v\n", fName, f.Type)
 				if f.Tag != nil {
 					tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
 					if tag != "" {
@@ -384,10 +385,12 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// Add in embedded structs with a tag.
 	for _, n := range nestedTagged {
+		// TODO: this is bugged since we disallow unexported, it should use real
+		// name and copy tag.
 		ename := goutil.TagName(n, tagName)
-		n.Names = []*ast.Ident{&ast.Ident{
-			Name: ename,
-		}}
+		//n.Names = []*ast.Ident{&ast.Ident{
+		//	Name: n.N,
+		//}}
 		ref.Fields = append(ref.Fields, Param{
 			Name:      ename,
 			KindField: n,
