@@ -1,0 +1,39 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      parameters:
+      - name: Other
+        in: query
+        description: Other.
+        type: string
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/struct-embed-req.resp'
+definitions:
+  struct-embed-req.resp:
+    title: resp
+    description: resp docs.
+    type: object
+    properties:
+      other:
+        description: Other.
+        type: string
+  struct-embed-req.other:
+    type: object
+    properties:
+      other:
+        description: Other.
+        type: string

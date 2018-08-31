@@ -234,7 +234,7 @@ func (err ErrNotStruct) Error() string {
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
-	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
+	dbg("GetReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
@@ -247,16 +247,28 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		name = lookup
 	}
 
-	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
-
 	// Already parsed this one, don't need to do it again.
+	//
+	// Problem: lookup is full pkg path, whereas it's stored as abbreviated pkg
+	// path.
+	//
+	// dbg docparse: GetReference: not cached; looking "github.com/google/go-github/github.User"
+	//        REFDUMP github.AuthorizationApp
+	//        REFDUMP github.Match
 	if ref, ok := prog.References[lookup]; ok {
-		// Update context: some structs are embedded but also referenced
-		// directly.
+		// Some structs are embedded but also referenced directly.
 		if ref.IsEmbed {
+			ref.IsEmbed = false
 			prog.References[lookup] = ref
 		}
 		return &ref, nil
+	}
+
+	dbg("GetReference: not cached; looking %q", lookup)
+	if name == "User" {
+		for k := range prog.References {
+			fmt.Println("       REFDUMP", k)
+		}
 	}
 
 	// Find type.

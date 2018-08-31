@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"go/build"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,29 @@ func TestStart(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestGitHub(t *testing.T) {
+	t.Skip()
+
+	wd, _ := os.Getwd()
+	build.Default.GOPATH = filepath.Join(wd, "/testdata")
+
+	prog := docparse.NewProgram(false)
+	prog.Config.Title = "GitHub"
+	prog.Config.Version = "x"
+	prog.Config.Packages = []string{"gh"}
+	prog.Config.Output = openapi2.WriteYAML
+	prog.Config.StructTag = "json"
+
+	outBuf := bytes.NewBuffer(nil)
+	err := docparse.FindComments(outBuf, prog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := strings.TrimSpace(outBuf.String()) + "\n"
+
+	fmt.Println(len(out))
 }
 
 func TestOpenAPI2(t *testing.T) {
