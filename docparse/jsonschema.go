@@ -23,6 +23,7 @@ type Schema struct {
 	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
 	Minimum     int      `json:"minimum,omitempty" yaml:"minimum,omitempty"`
 	Maximum     int      `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+	Readonly    *bool    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
 
 	// Store array items; for primitives:
 	//   "items": {"type": "string"}
@@ -107,7 +108,8 @@ func setTags(name string, p *Schema, tags []string) error {
 			return fmt.Errorf("omitempty not implemented yet")
 		// TODO
 		case paramReadOnly:
-			return fmt.Errorf("readonly not implemented yet")
+			t := true
+			p.Readonly = &t
 
 		// Various string formats.
 		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3

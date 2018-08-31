@@ -247,6 +247,9 @@ Supported parameters:
 - `required`        – parameter must be given.
 - `optional`        – parameter can be blank; this is the default, but
                       specifying it explicitly may be useful in some cases.
+- `readonly`        – parameter cannot be set by the user from the request body
+					  or query/form parameters. Attempting to set it will be
+					  ignored or result in an error.
 - `default: v1`     – default value.
 - `enum: v1 v2 ...` – parameter must be one one of the values.
 - `range: n-n`      – parameter must be within this range; either number can be
