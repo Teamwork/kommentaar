@@ -219,6 +219,9 @@ func (err ErrNotStruct) Error() string {
 	return err.msg
 }
 
+// Panic when GetReference cache isn't used; for tests.
+var testCache = false
+
 // GetReference finds a type by name. It can either be in the current path
 // ("SomeStruct"), a package path with a type (e.g.
 // "example.com/bar.SomeStruct"), or something from an imported package (e.g.
@@ -234,7 +237,7 @@ func (err ErrNotStruct) Error() string {
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
-	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
+	dbg("GetReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 
 	var name, pkg string
 	if c := strings.LastIndex(lookup, "."); c > -1 {
@@ -247,7 +250,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		name = lookup
 	}
 
-	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
+	// cache not used; lookup: "testObject"; cacheKeys: ["docparse.testObject"]
 
 	// Already parsed this one, don't need to do it again.
 	if ref, ok := prog.References[lookup]; ok {
@@ -258,6 +261,15 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 		return &ref, nil
 	}
+
+	if testCache {
+		var keys []string
+		for k := range prog.References {
+			keys = append(keys, k)
+		}
+		panic(fmt.Sprintf("cache not used; lookup: %q; cacheKeys: %q", lookup, keys))
+	}
+	dbg("GetReference: not cached; looking %q", lookup)
 
 	// Find type.
 	ts, foundPath, pkg, err := findType(filePath, pkg, name)

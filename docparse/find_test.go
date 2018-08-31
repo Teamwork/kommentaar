@@ -1,6 +1,7 @@
 package docparse
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/teamwork/test"
+	"github.com/teamwork/test/diff"
 )
 
 func TestExampleDir(t *testing.T) {
@@ -125,4 +127,123 @@ func TestFindType(t *testing.T) {
 			})
 		}
 	})
+}
+
+//func TestGetReference(t *testing.T) {
+//	prog.Config.Title = "x"
+//	prog.Config.Version = "x"
+//	prog := NewProgram(false)
+//	prog.Config.StructTag = "json"
+//
+//	//func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
+//}
+
+func TestGetReference(t *testing.T) {
+	tests := []struct {
+		in      string
+		wantErr string
+		want    *Reference
+	}{
+		{"testObject", "", &Reference{
+			Name:    "testObject",
+			Package: "github.com/teamwork/kommentaar/docparse",
+			File:    "", // TODO
+			Lookup:  "docparse.testObject",
+			Context: "req",
+			Info:    "testObject general documentation.",
+			Fields: []Param{
+				{Name: "ID"},
+				{Name: "Foo"},
+				{Name: "Bar"},
+			},
+			Schema: &Schema{
+				Title:       "testObject",
+				Description: "testObject general documentation.",
+				Type:        "object",
+				Required:    []string{"ID"},
+				Properties: map[string]*Schema{
+					"ID":  {Type: "integer", Description: "ID documentation."},
+					"Foo": {Type: "string", Description: "Foo is a really cool foo-thing!\nSuch foo!"},
+					"Bar": {Type: "array", Items: &Schema{Type: "string"}},
+				},
+			},
+		}},
+		{"net/mail.Address", "", &Reference{
+			Name:    "Address",
+			Package: "net/mail",
+			File:    "", // TODO
+			Lookup:  "mail.Address",
+			Context: "req",
+			Info: "Address represents a single mail address.\n" +
+				"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
+				`as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.`,
+			Fields: []Param{
+				{Name: "Name"},
+				{Name: "Address"},
+			},
+			Schema: &Schema{
+				Title: "Address",
+				Description: "Address represents a single mail address.\n" +
+					"An address such as \"Barry Gibbs <bg@example.com>\" is represented\n" +
+					"as Address{Name: \"Barry Gibbs\", Address: \"bg@example.com\"}.",
+				Type: "object",
+				Properties: map[string]*Schema{
+					"Address": {Type: "string", Description: "user@domain"},
+					"Name":    {Type: "string", Description: "Proper name; may be empty."},
+				},
+			},
+		}},
+
+		{"UnknownObject", "could not find", nil},
+		{"net/http.Header", "not a struct", nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v", tt.in), func(t *testing.T) {
+			prog := NewProgram(true)
+			out, err := GetReference(prog, "req", false, tt.in, ".")
+			if !test.ErrorContains(err, tt.wantErr) {
+				t.Fatalf("wrong err\nout:  %v\nwant: %v\n", err, tt.wantErr)
+			}
+
+			if out != nil {
+				out.File = "" // TODO: test this as well.
+			}
+			if out != nil && out.Fields != nil {
+				for i := range out.Fields {
+					out.Fields[i].KindField = nil
+				}
+			}
+
+			if !reflect.DeepEqual(tt.want, out) {
+				t.Errorf("\n%v", diff.Diff(tt.want, out))
+			}
+
+			if tt.wantErr == "" {
+				testCache = true
+				t.Run("cache", func(t *testing.T) {
+					out, err := GetReference(prog, "req", false, tt.in, ".")
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					if out != nil {
+						out.File = "" // TODO: test this as well.
+					}
+					if out != nil && out.Fields != nil {
+						for i := range out.Fields {
+							out.Fields[i].KindField = nil
+						}
+					}
+					if !reflect.DeepEqual(tt.want, out) {
+						t.Errorf("\n%v", diff.Diff(tt.want, out))
+					}
+
+					//for k := range prog.References {
+					//	fmt.Println("CACHE", k)
+					//}
+				})
+			}
+		})
+	}
 }
