@@ -57,6 +57,7 @@ type (
 		Items       *docparse.Schema `json:"items,omitempty" yaml:"items,omitempty"`
 		Format      string           `json:"format,omitempty" yaml:"format,omitempty"`
 		Required    bool             `json:"required,omitempty" yaml:"required,omitempty"`
+		Readonly    *bool            `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
 		Enum        []string         `json:"enum,omitempty" yaml:"enum,omitempty"`
 		Default     string           `json:"default,omitempty" yaml:"default,omitempty"`
 		Minimum     int              `json:"minimum,omitempty" yaml:"minimum,omitempty"`
@@ -205,6 +206,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
+					Readonly:    schema.Readonly,
 					Enum:        schema.Enum,
 					Default:     schema.Default,
 					Minimum:     schema.Minimum,
@@ -239,6 +241,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Type:        schema.Type,
 					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
+					Readonly:    schema.Readonly,
 					Enum:        schema.Enum,
 					Default:     schema.Default,
 					Minimum:     schema.Minimum,

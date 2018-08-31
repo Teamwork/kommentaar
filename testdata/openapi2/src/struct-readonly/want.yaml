@@ -1,0 +1,37 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: struct-readonly.reqRef
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/struct-readonly.reqRef'
+      - name: id
+        in: query
+        type: integer
+        readOnly: true
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  struct-readonly.reqRef:
+    title: reqRef
+    type: object
+    properties:
+      ID:
+        type: integer
+        readOnly: true
