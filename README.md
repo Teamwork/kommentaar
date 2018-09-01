@@ -13,7 +13,7 @@ Goals:
 - Easy to use.
 - Good performance.
 - Will not require significant code refactors to use in almost all cases.
-- Make it hard to produce invalid OpenAPI files; prefer being strict over
+- Impossible to produce invalid OpenAPI files; prefer being strict over
   flexible.
 
 Non-goals:
