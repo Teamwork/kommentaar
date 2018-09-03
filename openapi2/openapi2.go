@@ -309,6 +309,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			op.Produces = appendIfNotExists(op.Produces, resp.ContentType)
 		}
 
+		sort.Strings(op.Produces)
+
 		if out.Paths[e.Path] == nil {
 			out.Paths[e.Path] = &Path{}
 		}
