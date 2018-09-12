@@ -211,6 +211,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Default:     schema.Default,
 					Minimum:     schema.Minimum,
 					Maximum:     schema.Maximum,
+					Format:      schema.Format,
 				})
 			}
 		}
@@ -246,6 +247,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Default:     schema.Default,
 					Minimum:     schema.Minimum,
 					Maximum:     schema.Maximum,
+					Format:      schema.Format,
 				})
 			}
 			op.Consumes = append(op.Consumes, "application/x-www-form-urlencoded")

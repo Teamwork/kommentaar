@@ -7,7 +7,7 @@ type queryRef struct {
 	ID string `query:"id"`
 }
 type formRef struct {
-	ID string `form:"id"`
+	ID string `form:"id"` // {date-time}
 }
 
 // POST /path/{id} tag

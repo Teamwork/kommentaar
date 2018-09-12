@@ -113,7 +113,10 @@ func setTags(name string, p *Schema, tags []string) error {
 
 		// Various string formats.
 		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
-		case "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
+		case "datetime", "date-time", "date", "time", "email", "idn-email", "hostname", "idn-hostname", "uri", "url":
+			if t == "datetime" {
+				t = "date-time"
+			}
 			if t == "url" {
 				t = "uri"
 			}
