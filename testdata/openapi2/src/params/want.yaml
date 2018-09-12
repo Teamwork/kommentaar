@@ -23,6 +23,7 @@ paths:
         required: true
       - name: id
         in: query
+        description: Foo!
         type: string
       - name: id
         in: formData
