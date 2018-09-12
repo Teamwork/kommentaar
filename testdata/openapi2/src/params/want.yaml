@@ -23,10 +23,12 @@ paths:
         required: true
       - name: id
         in: query
+        description: Foo!
         type: string
       - name: id
         in: formData
         type: string
+        format: date-time
       responses:
         200:
           description: 200 OK (no data)
