@@ -26,6 +26,7 @@ func main() {
 		if showUsage {
 			flag.Usage()
 		}
+		os.Exit(1)
 	}
 }
 
