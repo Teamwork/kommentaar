@@ -150,6 +150,31 @@ Response 200: $empty
 			}},
 		},
 
+		{"multi-desc-with-empty-lines", `
+POST /path
+
+A description.
+Of multiple lines.
+
+With some more.
+
+And some more.
+
+Request body (foo): $ref: net/mail.Address
+Response 200: $empty
+			`,
+			"",
+			[]*Endpoint{{
+				Method: "POST",
+				Path:   "/path",
+				Info:   "A description.\nOf multiple lines.\nWith some more.\nAnd some more.",
+				Request: Request{
+					ContentType: "foo",
+					Body:        &Ref{Reference: "mail.Address"},
+				},
+			}},
+		},
+
 		{"single-desc-and-tagline", `
 POST /path
 The tagline!

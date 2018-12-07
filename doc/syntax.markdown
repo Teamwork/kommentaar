@@ -88,7 +88,7 @@ tagline can be of any length, but it is highly recommended that it is kept short
 and concise.
 
 After a single blank line any further text will be treated as the endpoint's
-description. This is free-form text and may be omitted (especially in cases
+description. This is free-form text (which can contain empty lines) and may be omitted (especially in cases
 where it just repeats the tagline it's not useful to add).
 
 The description will end once the first reference directive is found. The
@@ -107,6 +107,22 @@ Full example:
     It's important to remember that newly created bikes are *not* automatically
     fit with a steering wheel or seat, as the customer will have to choose one
     later on.
+
+    Note: hydrocycles are not supported.
+
+
+### Multi-line descriptions and Markdown
+
+This is only applicable if the output is to be consumed by something which parses the
+description field using Markdown.
+
+Multiple lines are supported in the description but Markdown collapses sequential
+lines. There are two workarounds in Markdown:
+
+1. Put two spaces at the end of the first line. This is not an option because
+gofmt will strip any trailing whitespace.
+2. Put an empty line in between your lines.
+
 
 Reference directives
 --------------------
