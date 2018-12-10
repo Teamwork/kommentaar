@@ -209,7 +209,6 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	// Remove startlines and tagline from comment.
 	comment = strings.TrimSpace(comment[start+i:])
 
-	parsingDesc := false
 	pastDesc := false
 	var err error
 
@@ -218,7 +217,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 		i++
 
 		// Ignore empty lines unless we're parsing the description because it needs to include them
-		if strings.TrimSpace(line) == "" && !parsingDesc {
+		if pastDesc && strings.TrimSpace(line) == "" {
 			continue
 		}
 
@@ -227,7 +226,6 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 		// Path:
 		h := reBasicHeader.FindStringSubmatch(line)
 		if h != nil {
-			parsingDesc = false
 			pastDesc = true
 			switch h[1] {
 			case "Path":
@@ -325,7 +323,6 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 			return nil, i, fmt.Errorf("unknown directive: %#v", line)
 		}
 
-		parsingDesc = true
 		e.Info += line + "\n"
 	}
 

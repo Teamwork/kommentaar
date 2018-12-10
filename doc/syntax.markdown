@@ -111,19 +111,6 @@ Full example:
     Note: hydrocycles are not supported.
 
 
-### Multi-line descriptions and Markdown
-
-This is only applicable if the output is to be consumed by something which parses the
-description field using Markdown.
-
-Multiple lines are supported in the description but Markdown collapses sequential
-lines. There are two workarounds in Markdown:
-
-1. Put two spaces at the end of the first line. This is not an option because
-gofmt will strip any trailing whitespace.
-2. Put an empty line in between your lines.
-
-
 Reference directives
 --------------------
 
