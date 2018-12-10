@@ -167,7 +167,7 @@ Response 200: $empty
 			[]*Endpoint{{
 				Method: "POST",
 				Path:   "/path",
-				Info:   "A description.\nOf multiple lines.\nWith some more.\nAnd some more.",
+				Info:   "A description.\nOf multiple lines.\n\nWith some more.\n\nAnd some more.",
 				Request: Request{
 					ContentType: "foo",
 					Body:        &Ref{Reference: "mail.Address"},
