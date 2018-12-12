@@ -88,8 +88,9 @@ tagline can be of any length, but it is highly recommended that it is kept short
 and concise.
 
 After a single blank line any further text will be treated as the endpoint's
-description. This is free-form text and may be omitted (especially in cases
-where it just repeats the tagline it's not useful to add).
+description. This is free-form text and may contain blank lines. It may be
+omitted – especially in cases where it just repeats the tagline it's not useful
+to add.
 
 The description will end once the first reference directive is found. The
 description cannot continue after reference directives.
@@ -107,6 +108,8 @@ Full example:
     It's important to remember that newly created bikes are *not* automatically
     fit with a steering wheel or seat, as the customer will have to choose one
     later on.
+
+    Adding a steering wheel or seat can be done in the PATCH request.
 
 Reference directives
 --------------------
