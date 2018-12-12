@@ -216,7 +216,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	for _, line := range strings.Split(comment, "\n") {
 		i++
 
-		// Ignore empty lines unless we're parsing the description because it needs to include them
+		// Ignore blank lines after – but not in – the description.
 		if pastDesc && strings.TrimSpace(line) == "" {
 			continue
 		}
