@@ -33,6 +33,8 @@ type Schema struct {
 
 	// Store structs.
 	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
+
+	OmitDoc bool `json:"-" yaml:"-"`
 }
 
 // Convert a struct to a JSON schema.
@@ -92,12 +94,15 @@ const (
 	paramOptional  = "optional"
 	paramOmitEmpty = "omitempty"
 	paramReadOnly  = "readonly"
+	paramOmitDoc   = "omitdoc"
 )
 
 func setTags(name string, p *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
+		case paramOmitDoc:
+			p.OmitDoc = true
 		case paramRequired:
 			p.Required = append(p.Required, name)
 		case paramOptional:

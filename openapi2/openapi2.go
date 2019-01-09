@@ -170,6 +170,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			ref := prog.References[e.Request.Path.Reference]
 
 			for name, p := range ref.Schema.Properties {
+				if p.OmitDoc {
+					// path is required, so just blank description.
+					p.Description = ""
+				}
+
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        name,
 					In:          "path",
@@ -195,8 +200,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 				schema := ref.Schema.Properties[f.Name]
 				if schema == nil {
-					return fmt.Errorf("schema is nil for field %q in %q",
+					return fmt.Errorf("schema is nil for query field %q in %q",
 						f.Name, e.Request.Query.Reference)
+				}
+				if schema.OmitDoc {
+					continue
 				}
 
 				op.Parameters = append(op.Parameters, Parameter{
@@ -231,8 +239,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 				schema := ref.Schema.Properties[f.Name]
 				if schema == nil {
-					return fmt.Errorf("schema is nil for field %v in %v",
+					return fmt.Errorf("schema is nil for form field %q in %q",
 						f.Name, e.Request.Query.Reference)
+				}
+				if schema.OmitDoc {
+					continue
 				}
 
 				op.Parameters = append(op.Parameters, Parameter{
@@ -374,7 +385,8 @@ func appendIfNotExists(xs []string, y string) []string {
 }
 
 func prefixPropertyReferences(properties map[string]*docparse.Schema) {
-	for _, s := range properties {
+	var rm []string
+	for k, s := range properties {
 		if s.Reference != "" && !strings.HasPrefix(s.Reference, "#/definitions/") {
 			s.Reference = "#/definitions/" + s.Reference
 		}
@@ -384,8 +396,16 @@ func prefixPropertyReferences(properties map[string]*docparse.Schema) {
 			}
 		}
 
+		if s.OmitDoc {
+			rm = append(rm, k)
+		}
+
 		if s.Properties != nil {
 			prefixPropertyReferences(s.Properties)
 		}
+	}
+
+	for _, r := range rm {
+		delete(properties, r)
 	}
 }
