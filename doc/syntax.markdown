@@ -247,6 +247,7 @@ special fields in the output format.
 
 Supported parameters:
 
+- `omitdoc`         – parameter is not added to the generated output.
 - `required`        – parameter must be given.
 - `optional`        – parameter can be blank; this is the default, but
                       specifying it explicitly may be useful in some cases.
