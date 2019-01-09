@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/kommentaar/kconfig"
 	"github.com/teamwork/kommentaar/openapi2"
 	"github.com/teamwork/test"
 	"github.com/teamwork/test/diff"
@@ -66,25 +67,12 @@ func TestOpenAPI2(t *testing.T) {
 			prog.Config.Output = openapi2.WriteYAML
 			prog.Config.StructTag = "json"
 
-			// Only add for tests that need it.
-			if tt.Name() == "resp-default" {
-				prog.Config.DefaultResponse = map[int]docparse.Response{
-					418: docparse.Response{
-						ContentType: "application/teapot",
-						Body: &docparse.Ref{
-							Description: "A little teapot, short and stout.",
-							Reference:   "mail.Address",
-						},
-					},
+			// Allow test to override config
+			testConfig := path + "/test.conf"
+			if _, err := os.Stat(testConfig); err == nil {
+				if err := kconfig.Load(prog, testConfig); err != nil {
+					t.Fatalf("test.conf: %v", err)
 				}
-				_, err := docparse.GetReference(prog, "resp", false, "net/mail.Address", "")
-				if err != nil {
-					t.Fatal(err)
-				}
-			}
-
-			if tt.Name() == "struct-tag" {
-				prog.Config.StructTag = "sometag"
 			}
 
 			outBuf := bytes.NewBuffer(nil)
