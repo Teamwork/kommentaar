@@ -1,0 +1,49 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: struct-mapping.a
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/struct-mapping.a'
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/struct-mapping.a'
+definitions:
+  otherpkg.Foo:
+    title: Foo
+    type: object
+    properties:
+      Bar:
+        type: string
+  struct-mapping.a:
+    title: a
+    type: object
+    properties:
+      foo:
+        $ref: '#/definitions/otherpkg.Foo'
+      foos:
+        type: array
+        items:
+          $ref: '#/definitions/otherpkg.Foo'
+      nullableString:
+        type: string
+      time:
+        type: string
+        format: date-time

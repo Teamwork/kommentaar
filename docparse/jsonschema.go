@@ -255,7 +255,15 @@ start:
 			goto start
 		}
 
-		p.Type = JSONSchemaType(typ.Name)
+		mappedType, mappedFormat := MapType(prog, pkg+"."+typ.Name)
+		if mappedType != "" {
+			p.Type = JSONSchemaType(mappedType)
+		} else {
+			p.Type = JSONSchemaType(typ.Name)
+		}
+		if mappedFormat != "" {
+			p.Format = mappedFormat
+		}
 
 		// e.g. string, int64, etc.: don't need to look up.
 		if isPrimitive(p.Type) {
