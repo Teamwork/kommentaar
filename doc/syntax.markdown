@@ -92,6 +92,11 @@ description. This is free-form text and may contain blank lines. It may be
 omitted – especially in cases where it just repeats the tagline it's not useful
 to add.
 
+Inside the description section the `$print` operator is also supported to allow
+referencing a constant or variable in the codebase to be added to the
+documentation. This can allow you for example to avoid duplicating some common
+text or output the value of a whitelist without duplicating it.
+
 The description will end once the first reference directive is found. The
 description cannot continue after reference directives.
 
@@ -110,6 +115,11 @@ Full example:
     later on.
 
     Adding a steering wheel or seat can be done in the PATCH request.
+
+    You can side-load addition data to save an extra request, the following
+    relationships are available for side-loading with the include query
+    paramter:
+    $print postBikeIncludes
 
 Reference directives
 --------------------

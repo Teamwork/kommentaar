@@ -1,0 +1,44 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      description: |-
+        Rate limit is
+        blah
+        blah
+        blah
+        500
+
+        string:
+        value of constant string
+
+        []string:
+        - value
+        - of
+        - str
+        - slice
+
+        map[string]string:
+        - a: b
+        - c: d
+
+        map[string]interface{}:
+        - int: 1
+        - bool: true
+        - false: false
+        - str: hello
+        - f: 1.234
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions: {}
