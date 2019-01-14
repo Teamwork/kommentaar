@@ -37,12 +37,12 @@ definitions:
     title: req
     type: object
     required:
-    - Data
-    - CreatedBy
+    - data
+    - createdBy
     properties:
-      CreatedBy:
+      createdBy:
         type: integer
-      Data:
+      data:
         type: object
         properties:
           title:

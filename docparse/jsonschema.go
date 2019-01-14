@@ -71,7 +71,6 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			case "path", "query", "form":
 			// Do nothing
 			default:
-				name = goutil.TagName(p.KindField, ref.Context)
 				schema.Required = append(schema.Required, name)
 				prop.Required = nil
 			}
