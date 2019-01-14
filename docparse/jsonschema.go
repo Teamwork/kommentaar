@@ -66,14 +66,8 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 		}
 
 		// TODO: ugly
-		if len(prop.Required) > 0 {
-			switch ref.Context {
-			case "path", "query", "form":
-			// Do nothing
-			default:
-				schema.Required = append(schema.Required, name)
-				prop.Required = nil
-			}
+		if !sliceutil.InStringSlice([]string{"path", "query", "form"}, ref.Context) {
+			fixRequired(schema, prop)
 		}
 
 		if prop == nil {
@@ -86,6 +80,18 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 	}
 
 	return schema, nil
+}
+
+// fix required property, when our Reference is generated the required
+// properties are one level too deep, they all need moving up one.
+// TODO: fix it so we don't have to do this.
+func fixRequired(schema *Schema, prop *Schema) {
+	schema.Required = append(schema.Required, prop.Required...)
+	prop.Required = nil
+
+	for _, p := range prop.Properties {
+		fixRequired(prop, p)
+	}
 }
 
 const (
@@ -194,7 +200,6 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)
-	_ = tags
 	err := setTags(fName, &p, tags)
 	if err != nil {
 		return nil, err
@@ -265,12 +270,13 @@ start:
 		p.Type = "object"
 		p.Properties = map[string]*Schema{}
 		for _, f := range typ.Fields.List {
-			prop, err := fieldToSchema(prog, fName, tagName, ref, f)
+			propName := goutil.TagName(f, tagName)
+			prop, err := fieldToSchema(prog, propName, tagName, ref, f)
 			if err != nil {
 				return nil, fmt.Errorf("anon struct: %v", err)
 			}
 
-			p.Properties[goutil.TagName(f, tagName)] = prop
+			p.Properties[propName] = prop
 		}
 
 	// An expression followed by a selector, e.g. "pkg.foo"

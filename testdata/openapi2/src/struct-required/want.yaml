@@ -44,9 +44,20 @@ definitions:
         type: integer
       data:
         type: object
+        required:
+        - title
+        - meta
         properties:
+          meta:
+            type: object
+            required:
+            - booly
+            properties:
+              booly:
+                description: Another level
+                type: boolean
+              stringy:
+                type: string
           title:
             description: Test
             type: string
-            required:
-            - data
