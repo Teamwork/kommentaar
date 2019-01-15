@@ -6,7 +6,19 @@ type queryRef struct {
 	Ignore    string `query:"-"`
 }
 
+type req struct {
+	Data struct {
+		Title string `json:"title"` // Test {required}
+		Meta  struct {
+			Booly   bool   `json:"booly"` // Another level {required}
+			Stringy string `json:"stringy"`
+		} `json:"meta"` // {required}
+	} `json:"data"` // {required}
+	CreatedBy int64 `json:"createdBy"` // {required}
+}
+
 // POST /path
 //
 // Query: $ref: queryRef
+// Request body: $ref: req
 // Response 200: $empty

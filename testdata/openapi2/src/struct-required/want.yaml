@@ -10,9 +10,16 @@ paths:
   /path:
     post:
       operationId: POST_path
+      consumes:
+      - application/json
       produces:
       - application/json
       parameters:
+      - name: struct-required.req
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/struct-required.req'
       - name: id
         in: query
         type: integer
@@ -25,4 +32,32 @@ paths:
       responses:
         200:
           description: 200 OK (no data)
-definitions: {}
+definitions:
+  struct-required.req:
+    title: req
+    type: object
+    required:
+    - data
+    - createdBy
+    properties:
+      createdBy:
+        type: integer
+      data:
+        type: object
+        required:
+        - title
+        - meta
+        properties:
+          meta:
+            type: object
+            required:
+            - booly
+            properties:
+              booly:
+                description: Another level
+                type: boolean
+              stringy:
+                type: string
+          title:
+            description: Test
+            type: string
