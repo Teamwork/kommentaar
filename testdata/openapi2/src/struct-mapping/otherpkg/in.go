@@ -8,3 +8,5 @@ type Foos []*Foo
 
 type Time struct {
 }
+
+type State int

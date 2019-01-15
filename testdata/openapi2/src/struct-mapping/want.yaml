@@ -44,6 +44,10 @@ definitions:
           $ref: '#/definitions/otherpkg.Foo'
       nullableString:
         type: string
+      state:
+        type: string
+      stringyInt:
+        type: string
       time:
         type: string
         format: date-time
