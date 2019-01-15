@@ -3,12 +3,15 @@ package docparse
 import (
 	"fmt"
 	"go/ast"
+	"io/ioutil"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // The Schema Object allows the definition of input and output data types.
@@ -35,6 +38,8 @@ type Schema struct {
 	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
 
 	OmitDoc bool `json:"-" yaml:"-"`
+	// Set to true if this schema was overriden with the override param.
+	Overriden bool `json:"-" yaml:"-"`
 }
 
 // Convert a struct to a JSON schema.
@@ -102,7 +107,7 @@ const (
 	paramOmitDoc   = "omitdoc"
 )
 
-func setTags(name string, p *Schema, tags []string) error {
+func setTags(name string, p *Schema, ref Reference, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
@@ -177,6 +182,19 @@ func setTags(name string, p *Schema, tags []string) error {
 					p.Maximum = int(n)
 				}
 
+			case strings.HasPrefix(t, "override: "):
+				path := filepath.Dir(ref.File) + "/" + t[10:]
+				override, err := ioutil.ReadFile(path)
+				if err != nil {
+					return fmt.Errorf("could not read override file: %v", err)
+				}
+
+				// TODO: I think we might have to reset some stuff here?
+				if err := yaml.Unmarshal(override, p); err != nil {
+					return fmt.Errorf("could not unmarshal override: %v", err)
+				}
+				p.Overriden = true
+
 			default:
 				return fmt.Errorf("unknown parameter property for %#v: %#v",
 					name, t)
@@ -200,9 +218,14 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)
-	err := setTags(fName, &p, tags)
+	err := setTags(fName, &p, ref, tags)
 	if err != nil {
 		return nil, err
+	}
+
+	if p.Overriden {
+		// They've provided their own schema for this, no need to carry on.
+		return &p, nil
 	}
 
 	pkg := ref.Package

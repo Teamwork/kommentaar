@@ -1,0 +1,9 @@
+title: overridden
+description: overridden field
+type: object
+properties:
+  basic:
+    description: Basic comment.
+    type: string
+  other:
+    type: string
