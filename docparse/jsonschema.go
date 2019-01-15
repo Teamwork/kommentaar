@@ -65,7 +65,6 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
 
-		// TODO: ugly
 		if !sliceutil.InStringSlice([]string{"path", "query", "form"}, ref.Context) {
 			fixRequired(schema, prop)
 		}
@@ -82,11 +81,12 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 	return schema, nil
 }
 
-// fix required property, when our Reference is generated the required
-// properties are one level too deep, they all need moving up one.
+// The required tags are added to the property itself, rather than to the
+// parent. So fix that by moving it from "prop" to "parent".
+//
 // TODO: fix it so we don't have to do this.
-func fixRequired(schema *Schema, prop *Schema) {
-	schema.Required = append(schema.Required, prop.Required...)
+func fixRequired(parent *Schema, prop *Schema) {
+	parent.Required = append(parent.Required, prop.Required...)
 	prop.Required = nil
 
 	for _, p := range prop.Properties {
