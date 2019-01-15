@@ -321,6 +321,12 @@ func ServeHTML(addr string) func(io.Writer, *docparse.Program) error {
 				return
 			}
 
+			for _, e := range prog.Endpoints {
+				if len(e.Tags) == 0 {
+					e.Tags = []string{"untagged"}
+				}
+			}
+
 			err = mainTpl.Execute(w, prog)
 			if err != nil {
 				_, wErr := fmt.Fprintf(w, "could not execute template: %v", err)
