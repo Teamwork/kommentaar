@@ -246,16 +246,26 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
-		canon, err := canonicalType(ref.File, pkg, typ)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get canonical type: %v", err)
+		mappedType, mappedFormat := MapType(prog, pkg+"."+typ.Name)
+		if mappedType == "" {
+			// Only check for canonicalType if this isn't mapped.
+			canon, err := canonicalType(ref.File, pkg, typ)
+			if err != nil {
+				return nil, fmt.Errorf("cannot get canonical type: %v", err)
+			}
+			if canon != nil {
+				sw = canon
+				goto start
+			}
 		}
-		if canon != nil {
-			sw = canon
-			goto start
+		if mappedType != "" {
+			p.Type = JSONSchemaType(mappedType)
+		} else {
+			p.Type = JSONSchemaType(typ.Name)
 		}
-
-		p.Type = JSONSchemaType(typ.Name)
+		if mappedFormat != "" {
+			p.Format = mappedFormat
+		}
 
 		// e.g. string, int64, etc.: don't need to look up.
 		if isPrimitive(p.Type) {
@@ -289,17 +299,19 @@ start:
 		pkg = pkgSel.Name
 		name = typ.Sel
 
-		canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get canonical type: %v", err)
-		}
-		if canon != nil {
-			sw = canon
-			goto start
-		}
-
 		lookup := pkg + "." + name.Name
 		t, f := MapType(prog, lookup)
+		if t == "" {
+			// Only check for canonicalType if this isn't mapped.
+			canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
+			if err != nil {
+				return nil, fmt.Errorf("cannot get canonical type: %v", err)
+			}
+			if canon != nil {
+				sw = canon
+				goto start
+			}
+		}
 
 		p.Format = f
 		if t != "" {
