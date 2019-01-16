@@ -15,18 +15,18 @@ paths:
       produces:
       - application/json
       parameters:
-      - name: param-override.a
+      - name: param-openapi.a
         in: body
         required: true
         schema:
-          $ref: '#/definitions/param-override.a'
+          $ref: '#/definitions/param-openapi.a'
       responses:
         200:
           description: 200 OK
           schema:
-            $ref: '#/definitions/param-override.a'
+            $ref: '#/definitions/param-openapi.a'
 definitions:
-  param-override.a:
+  param-openapi.a:
     title: a
     type: object
     properties:

@@ -11,9 +11,9 @@ type b struct {
 }
 
 type a struct {
-	// {override: override.yaml}
+	// {openapi: override.yaml}
 	Overridden json.RawMessage `json:"overridden"`
-	// Got a title already {override: override.yaml}
+	// Got a title already {openapi: override.yaml}
 	B b
 }
 

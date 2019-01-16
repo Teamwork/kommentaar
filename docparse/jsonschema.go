@@ -182,16 +182,17 @@ func setTags(name string, p *Schema, ref Reference, tags []string) error {
 					p.Maximum = int(n)
 				}
 
-			case strings.HasPrefix(t, "override: "):
-				path := filepath.Dir(ref.File) + "/" + t[10:]
+			case strings.HasPrefix(t, "openapi: "):
+				path := filepath.Dir(ref.File) + "/" + t[9:]
 				override, err := ioutil.ReadFile(path)
 				if err != nil {
-					return fmt.Errorf("could not read override file: %v", err)
+					return fmt.Errorf("could not read openapi file: %v", err)
 				}
 
 				// TODO: I think we might have to reset some stuff here?
 				if err := yaml.Unmarshal(override, p); err != nil {
-					return fmt.Errorf("could not unmarshal override: %v", err)
+					return fmt.Errorf("could not unmarshal openapi schema: %v",
+						err)
 				}
 				p.Overriden = true
 
