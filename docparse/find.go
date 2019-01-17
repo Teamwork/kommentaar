@@ -229,18 +229,7 @@ func (err ErrNotStruct) Error() string {
 // and Bar (but only Foo is returned).
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
-
-	var name, pkg string
-	if c := strings.LastIndex(lookup, "."); c > -1 {
-		// imported path: models.Foo
-		pkg = lookup[:c]
-		name = lookup[c+1:]
-	} else {
-		// Current package: Foo
-		pkg = path.Dir(filePath)
-		name = lookup
-	}
-
+	name, pkg := parseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
@@ -523,4 +512,15 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 	lookup := pkg + "." + typ.Name
 	_, err := GetReference(prog, context, isEmbed, lookup, filePath)
 	return err
+}
+
+// Split a user-provided ref in to the type name and package name.
+func parseLookup(lookup string, filePath string) (name, pkg string) {
+	if c := strings.LastIndex(lookup, "."); c > -1 {
+		// imported path: models.Foo
+		return lookup[c+1:], lookup[:c]
+	}
+
+	// Current package: Foo
+	return lookup, path.Dir(filePath)
 }
