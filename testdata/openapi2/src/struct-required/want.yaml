@@ -45,7 +45,6 @@ definitions:
       data:
         type: object
         required:
-        - title
         - meta
         properties:
           meta:
@@ -58,6 +57,3 @@ definitions:
                 type: boolean
               stringy:
                 type: string
-          title:
-            description: Test
-            type: string
