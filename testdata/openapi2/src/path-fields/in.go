@@ -8,5 +8,5 @@ type pathRef struct {
 
 // POST /path/{companyID}/{id} tag
 //
-// Path: $ref: pathRef
-// Response 200: $empty
+// Path: pathRef
+// Response 200: {empty}

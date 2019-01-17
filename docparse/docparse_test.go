@@ -24,8 +24,8 @@ func TestParseComments(t *testing.T) {
 POST /path
 The tagline!
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -43,8 +43,8 @@ Response 200: $empty
 POST /path
 GET /foo
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -65,8 +65,8 @@ POST /path
 GET /foo
 The tagline!
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -90,8 +90,8 @@ The tagline!
 
 Some desc!
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -114,8 +114,8 @@ POST /path
 
 A description.
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -135,8 +135,8 @@ POST /path
 A description.
 Of multiple lines.
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -160,8 +160,8 @@ With some more.
 
 And some more.
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -181,8 +181,8 @@ The tagline!
 
 A description.
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -204,8 +204,8 @@ The tagline!
 A description.
 Of multiple lines.
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -223,8 +223,8 @@ Response 200: $empty
 		{"req-ref", `
 POST /path
 
-Request body: $ref: net/mail.Address
-Response 200: $empty
+Request body: net/mail.Address
+Response 200: {empty}
 		`,
 			"",
 			[]*Endpoint{{
@@ -239,8 +239,8 @@ Response 200: $empty
 		{"path-ref", `
 POST /path/{Name}/{Address}
 
-Path: $ref: net/mail.Address
-Response 200: $empty
+Path: net/mail.Address
+Response 200: {empty}
 		`,
 			"",
 			[]*Endpoint{{
@@ -254,8 +254,8 @@ Response 200: $empty
 		{"req-content-type", `
 POST /path
 
-Request body (foo): $ref: net/mail.Address
-Response 200: $empty
+Request body (foo): net/mail.Address
+Response 200: {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -271,8 +271,8 @@ Response 200: $empty
 		{"response-ref", `
 POST /path
 
-Response: $empty
-Response 400 (w00t): $empty
+Response: {empty}
+Response 400 (w00t): {empty}
 			`,
 			"",
 			[]*Endpoint{{
@@ -294,8 +294,8 @@ Response 400 (w00t): $empty
 		//{"err-double-code", `
 		//		POST /path
 
-		//		Response 200: $empty
-		//		Response 200: $empty
+		//		Response 200: {empty}
+		//		Response 200: {empty}
 		//	`, "response", nil},
 	}
 
@@ -390,7 +390,6 @@ func TestParseParams(t *testing.T) {
 		{"Hello {enum: one two three}", Param{Name: "Hello", Kind: "enum", KindEnum: []string{"one", "two", "three"}}, ""},
 
 		{"subject: The subject {required, pattern: [a-z]}", Param{}, "unknown parameter property"},
-		{"subject: foo\n$ref: testObject", Param{}, "both a reference and parameters are given"},
 	}
 
 	for i, tt := range tests {
@@ -558,7 +557,7 @@ func TestParseResponse(t *testing.T) {
 		wantErr  string
 	}{
 		{
-			"Response 400: $ref: net/mail.Address",
+			"Response 400: net/mail.Address",
 			400,
 			&Response{
 				ContentType: "application/json",
@@ -567,7 +566,7 @@ func TestParseResponse(t *testing.T) {
 			"",
 		},
 		{
-			"Response 400 $ref: net/mail.Address",
+			"Response 400 net/mail.Address",
 			0,
 			nil,
 			"",

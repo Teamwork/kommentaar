@@ -7,5 +7,5 @@ type ref struct {
 
 // POST /path
 //
-// Query: $ref: ref
-// Response 200: $empty
+// Query: ref
+// Response 200: {empty}

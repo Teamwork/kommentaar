@@ -4,4 +4,4 @@ type reqRef struct{}
 
 // POST /path
 //
-// Request body: $ref: reqRef
+// Request body: reqRef

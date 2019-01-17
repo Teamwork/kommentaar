@@ -12,6 +12,6 @@ type ref2 struct {
 
 // POST /path
 //
-// Query: $ref: ref
-// Request body: $ref: ref2
-// Response 200: $empty
+// Query: ref
+// Request body: ref2
+// Response 200: {empty}

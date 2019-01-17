@@ -18,5 +18,5 @@ type NullableString struct {
 
 // POST /path
 //
-// Request body: $ref: a
-// Response 200: $ref: a
+// Request body: a
+// Response 200: a

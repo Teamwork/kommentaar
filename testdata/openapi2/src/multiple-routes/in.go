@@ -17,7 +17,7 @@ type formRef struct {
 //
 // Desc
 //
-// Path: $ref: pathRef
-// Query: $ref: queryRef
-// Form: $ref: formRef
-// Response 200: $empty
+// Path: pathRef
+// Query: queryRef
+// Form: formRef
+// Response 200: {empty}

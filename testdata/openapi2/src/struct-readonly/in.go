@@ -10,6 +10,6 @@ type reqRef struct {
 
 // POST /path
 //
-// Query: $ref: queryRef
-// Request body: $ref: reqRef
-// Response 200: $empty
+// Query: queryRef
+// Request body: reqRef
+// Response 200: {empty}

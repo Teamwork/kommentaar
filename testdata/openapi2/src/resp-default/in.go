@@ -4,4 +4,4 @@ type respRef struct{}
 
 // POST /path
 //
-// Response 418: $default
+// Response 418: {default}

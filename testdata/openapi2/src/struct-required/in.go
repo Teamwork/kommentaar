@@ -18,6 +18,6 @@ type req struct {
 
 // POST /path
 //
-// Query: $ref: queryRef
-// Request body: $ref: req
-// Response 200: $empty
+// Query: queryRef
+// Request body: req
+// Response 200: {empty}

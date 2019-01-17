@@ -16,5 +16,5 @@ type queryRef struct {
 
 // GET /path
 //
-// Query: $ref: queryRef
-// Response 200: $empty
+// Query: queryRef
+// Response 200: {empty}

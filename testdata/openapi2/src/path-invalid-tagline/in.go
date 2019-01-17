@@ -11,5 +11,5 @@ type pathRef struct{}
 //
 // Description.
 //
-// Path: $re: pathRef
-// Response 200: $empty
+// Path: {invalid}
+// Response 200: {empty}
