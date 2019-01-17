@@ -107,7 +107,7 @@ const (
 	paramOmitDoc   = "omitdoc"
 )
 
-func setTags(name string, p *Schema, ref Reference, tags []string) error {
+func setTags(name, fName string, p *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
@@ -183,7 +183,7 @@ func setTags(name string, p *Schema, ref Reference, tags []string) error {
 				}
 
 			case strings.HasPrefix(t, "schema: "):
-				p.CustomSchema = filepath.Join(filepath.Dir(ref.File), t[8:])
+				p.CustomSchema = filepath.Join(filepath.Dir(fName), t[8:])
 				schemaData, err := ioutil.ReadFile(p.CustomSchema)
 				if err != nil {
 					return fmt.Errorf("could not read %q: %v", p.CustomSchema, err)
@@ -227,7 +227,7 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)
-	err := setTags(fName, &p, ref, tags)
+	err := setTags(fName, ref.File, &p, tags)
 	if err != nil {
 		return nil, err
 	}
