@@ -1,14 +1,18 @@
 package docparse
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
+	"io/ioutil"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // The Schema Object allows the definition of input and output data types.
@@ -34,7 +38,8 @@ type Schema struct {
 	// Store structs.
 	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
 
-	OmitDoc bool `json:"-" yaml:"-"`
+	OmitDoc      bool   `json:"-" yaml:"-"` // {omitdoc}
+	CustomSchema string `json:"-" yaml:"-"` // {schema: path}
 }
 
 // Convert a struct to a JSON schema.
@@ -102,7 +107,7 @@ const (
 	paramOmitDoc   = "omitdoc"
 )
 
-func setTags(name string, p *Schema, tags []string) error {
+func setTags(name, fName string, p *Schema, tags []string) error {
 	for _, t := range tags {
 		switch t {
 
@@ -177,6 +182,28 @@ func setTags(name string, p *Schema, tags []string) error {
 					p.Maximum = int(n)
 				}
 
+			case strings.HasPrefix(t, "schema: "):
+				p.CustomSchema = filepath.Join(filepath.Dir(fName), t[8:])
+				schemaData, err := ioutil.ReadFile(p.CustomSchema)
+				if err != nil {
+					return fmt.Errorf("could not read %q: %v", p.CustomSchema, err)
+				}
+
+				var f func([]byte, interface{}) error
+				switch strings.ToLower(filepath.Ext(p.CustomSchema)) {
+				default:
+					return fmt.Errorf("unknown file type: %q", p.CustomSchema)
+				case ".json":
+					f = json.Unmarshal
+				case ".yaml":
+					f = yaml.Unmarshal
+				}
+
+				err = f(schemaData, p)
+				if err != nil {
+					return fmt.Errorf("could not unmarshal openapi schema: %v", err)
+				}
+
 			default:
 				return fmt.Errorf("unknown parameter property for %#v: %#v",
 					name, t)
@@ -200,9 +227,14 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)
-	err := setTags(fName, &p, tags)
+	err := setTags(fName, ref.File, &p, tags)
 	if err != nil {
 		return nil, err
+	}
+
+	// Don't need to carry on if we're loading our own schema.
+	if p.CustomSchema != "" {
+		return &p, nil
 	}
 
 	pkg := ref.Package

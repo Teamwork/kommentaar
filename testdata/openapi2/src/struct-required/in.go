@@ -8,8 +8,7 @@ type queryRef struct {
 
 type req struct {
 	Data struct {
-		Title string `json:"title"` // Test {required}
-		Meta  struct {
+		Meta struct {
 			Booly   bool   `json:"booly"` // Another level {required}
 			Stringy string `json:"stringy"`
 		} `json:"meta"` // {required}

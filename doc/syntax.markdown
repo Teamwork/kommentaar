@@ -120,15 +120,14 @@ The general structure for referencing types is:
 
 The various values for `<keyword>` are described below.
 
-`<ref>` can be in three formats:
+`<ref>` refers to a type and can be in three formats:
 
-- `t`                 – type in the current package.
-- `pkg.t`             – type in an imported package (e.g. `import "import/path/pkg"`).
+- `t`                 – current package.
+- `pkg.t`             – imported package (e.g. `import "import/path/pkg"`).
 - `import/path/foo.t` – full import path; when the package isn't imported.
 
 Only `struct` and `interface` types can be referenced. Interfaces don't have
-fields and only the documentation for the interface will be added to the
-output.
+fields and only the documentation for the interface will be added to the output.
 
 Embedded structs are merged in to the parent struct, unless they have the
 applicable struct tag (as configured with `struct-tag`), in which case they're
@@ -252,13 +251,16 @@ Supported parameters:
 - `optional`        – parameter can be blank; this is the default, but
                       specifying it explicitly may be useful in some cases.
 - `readonly`        – parameter cannot be set by the user from the request body
-					  or query/form parameters. Attempting to set it will be
-					  ignored or result in an error.
+                      or query/form parameters. Attempting to set it will be or
+                      result in an error.
 - `default: v1`     – default value.
-- `enum: v1 v2 ...` – parameter must be one one of the values.
+- `enum: v1 v2 ..`  – parameter must be one one of the values.
 - `range: n-n`      – parameter must be within this range; either number can be
                       `0` to indicate there is no lower or upper limit (only
                       useful for numeric parameters).
+- `schema: path`    – use a JSON schema file (as JSON as YAML) to describe this
+                      parameter, ignoring the Kommentaar directives for it. The
+                      path is relative to the file in which it's found.
 - Any [format from JSON schema][json-schema-format].
 
 Examples:
