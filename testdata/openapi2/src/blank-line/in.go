@@ -9,11 +9,11 @@ type formRef struct{}
 // POST /path tag
 //
 //
-// Path: $ref: pathRef
+// Path: pathRef
 //
 //
-// Query: $ref: queryRef
+// Query: queryRef
 //
-// Form: $ref: formRef
-// Response 200: $empty
+// Form: formRef
+// Response 200: {empty}
 //

@@ -117,8 +117,6 @@ type Response struct {
 }
 
 // Ref parameters for the path, query, form, request body, or response body.
-// This can either be a list of parameters specified in the command, or a
-// reference to a Go struct denoted with $ref. You can't mix the two.
 type Ref struct {
 	Description string
 	// Main reason to store as a string (and Refs as a map) for now is so that
@@ -155,11 +153,12 @@ type Reference struct {
 }
 
 const (
-	refRef     = "$ref"
-	refDefault = "$default"
-	refEmpty   = "$empty"
-	refData    = "$data"
+	refDefault = "{default}"
+	refEmpty   = "{empty}"
+	refData    = "{data}"
 )
+
+var allRefs = []string{refDefault, refEmpty, refData}
 
 var (
 	reBasicHeader    = regexp.MustCompile(`^(Path|Form|Query): (.+)`)
@@ -232,7 +231,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 				if e.Request.Path != nil {
 					return nil, i, fmt.Errorf("%v already present", h[1])
 				}
-				e.Request.Path, err = parseRefLine(prog, "path", h[2], filePath)
+				e.Request.Path, err = parseRefValue(prog, "path", h[2], filePath)
 
 				if err == nil {
 					pathRef, err := GetReference(prog, "query", false, e.Request.Path.Reference, filePath)
@@ -261,12 +260,12 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 				if e.Request.Query != nil {
 					return nil, i, fmt.Errorf("%v already present", h[1])
 				}
-				e.Request.Query, err = parseRefLine(prog, "query", h[2], filePath)
+				e.Request.Query, err = parseRefValue(prog, "query", h[2], filePath)
 			case "Form":
 				if e.Request.Form != nil {
 					return nil, i, fmt.Errorf("%v already present", h[1])
 				}
-				e.Request.Form, err = parseRefLine(prog, "form", h[2], filePath)
+				e.Request.Form, err = parseRefValue(prog, "form", h[2], filePath)
 			}
 			if err != nil {
 				return nil, i, fmt.Errorf("could not parse %v params: %v", h[1], err)
@@ -289,7 +288,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 				e.Request.ContentType = req[2]
 			}
 
-			e.Request.Body, err = parseRefLine(prog, "req", req[3], filePath)
+			e.Request.Body, err = parseRefValue(prog, "req", req[3], filePath)
 			if err != nil {
 				return nil, i, fmt.Errorf("could not parse request params: %v", err)
 			}
@@ -382,7 +381,7 @@ func ParseResponse(prog *Program, filePath, line string) (int, *Response, error)
 	}
 
 	var err error
-	r.Body, err = parseRefLine(prog, "resp", resp[5], filePath)
+	r.Body, err = parseRefValue(prog, "resp", resp[5], filePath)
 	if err != nil {
 		return 0, nil, fmt.Errorf("could not parse response %v params: %v", code, err)
 	}
@@ -395,7 +394,7 @@ func ParseResponse(prog *Program, filePath, line string) (int, *Response, error)
 		r.Body.Description = codeText + " (no data)"
 	case refData:
 		if resp[4] == "" {
-			return 0, nil, fmt.Errorf("explicit Content-Type required for $data in %v: %q",
+			return 0, nil, fmt.Errorf("explicit Content-Type required for {data} in %v: %q",
 				filePath, line)
 		}
 
@@ -439,49 +438,31 @@ func parseStartLine(line string) (string, string, []string) {
 	return words[0], words[1], tags
 }
 
-// Process a Kommentaar directive line.
-func parseRefLine(prog *Program, context, line, filePath string) (*Ref, error) {
+// Process a Kommentaar directive value.
+func parseRefValue(prog *Program, context, value, filePath string) (*Ref, error) {
 	params := &Ref{}
+	value = strings.TrimSpace(value)
 
-	line = strings.TrimSpace(line)
-
-	// Get tags from {..} blocks.
-	line, tags := parseTags(line)
-	_ = tags // TODO(param): Add this
-
-	// Get description and name.
-	var name, info string
-	if colon := strings.Index(line, ":"); colon > -1 {
-		name = line[:colon]
-		info = strings.TrimSpace(line[colon+1:])
-		_ = info // TODO(param): decide what to do with this
-	} else {
-		name = line
-	}
-	name = strings.TrimSpace(name)
-
-	switch name {
-	case refEmpty, refDefault, refData:
-		params.Description = name // Filled in later.
-	case refRef:
-		s := strings.Split(line, ":")
-		if len(s) != 2 {
-			return nil, fmt.Errorf("invalid reference: %#v", line)
+	// {keyword}
+	if value[0] == '{' && value[len(value)-1] == '}' {
+		if !sliceutil.InStringSlice(allRefs, value) {
+			return nil, fmt.Errorf("invalid keyword: %q", value)
 		}
 
-		ref, err := GetReference(prog, context, false, strings.TrimSpace(s[1]), filePath)
-		if err != nil {
-			return nil, fmt.Errorf("GetReference: %v", err)
-		}
-
-		// We store it as a path for now, as that's easier to debug in the
-		// intermediate format (otherwise pretty.Print() show the full
-		// object, which is kind of noisy). We should probably store it as a
-		// pointer once I'm done with the docparse part.
-		params.Reference = ref.Lookup
-	default:
-		return nil, fmt.Errorf("invalid keyword: %#v", name)
+		params.Description = value // Filled in later.
+		return params, nil
 	}
+
+	ref, err := GetReference(prog, context, false, value, filePath)
+	if err != nil {
+		return nil, fmt.Errorf("GetReference: %v", err)
+	}
+
+	// We store it as a path for now, as that's easier to debug in the
+	// intermediate format (otherwise pretty.Print() show the full object, which
+	// is kind of noisy). We should probably store it as a pointer once I'm done
+	// with the docparse part.
+	params.Reference = ref.Lookup
 
 	return params, nil
 }

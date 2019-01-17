@@ -5,7 +5,7 @@ import "net/mail"
 
 // GET /
 //
-// Response: $ref: foo
+// Response: foo
 
 // doc
 type foo struct {

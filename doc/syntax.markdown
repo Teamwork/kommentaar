@@ -52,9 +52,9 @@ The general structure looks like:
     //
     // A more detailed multi-line description.
     //
-    // Request body: $ref: bikeRequest
-    // Response 200: $ref: bikeResponse
-    // Response 400: $ref: errorResonse
+    // Request body: bikeRequest
+    // Response 200: bikeResponse
+    // Response 400: errorResonse
 
 This describes the endpoint `POST /bike/{id}`, which will be grouped under
 `bikes`. It describes the JSON request body in the `bikeRequest` struct and the
@@ -116,7 +116,7 @@ Reference directives
 
 The general structure for referencing types is:
 
-    <keyword>: $ref: <ref>
+    <keyword>: <ref>
 
 The various values for `<keyword>` are described below.
 
@@ -155,7 +155,7 @@ A `Path` reference can be used to document path parameters; for example:
 
     // GET /bike/{id}
     //
-    // Path: $ref: pathParams
+    // Path: pathParams
 
 Attempting to document path parameters that don't exist as `{..}` placeholders
 in the path is an error.
@@ -171,65 +171,65 @@ or `multipart/form-data`).
 
 The `Form` and `Query` parameters follow the same format:
 
-    Form: $ref: formParams
-    Query: $ref: queryParams
+    Form: formParams
+    Query: queryParams
 
 Referencing Form, Path, or Query parameters will always use the `form`, `path`,
 and `query` struct tags. A value of `-` means it will be ignored; no struct tag
 means it will add the field name as-is.
 
-    param-ref      = ( "Form" / "Path" / "Query" ) ": $ref: " ref LF
+    param-ref      = ( "Form" / "Path" / "Query" ) ": " ref LF
 
 ### Request body
 
 The request body is any request body that is not a form; for example JSON, XML,
 YAML, or something else.
 
-    Request body: $ref: createRequest
-    Request body (application/xml): $ref: createRequest
+    Request body: createRequest
+    Request body (application/xml): createRequest
 
 The first form will use the configured default Content-Type; the second form
 explicitly defines it for this request body.
 
     content-type   = type-name "/" subtype-name  ; https://tools.ietf.org/html/rfc6838#section-4.2
-    request-ref    = "Request body" [ "(" content-type ")" ] ": $ref:" ref LF
+    request-ref    = "Request body" [ "(" content-type ")" ] ": " ref LF
 
 ### Responses
 
 Response bodies are mapped to a HTTP status code:
 
-    Response 200: $ref: createResponse
+    Response 200: createResponse
 
 Every endpoint must have at least one defined response.
 
 The response code `200` will be used it it's omitted:
 
-    Response: $ref: createResponse
+    Response: createResponse
 
 You can define a Content-Type like with Request bodies; it will use the
 configured default Content-Type if omitted:
 
-    Response 404 (application/json): $ref: createResponse
+    Response 404 (application/json): createResponse
 
-The `$empty` keyword indicates that this response code may be returned, but
+The `{empty}` keyword indicates that this response code may be returned, but
 without any code. In general this should only be used for `204 No Content`:
 
-    Response 204: $empty
+    Response 204: {empty}
 
-The `$data` keyword indicates that this response returns unstructured data, such
-as text, HTML, an image, spreadsheet document, etc. An explicit Content-Type is
-required when using `$data`.
+The `{data}` keyword indicates that this response returns unstructured data,
+such as text, HTML, an image, spreadsheet document, etc. An explicit
+Content-Type is required when using `{data}`.
 
-    Response 200 (text/plain): $data
+    Response 200 (text/plain): {data}
 
-The `$default` keyword indicates it should use the default reference for this
+The `{default}` keyword indicates it should use the default reference for this
 response code:
 
-    Response 400: $default
+    Response 400: {default}
 
 It is an error if no default reference is configured for this response code.
 
-    response-ref   = "Response" [ 3DIGIT ] ":" [ "(" content-type ")" ] ( "$empty" / "$default" / ": $ref:" ref ) LF
+    response-ref   = "Response" [ 3DIGIT ] ":" [ "(" content-type ")" ] ( "{empty}" / "{default}" / ": " ref ) LF
 
 References
 ----------

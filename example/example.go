@@ -13,10 +13,10 @@ import (
 // This will create a new foo object for a customer. It's important to remember
 // that only Pro customers have access to foos.
 //
-// Request body (application/json): $ref: RequestObj
-// Response 200 (application/json): $ref: AnObject
-// Response 400 (application/json): $ref: ErrorObject
-// Response 401 (application/json): $ref: exampleimport.Foo
+// Request body (application/json): RequestObj
+// Response 200 (application/json): AnObject
+// Response 400 (application/json): ErrorObject
+// Response 401 (application/json): exampleimport.Foo
 
 // These docs are general Go docs, and not parsed (note the blank line).
 // Actually, the above OpenAPI block could be anywhere in the code; and doesn't
@@ -36,7 +36,7 @@ type formParams struct {
 //
 // Just to see if that works correct.
 //
-// Response 200: $empty
+// Response 200: {empty}
 
 // Other others a lot!
 func Other() {

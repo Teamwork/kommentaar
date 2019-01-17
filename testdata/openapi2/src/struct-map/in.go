@@ -19,4 +19,4 @@ type aStruct struct {
 
 // POST /path
 //
-// Response 200: $ref: resp
+// Response 200: resp

@@ -7,5 +7,5 @@ type (
 
 // POST /path
 //
-// Request body: $ref: reqRef
-// Response 200: $empty
+// Request body: reqRef
+// Response 200: {empty}

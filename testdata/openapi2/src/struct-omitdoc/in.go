@@ -26,8 +26,8 @@ type resp struct {
 
 // POST /path/{companyID}/{id}
 //
-// Path:         $ref: pathRef
-// Query:        $ref: queryRef
-// Form:         $ref: formRef
-// Request body: $ref: req
-// Response 200: $ref: resp
+// Path:         pathRef
+// Query:        queryRef
+// Form:         formRef
+// Request body: req
+// Response 200: resp

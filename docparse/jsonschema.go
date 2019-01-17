@@ -121,7 +121,6 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 			// TODO: implement this (also load from struct tag?), but I don't
 			// see any way to do that in the OpenAPI spec?
 			return fmt.Errorf("omitempty not implemented yet")
-		// TODO
 		case paramReadOnly:
 			t := true
 			p.Readonly = &t

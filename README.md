@@ -79,9 +79,9 @@ type errorResponse struct {
 //
 // A more detailed multi-line description.
 //
-// Request body: $ref: bikeRequest
-// Response 200: $ref: bikeResponse
-// Response 400: $ref: errorResonse
+// Request body: bikeRequest
+// Response 200: bikeResponse
+// Response 400: errorResonse
 ```
 
 Configuration

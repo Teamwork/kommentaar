@@ -39,11 +39,11 @@ version 1.0
 # Set the default Content-Type for requests and responses; this means that
 # writing:
 #
-#   Request (application/json): $ref foo
+#   Request (application/json): foo
 #
 # can be shortened to:
 #
-#   Request: $ref foo
+#   Request: foo
 default-request-ct  application/json
 default-response-ct application/json
 
@@ -55,11 +55,11 @@ default-response-ct application/json
 # Instead of referring to the full types every time.
 #
 # The syntax is the same as regular Response lines, minus the Response keyword:
-#   [HTTP code] [(optional Content-Type)]: $ref: [type]
+#   [HTTP code] [(optional Content-Type)]: [type]
 #
 # Examples:
-#default-response 400: $ref: github.com/teamwork/validate.Validator
-#default-response 404 (application/json): $ref: github.com/teamwork/apiutil/errorhandler.Error
+#default-response 400: github.com/teamwork/validate.Validator
+#default-response 404 (application/json): github.com/teamwork/apiutil/errorhandler.Error
 
 # Prefix all paths with this before adding to the output.
 #prefix
@@ -81,7 +81,7 @@ default-response-ct application/json
 # be exposed in the user-facing documentation.
 #
 # The map target must be a Go built-in type (string, int64, etc.)
-map-types              
+map-types
 	# Standard library
 	sql.NullBool    bool
 	sql.NullFloat64 float64
