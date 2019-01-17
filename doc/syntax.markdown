@@ -246,22 +246,21 @@ special fields in the output format.
 
 Supported parameters:
 
-- `omitdoc`             – parameter is not added to the generated output.
-- `required`            – parameter must be given.
-- `optional`            – parameter can be blank; this is the default, but
-                          specifying it explicitly may be useful in some cases.
-- `readonly`            – parameter cannot be set by the user from the request
-                          body or query/form parameters. Attempting to set it
-                          will be or result in an error.
-- `default: v1`         – default value.
-- `enum: v1 v2 ...`     – parameter must be one one of the values.
-- `range: n-n`          – parameter must be within this range; either number
-                          can be `0` to indicate there is no lower or upper
-                          limit (only useful for numeric parameters).
-- `schema: path`        – use a JSON schema file (as JSON as YAML) to describe
-                          this parameter, ignoring the Kommentaar directives for
-                          it. The path is relative to the file in which it's
-                          found.
+- `omitdoc`         – parameter is not added to the generated output.
+- `required`        – parameter must be given.
+- `optional`        – parameter can be blank; this is the default, but
+                      specifying it explicitly may be useful in some cases.
+- `readonly`        – parameter cannot be set by the user from the request body
+                      or query/form parameters. Attempting to set it will be or
+                      result in an error.
+- `default: v1`     – default value.
+- `enum: v1 v2 ..`  – parameter must be one one of the values.
+- `range: n-n`      – parameter must be within this range; either number can be
+                      `0` to indicate there is no lower or upper limit (only
+                      useful for numeric parameters).
+- `schema: path`    – use a JSON schema file (as JSON as YAML) to describe this
+                      parameter, ignoring the Kommentaar directives for it. The
+                      path is relative to the file in which it's found.
 - Any [format from JSON schema][json-schema-format].
 
 Examples:
