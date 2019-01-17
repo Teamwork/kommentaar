@@ -7,9 +7,11 @@
 package sliceutil // import "github.com/teamwork/utils/sliceutil"
 
 import (
+	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // JoinInt converts a slice of ints to a comma separated string. Useful for
@@ -125,6 +127,15 @@ func RepeatString(s string, n int) (r []string) {
 		r = append(r, s)
 	}
 	return r
+}
+
+// ChooseString chooses a random item from the list.
+func ChooseString(l []string) string {
+	if len(l) == 0 {
+		return ""
+	}
+	rand.Seed(time.Now().UnixNano())
+	return l[rand.Intn(len(l))]
 }
 
 // Range creates an []int counting at "start" up to (and including) "end".

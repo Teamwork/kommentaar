@@ -87,7 +87,10 @@ func HTTP(t *testing.T, req *http.Request, h http.Handler) *httptest.ResponseRec
 
 // MultipartForm writes the keys and values from params to a multipart form.
 //
-// Don't forget to set the Content-Type:
+// The first input parameter is used for "multipart/form-data" key/value
+// strings, the optional second parameter is used creating file parts.
+//
+// Don't forget to set the Content-Type from the return value:
 //
 //   req.Header.Set("Content-Type", contentType)
 func MultipartForm(params ...map[string]string) (b *bytes.Buffer, contentType string, err error) {

@@ -10,7 +10,7 @@
     "handlers/html/template",
   ]
   pruneopts = "NUT"
-  revision = "81257f7853e36a198f50a217080f5ad5041dab02"
+  revision = "c014d3b7a10121ba6f0e9a863277ed3472eb19a0"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -30,18 +30,18 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:68a60a5251c117cda21b1543e3a1c801972616e8840ff628d3a25363ab7b4593"
+  digest = "1:3b2d03f8e8f9efd213e5d23a68850b5124a3dda9a94c73d29ab824f4b43ab4e2"
   name = "github.com/teamwork/test"
   packages = [
     ".",
     "diff",
   ]
   pruneopts = "NUT"
-  revision = "fb2f93f656a322dbe851f2aa54921279dfc1a333"
+  revision = "2ff8918eb6a42699e90cd03093b05daa947c6f8b"
 
 [[projects]]
   branch = "master"
-  digest = "1:1be1188285fe4f6929b3d55c15f14bd9e0dcd83cdfa44105ee341c68bf100c1e"
+  digest = "1:ec9b48a009373969c7b82c66f3ac9c65d3ffadedd12ec94f4fecd642ec0f1996"
   name = "github.com/teamwork/utils"
   packages = [
     "goutil",
@@ -50,15 +50,15 @@
     "stringutil",
   ]
   pruneopts = "NUT"
-  revision = "68176443984665b694aa6ee2f6ec5972883bdafd"
+  revision = "d6a1f27ce92cf2ae11c9073add82330cea965293"
 
 [[projects]]
-  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
+  digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [solve-meta]
   analyzer-name = "dep"
