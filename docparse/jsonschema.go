@@ -1,6 +1,7 @@
 package docparse
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"io/ioutil"
@@ -37,9 +38,8 @@ type Schema struct {
 	// Store structs.
 	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
 
-	OmitDoc bool `json:"-" yaml:"-"`
-	// Set to true if this schema was overriden with the override param.
-	Overriden bool `json:"-" yaml:"-"`
+	OmitDoc      bool   `json:"-" yaml:"-"` // {omitdoc}
+	CustomSchema string `json:"-" yaml:"-"` // {schema: path}
 }
 
 // Convert a struct to a JSON schema.
@@ -182,19 +182,27 @@ func setTags(name string, p *Schema, ref Reference, tags []string) error {
 					p.Maximum = int(n)
 				}
 
-			case strings.HasPrefix(t, "openapi: "):
-				path := filepath.Dir(ref.File) + "/" + t[9:]
-				override, err := ioutil.ReadFile(path)
+			case strings.HasPrefix(t, "schema: "):
+				p.CustomSchema = filepath.Join(filepath.Dir(ref.File), t[8:])
+				schemaData, err := ioutil.ReadFile(p.CustomSchema)
 				if err != nil {
-					return fmt.Errorf("could not read openapi file: %v", err)
+					return fmt.Errorf("could not read %q: %v", p.CustomSchema, err)
 				}
 
-				// TODO: I think we might have to reset some stuff here?
-				if err := yaml.Unmarshal(override, p); err != nil {
-					return fmt.Errorf("could not unmarshal openapi schema: %v",
-						err)
+				var f func([]byte, interface{}) error
+				switch strings.ToLower(filepath.Ext(p.CustomSchema)) {
+				default:
+					return fmt.Errorf("unknown file type: %q", p.CustomSchema)
+				case ".json":
+					f = json.Unmarshal
+				case ".yaml":
+					f = yaml.Unmarshal
 				}
-				p.Overriden = true
+
+				err = f(schemaData, p)
+				if err != nil {
+					return fmt.Errorf("could not unmarshal openapi schema: %v", err)
+				}
 
 			default:
 				return fmt.Errorf("unknown parameter property for %#v: %#v",
@@ -224,8 +232,8 @@ func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.F
 		return nil, err
 	}
 
-	if p.Overriden {
-		// They've provided their own schema for this, no need to carry on.
+	// Don't need to carry on if we're loading our own schema.
+	if p.CustomSchema != "" {
 		return &p, nil
 	}
 

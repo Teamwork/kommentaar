@@ -3,18 +3,16 @@ package path
 import "encoding/json"
 
 // I've got a title already
-type b struct {
-	// Hello
-	A string
-	B string
-	C string
+type dontInclude struct {
+	DontIncludeThis string
 }
 
 type a struct {
-	// {openapi: override.yaml}
+	// {schema: override.yaml}
 	Overridden json.RawMessage `json:"overridden"`
-	// Got a title already {openapi: override.yaml}
-	B b
+
+	// Got a title already {schema: override.yaml}
+	B dontInclude
 }
 
 // POST /path
