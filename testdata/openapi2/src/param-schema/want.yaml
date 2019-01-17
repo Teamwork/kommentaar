@@ -15,18 +15,18 @@ paths:
       produces:
       - application/json
       parameters:
-      - name: param-openapi.a
+      - name: param-schema.a
         in: body
         required: true
         schema:
-          $ref: '#/definitions/param-openapi.a'
+          $ref: '#/definitions/param-schema.a'
       responses:
         200:
           description: 200 OK
           schema:
-            $ref: '#/definitions/param-openapi.a'
+            $ref: '#/definitions/param-schema.a'
 definitions:
-  param-openapi.a:
+  param-schema.a:
     title: a
     type: object
     properties:
@@ -50,3 +50,10 @@ definitions:
             type: string
           other:
             type: string
+  param-schema.dontInclude:
+    title: dontInclude
+    description: I've got a title already
+    type: object
+    properties:
+      DontIncludeThis:
+        type: string
