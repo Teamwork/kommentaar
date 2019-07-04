@@ -60,7 +60,6 @@ func FindComments(w io.Writer, prog *Program) error {
 					if e == nil || e[0] == nil {
 						continue
 					}
-
 					e[0].Pos = fset.Position(c.Pos())
 					e[0].End = fset.Position(c.End())
 
@@ -292,7 +291,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				continue
 			}
 
-			switch t := f.Type.(type){
+			switch t := f.Type.(type) {
 			case *ast.Ident:
 				err = resolveType(prog, context, false, t, "", pkg)
 			case *ast.StarExpr:
