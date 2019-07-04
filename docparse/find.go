@@ -124,7 +124,6 @@ func findType(currentFile, pkgPath, name string) (
 	err error,
 ) {
 	dbg("FindType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
-
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
 		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
@@ -293,7 +292,14 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				continue
 			}
 
-			err = resolveType(prog, context, false, f.Type.(*ast.Ident), "", pkg)
+			switch t := f.Type.(type){
+			case *ast.Ident:
+				err = resolveType(prog, context, false, t, "", pkg)
+			case *ast.StarExpr:
+				ex, _ := t.X.(*ast.Ident)
+				err = resolveType(prog, context, true, ex, "", pkg)
+			}
+
 			if err != nil {
 				return nil, fmt.Errorf("could not lookup %s in %s: %s",
 					err, f.Type, lookup)
@@ -473,7 +479,6 @@ start:
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}
-
 	if _, ok := prog.References[lookup]; !ok {
 		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
 		if err != nil {
