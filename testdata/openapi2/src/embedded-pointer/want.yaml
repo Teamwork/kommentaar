@@ -18,6 +18,14 @@ paths:
           schema:
             $ref: '#/definitions/embedded-pointer.resp'
 definitions:
+  embedded-pointer.other:
+    title: other
+    description: other docs.
+    type: object
+    properties:
+      other:
+        description: Other.
+        type: string
   embedded-pointer.resp:
     title: resp
     description: resp docs.

@@ -296,7 +296,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				err = resolveType(prog, context, false, t, "", pkg)
 			case *ast.StarExpr:
 				ex, _ := t.X.(*ast.Ident)
-				err = resolveType(prog, context, true, ex, "", pkg)
+				err = resolveType(prog, context, false, ex, "", pkg)
 			}
 
 			if err != nil {
