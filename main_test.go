@@ -36,7 +36,7 @@ func TestOpenAPI2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if tt.Name() != "wrapped-response" {
+		if tt.Name() != "wrapped-resp" {
 			continue
 		}
 

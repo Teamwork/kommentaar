@@ -118,8 +118,6 @@ type Response struct {
 
 // Ref parameters for the path, query, form, request body, or response body.
 type Ref struct {
-	// Wrapper represents a json object that wraps the reference obj
-	Wrapper string
 	Description string
 	// Main reason to store as a string (and Refs as a map) for now is so that
 	// it looks pretties in the pretty.Print() output. May not want to keep
@@ -149,6 +147,7 @@ type Reference struct {
 	Info    string  // Comment of the struct itself.
 	Context string  // Context we found it: path, query, form, req, resp.
 	IsEmbed bool    // Is an embedded struct.
+	Wrapper string  // Name of json obj to wrap Schema in
 	Schema  *Schema // JSON schema.
 
 	Fields []Param // Struct fields.
@@ -444,11 +443,6 @@ func parseStartLine(line string) (string, string, []string) {
 func parseRefValue(prog *Program, context, value, filePath string) (*Ref, error) {
 	params := &Ref{}
 	value = strings.TrimSpace(value)
-	// {wrapper}
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") && strings.Contains(value, ":") {
-		params.Wrapper = strings.TrimPrefix(strings.Split(value, ":")[0], "[")
-		value = strings.TrimSuffix(strings.Split(value, ":")[1], "]")
-	}
 
 	// {keyword}
 	if value[0] == '{' && value[len(value)-1] == '}' {

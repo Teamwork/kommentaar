@@ -226,6 +226,12 @@ func (err ErrNotStruct) Error() string {
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
+	wrapper := ""
+	if strings.HasPrefix(lookup, "[") && strings.HasSuffix(lookup, "]") && strings.Contains(lookup, ":") {
+		wrapper = strings.TrimPrefix(strings.Split(lookup, ":")[0], "[")
+		lookup = strings.TrimSuffix(strings.Split(lookup, ":")[1], "]")
+	}
+
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
 	name, pkg := parseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
@@ -268,6 +274,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
+	}
+	if wrapper != "" {
+		ref.Wrapper = wrapper
 	}
 
 	var tagName string
