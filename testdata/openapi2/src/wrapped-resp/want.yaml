@@ -19,7 +19,7 @@ paths:
             $ref: '#/definitions/wrapped-resp.bikeResp'
 definitions:
   wrapped-resp.bikeResp:
-    title: bike
+    title: bikeResp
     type: object
     properties:
       bike:

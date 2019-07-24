@@ -85,7 +85,7 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 
 	if ref.Wrapper != "" {
 		wrappedSchema := &Schema{
-			Title:      ref.Wrapper,
+			Title:      ref.Name,
 			Type:       "object",
 			Properties: map[string]*Schema{},
 		}
