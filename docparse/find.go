@@ -381,8 +381,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// Add in embedded structs with a tag.
 	for _, n := range nestedTagged {
-		ename := goutil.TagName(n, tagName)
-		n.Names = []*ast.Ident{&ast.Ident{
+		ename := strings.Title(goutil.TagName(n, tagName))
+		n.Names = []*ast.Ident{{
 			Name: ename,
 		}}
 		ref.Fields = append(ref.Fields, Param{
