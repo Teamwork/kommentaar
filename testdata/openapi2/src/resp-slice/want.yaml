@@ -1,0 +1,30 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/resp-slice.resp'
+definitions:
+  resp-slice.resp:
+    title: resp
+    type: array
+    items:
+      title: resp
+      description: resp docs.
+      type: object
+      properties:
+        foo:
+          type: string

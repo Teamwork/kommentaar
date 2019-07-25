@@ -94,6 +94,15 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 		return wrappedSchema, nil
 	}
 
+	if ref.IsSlice {
+		sliceSchema := &Schema{
+			Title: ref.Name,
+			Type: "array",
+			Items: schema,
+		}
+		return sliceSchema, nil
+	}
+
 	return schema, nil
 }
 

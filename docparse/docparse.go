@@ -147,6 +147,7 @@ type Reference struct {
 	Info    string  // Comment of the struct itself.
 	Context string  // Context we found it: path, query, form, req, resp.
 	IsEmbed bool    // Is an embedded struct.
+	IsSlice bool    // Is a slice
 	Wrapper string  // Name of json obj to wrap Schema in
 	Schema  *Schema // JSON schema.
 

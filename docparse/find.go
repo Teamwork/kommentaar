@@ -227,9 +227,15 @@ func (err ErrNotStruct) Error() string {
 // and Bar (but only Foo is returned).
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
 	wrapper := ""
+	isSlice := false
 	if strings.HasPrefix(lookup, "[") && strings.HasSuffix(lookup, "]") && strings.Contains(lookup, ":") {
 		wrapper = strings.TrimPrefix(strings.Split(lookup, ":")[0], "[")
 		lookup = strings.TrimSuffix(strings.Split(lookup, ":")[1], "]")
+	}
+
+	if strings.HasPrefix(lookup, "[") && string(lookup[1]) == "]" {
+		isSlice = true
+		lookup = lookup[2:]
 	}
 
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
@@ -271,6 +277,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		File:    foundPath,
 		Context: context,
 		IsEmbed: isEmbed,
+		IsSlice: isSlice,
 	}
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())

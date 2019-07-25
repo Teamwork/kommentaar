@@ -36,10 +36,6 @@ func TestOpenAPI2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if tt.Name() != "wrapped-resp" {
-			continue
-		}
-
 		t.Run(tt.Name(), func(t *testing.T) {
 			path := "./testdata/openapi2/src/" + tt.Name()
 
