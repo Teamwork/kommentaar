@@ -73,6 +73,7 @@ type (
 		Put    *Operation `json:"put,omitempty" yaml:"put,omitempty"`
 		Patch  *Operation `json:"patch,omitempty" yaml:"patch,omitempty"`
 		Delete *Operation `json:"delete,omitempty" yaml:"delete,omitempty"`
+		Head   *Operation `json:"head,omitempty" yaml:"head,omitempty"`
 	}
 
 	// Operation describes a single API operation on a path.
@@ -339,6 +340,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			out.Paths[e.Path].Patch = &op
 		case "DELETE":
 			out.Paths[e.Path].Delete = &op
+		case "HEAD":
+			out.Paths[e.Path].Head = &op
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
