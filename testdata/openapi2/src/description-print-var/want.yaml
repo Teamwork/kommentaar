@@ -36,6 +36,8 @@ paths:
         - false: false
         - str: hello
         - f: 1.234
+
+        I'm escaped $foo
       produces:
       - application/json
       responses:

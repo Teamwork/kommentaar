@@ -27,19 +27,21 @@ var (
 
 // POST /path
 //
-// $print otherpkg.DocRatelimitHeader
-// $print ratelimit
+// $otherpkg.DocRatelimitHeader
+// $ratelimit
 //
 // string:
-// $print str
+// $str
 //
 // []string:
-// $print strs
+// $strs
 //
 // map[string]string:
-// $print kv
+// $kv
 //
 // map[string]interface{}:
-// $print kv2
+// $kv2
+//
+// I'm escaped \$foo
 //
 // Response 200: {empty}

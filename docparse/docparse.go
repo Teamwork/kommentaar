@@ -329,14 +329,19 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 		return nil, 0, fmt.Errorf("%v: must have at least one response", e.Path)
 	}
 
-	var printErr error
-	e.Info = regexp.MustCompile(`\$print [a-zA-Z0-9\.]+`).
+	// expand variables
+	var expandErr error
+	e.Info = regexp.MustCompile(`(\\)?\$[a-zA-Z0-9\.]+`).
 		ReplaceAllStringFunc(e.Info, func(m string) string {
-			lookup := m[7:] // strip "$print "
+			if strings.HasPrefix(m, `\`) { // escaped
+				return m[1:] // strip "$"
+			}
+
+			lookup := m[1:] // strip "$"
 			name, pkg := parseLookup(lookup, filePath)
 			vs, _, _, err := findValue(filePath, pkg, name)
 			if err != nil {
-				printErr = fmt.Errorf("%s: findValue: %v", m, err)
+				expandErr = fmt.Errorf("%s: findValue: %v", m, err)
 				return ""
 			}
 
@@ -345,8 +350,8 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 			}
 			return exprToString(vs.Values[0])
 		})
-	if printErr != nil {
-		return nil, 0, printErr
+	if expandErr != nil {
+		return nil, 0, expandErr
 	}
 	e.Info = strings.TrimSpace(e.Info)
 
