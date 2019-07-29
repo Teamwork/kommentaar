@@ -418,6 +418,25 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 	}
 
+	if ref.IsSlice {
+		sliceSchema := &Schema{
+			Type:  "array",
+			Items: ref.Schema,
+		}
+		ref.Schema = sliceSchema
+	}
+
+	if ref.Wrapper != "" {
+		wrappedSchema := &Schema{
+			Title:      ref.Name,
+			Type:       "object",
+			Properties: map[string]*Schema{},
+		}
+
+		wrappedSchema.Properties[ref.Wrapper] = ref.Schema
+		ref.Schema = wrappedSchema
+	}
+
 	prog.References[ref.Lookup] = ref
 
 	return &ref, nil

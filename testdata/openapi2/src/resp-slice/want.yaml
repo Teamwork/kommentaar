@@ -19,7 +19,6 @@ paths:
             $ref: '#/definitions/resp-slice.resp'
 definitions:
   resp-slice.resp:
-    title: resp
     type: array
     items:
       title: resp
