@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	"io/ioutil"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -531,16 +530,7 @@ func JSONSchemaType(t string) string {
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
-	var name, pkg string
-	if c := strings.LastIndex(lookup, "."); c > -1 {
-		// imported path: models.Foo
-		pkg = lookup[:c]
-		name = lookup[c+1:]
-	} else {
-		// Current package: Foo
-		pkg = path.Dir(filePath)
-		name = lookup
-	}
+	name, pkg := parseLookup(lookup, filePath)
 
 	// Find type.
 	ts, _, _, err := findType(filePath, pkg, name)

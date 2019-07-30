@@ -103,6 +103,7 @@ func FindComments(w io.Writer, prog *Program) error {
 
 type declCache struct {
 	ts   *ast.TypeSpec
+	vs   *ast.ValueSpec
 	file string
 }
 
@@ -122,71 +123,21 @@ func findType(currentFile, pkgPath, name string) (
 	importPath string,
 	err error,
 ) {
-	dbg("FindType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
-	pkg, err := goutil.ResolvePackage(pkgPath, 0)
-	if err != nil && currentFile != "" {
-		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
-		if resolveErr != nil {
-			return nil, "", "", resolveErr
-		}
-		if resolved != "" {
-			pkgPath = resolved
-			pkg, err = goutil.ResolvePackage(pkgPath, 0)
-		}
-	}
+	dbg("findType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
+	resolvedPath, pkg, err := resolvePackage(currentFile, pkgPath)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
 	}
 
-	// Try to load from cache.
-	decls, ok := declsCache[pkgPath]
-	if !ok {
-		fset := token.NewFileSet()
-		dbg("FindType: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
-		pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
-		if err != nil {
-			return nil, "", "", fmt.Errorf("parse error: %v", err)
-		}
-
-		for _, p := range pkgs {
-			for path, f := range p.Files {
-				for _, d := range f.Decls {
-					// Only need to cache *ast.GenDecl with one *ast.TypeSpec,
-					// as we don't care about functions, imports, and what not.
-					if gd, ok := d.(*ast.GenDecl); ok {
-						for _, s := range gd.Specs {
-							if ts, ok := s.(*ast.TypeSpec); ok {
-								// For:
-								//     // Commment!
-								//     type Foo struct{}
-								//
-								// The "Comment!" is stored on on the
-								// GenDecl.Doc, but for:
-								//     type (
-								//         // Comment!
-								//         Foo struct{}
-								//     )
-								//
-								// it's on the TypeSpec.Doc. Makes no sense to
-								// me either, but this makes it more consistent,
-								// and easier to access since we only care about
-								// the TypeSpec.
-								if ts.Doc == nil && gd.Doc != nil {
-									ts.Doc = gd.Doc
-								}
-
-								decls = append(decls, declCache{ts, path})
-							}
-						}
-					}
-				}
-			}
-		}
-
-		declsCache[pkgPath] = decls
+	decls, err := getDecls(pkg, resolvedPath)
+	if err != nil {
+		return nil, "", "", err
 	}
 
 	for _, ts := range decls {
+		if ts.ts == nil {
+			continue
+		}
 		if ts.ts.Name.Name == name {
 			impPath := pkg.ImportPath
 			if impPath == "." {
@@ -197,7 +148,125 @@ func findType(currentFile, pkgPath, name string) (
 	}
 
 	return nil, "", "", fmt.Errorf("could not find type %#v in package %#v",
-		name, pkgPath)
+		name, resolvedPath)
+}
+
+func findValue(currentFile, pkgPath, name string) (
+	vs *ast.ValueSpec,
+	filePath string,
+	importPath string,
+	err error,
+) {
+	dbg("findValue: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
+	resolvedPath, pkg, err := resolvePackage(currentFile, pkgPath)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
+	}
+
+	decls, err := getDecls(pkg, resolvedPath)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	for _, decl := range decls {
+		if decl.vs == nil {
+			continue
+		}
+		for _, ident := range decl.vs.Names {
+			if ident.Name == name {
+				impPath := pkg.ImportPath
+				if impPath == "." {
+					impPath = pkg.Name
+				}
+				return decl.vs, decl.file, impPath, nil
+			}
+		}
+	}
+
+	return nil, "", "", fmt.Errorf("could not find value %#v in package %#v",
+		name, resolvedPath)
+}
+
+func resolvePackage(currentFile, pkgPath string) (
+	resolvedPath string, pkg *build.Package, err error,
+) {
+	resolvedPath = pkgPath
+	pkg, err = goutil.ResolvePackage(pkgPath, 0)
+	if err != nil && currentFile != "" {
+		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
+		if resolveErr != nil {
+			return "", nil, resolveErr
+		}
+		if resolved != "" {
+			resolvedPath = resolved
+			pkg, err = goutil.ResolvePackage(resolvedPath, 0)
+		}
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	return resolvedPath, pkg, nil
+}
+
+func getDecls(pkg *build.Package, pkgPath string) ([]declCache, error) {
+	// Try to load from cache.
+	decls, ok := declsCache[pkgPath]
+	if ok {
+		return decls, nil
+	}
+
+	dbg("getDecls: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
+	fset := token.NewFileSet()
+	pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
+	if err != nil {
+		return nil, fmt.Errorf("parse error: %v", err)
+	}
+
+	for _, p := range pkgs {
+		for path, f := range p.Files {
+			for _, d := range f.Decls {
+				// Only need to cache *ast.GenDecl with what we're interested in.
+				if gd, ok := d.(*ast.GenDecl); ok {
+					for _, s := range gd.Specs {
+						if ts, ok := s.(*ast.TypeSpec); ok {
+							// For:
+							//     // Commment!
+							//     type Foo struct{}
+							//
+							// The "Comment!" is stored on on the
+							// GenDecl.Doc, but for:
+							//     type (
+							//         // Comment!
+							//         Foo struct{}
+							//     )
+							//
+							// it's on the TypeSpec.Doc. Makes no sense to
+							// me either, but this makes it more consistent,
+							// and easier to access since we only care about
+							// the TypeSpec.
+							if ts.Doc == nil && gd.Doc != nil {
+								ts.Doc = gd.Doc
+							}
+
+							decls = append(decls, declCache{
+								ts: ts, file: path,
+							})
+						}
+
+						// Constants or variables, used for printing.
+						if vs, ok := s.(*ast.ValueSpec); ok {
+							decls = append(decls, declCache{
+								vs: vs, file: path,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	declsCache[pkgPath] = decls
+	return decls, nil
 }
 
 // ErrNotStruct is used when GetReference resolves to something that is not a
@@ -518,7 +587,11 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 	return err
 }
 
-// Split a user-provided ref in to the type name and package name.
+// parseLookup for the package and name, if lookup is an imported path e.g
+// models.Foo then:
+// pkg: models, name: Foo
+// in the case of current package the filePath is used, e.g:
+// pkg: Dir(filePath), name: Foo
 func parseLookup(lookup string, filePath string) (name, pkg string) {
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
