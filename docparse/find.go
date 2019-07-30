@@ -239,7 +239,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 
 	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
-	name, pkg := parseLookup(lookup, filePath)
+	name, pkg := ParseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
 	// Already parsed this one, don't need to do it again.
@@ -554,7 +554,7 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 }
 
 // Split a user-provided ref in to the type name and package name.
-func parseLookup(lookup string, filePath string) (name, pkg string) {
+func ParseLookup(lookup string, filePath string) (name, pkg string) {
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
 		return lookup[c+1:], lookup[:c]
