@@ -493,7 +493,7 @@ arrayStart:
 	// Add to prog.References if not there already
 	rName, rPkg := ParseLookup(lookup, ref.File)
 
-	if _, ok := prog.References[filepath.Base(rPkg) + "." + rName]; !ok {
+	if _, ok := prog.References[filepath.Base(rPkg)+"."+rName]; !ok {
 		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
 	}
 	return err

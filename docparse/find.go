@@ -553,7 +553,7 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 	return err
 }
 
-// Split a user-provided ref in to the type name and package name.
+// ParseLookup splits a user-provided ref in to the type name and package name.
 func ParseLookup(lookup string, filePath string) (name, pkg string) {
 	if c := strings.LastIndex(lookup, "."); c > -1 {
 		// imported path: models.Foo
