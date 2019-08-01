@@ -628,7 +628,7 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 	return err
 }
 
-// parseLookup for the package and name, if lookup is an imported path e.g
+// ParseLookup for the package and name, if lookup is an imported path e.g
 // models.Foo then:
 // pkg: models, name: Foo
 // in the case of current package the filePath is used, e.g:
