@@ -36,11 +36,6 @@ func TestOpenAPI2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
-		//if tt.Name() != "resp-slice" {
-		//	continue
-		//}
-
 		t.Run(tt.Name(), func(t *testing.T) {
 			path := "./testdata/openapi2/src/" + tt.Name()
 
@@ -86,10 +81,6 @@ func TestOpenAPI2(t *testing.T) {
 				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, string(wantErr))
 			}
 			out := strings.TrimSpace(outBuf.String()) + "\n"
-
-			//println("-----")
-			//println(out)
-			//println("-----")
 
 			d := diff.TextDiff(string(want), out)
 			if d != "" {
