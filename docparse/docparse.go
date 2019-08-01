@@ -4,12 +4,15 @@ package docparse // import "github.com/teamwork/kommentaar/docparse"
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -91,11 +94,11 @@ func dbg(s string, a ...interface{}) {
 
 // Endpoint denotes a single API endpoint.
 type Endpoint struct {
-	Method    string   // HTTP method (e.g. POST, DELETE, etc.)
-	Path      string   // Request path.
-	Tags      []string // Tags for grouping (optional).
-	Tagline   string   // Single-line description (optional).
-	Info      string   // More detailed description (optional).
+	Method    string        // HTTP method (e.g. POST, DELETE, etc.)
+	Path      string        // Request path.
+	Tags      []string      // Tags for grouping (optional).
+	Tagline   string        // Single-line description (optional).
+	Info      template.HTML // More detailed description (optional).
 	Request   Request
 	Responses map[int]Response
 	Pos, End  token.Position
@@ -162,6 +165,7 @@ var allRefs = []string{refDefault, refEmpty, refData}
 
 var (
 	reBasicHeader    = regexp.MustCompile(`^(Path|Form|Query): (.+)`)
+	reRequestFilter  = regexp.MustCompile(`^Request filter: (.+)`)
 	reRequestHeader  = regexp.MustCompile(`^Request body( \((.+?)\))?: (.+)`)
 	reResponseHeader = regexp.MustCompile(`^Response( (\d+?))?( \((.+?)\))?: (.+)`)
 )
@@ -296,6 +300,32 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 			continue
 		}
 
+		// Request filter: models.Type
+		filter := reRequestFilter.FindStringSubmatch(line)
+		if len(filter) > 1 {
+
+			split := strings.SplitN(filter[1], ".", 2)
+			if len(split) < 2 {
+				return nil, i, fmt.Errorf("could not parse filter type: %v", filter[1])
+			}
+			pkg := split[0]
+			typ := split[1]
+			_, filterFile, _, err := findType(filePath, pkg, typ)
+			if err != nil {
+				return nil, i, fmt.Errorf("could not parse filter type: %v", err)
+			}
+
+			maps, err := parseFilter(filterFile)
+			if err != nil {
+				return nil, i, fmt.Errorf("could not parse filter type: %v", err)
+			}
+			for _, m := range maps {
+				e.Info += template.HTML(m.String() + "\n")
+			}
+
+			continue
+		}
+
 		// Response 200 (application/json):
 		// Response 200:
 		// Response:
@@ -322,7 +352,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 			return nil, i, fmt.Errorf("unknown directive: %#v", line)
 		}
 
-		e.Info += line + "\n"
+		e.Info += template.HTML(line + "\n")
 	}
 
 	if len(e.Responses) == 0 {
@@ -331,8 +361,8 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 
 	// expand variables
 	var expandErr error
-	e.Info = regexp.MustCompile(`(\\)?\$[a-zA-Z0-9\.]+`).
-		ReplaceAllStringFunc(e.Info, func(m string) string {
+	info := regexp.MustCompile(`(\\)?\$[a-zA-Z0-9\.]+`).
+		ReplaceAllStringFunc(string(e.Info), func(m string) string {
 			if strings.HasPrefix(m, `\`) { // escaped
 				return m[1:] // strip "$"
 			}
@@ -353,7 +383,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	if expandErr != nil {
 		return nil, 0, expandErr
 	}
-	e.Info = strings.TrimSpace(e.Info)
+	e.Info = template.HTML(strings.TrimSpace(info))
 
 	r := make([]*Endpoint, len(aliases)+1)
 	r[0] = e
@@ -378,6 +408,97 @@ func PathParams(path string) []string {
 	}
 
 	return params
+}
+
+// parseFilter parses a Response line.
+//
+func parseFilter(filePath string) ([]*filterMapImpl, error) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+
+	fb, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var fieldMap, filterFieldMap []byte
+
+	// traverse all tokens
+	ast.Inspect(f, func(n ast.Node) bool {
+		t, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true
+		}
+		// find variable declarations
+		switch t.Name.Name {
+		case "SortFieldMap":
+			start := int(t.Pos()) - 1
+			end := int(t.End()) - 1
+			fieldMap = fb[start:end]
+		case "FilterFieldMap":
+			start := int(t.Pos()) - 1
+			end := int(t.End()) - 1
+			filterFieldMap = fb[start:end]
+		}
+		return true
+	})
+
+	fieldMaps := []*filterMapImpl{}
+
+	if fieldMap != nil {
+		parsed := parseFieldImpl(string(fieldMap), "SortableFields")
+		if parsed != nil {
+			fieldMaps = append(fieldMaps, parsed)
+		}
+	}
+	if filterFieldMap != nil {
+		parsed := parseFieldImpl(string(filterFieldMap), "Filters")
+		if parsed != nil {
+			fieldMaps = append(fieldMaps, parsed)
+		}
+	}
+
+	sort.Slice(fieldMaps, func(i, j int) bool {
+		return fieldMaps[i].label < fieldMaps[j].label
+	})
+	return fieldMaps, nil
+}
+
+type filterMapImpl struct {
+	filters []string
+	label   string
+}
+
+func (f filterMapImpl) String() string {
+	if f.filters == nil {
+		return ""
+	}
+	body := fmt.Sprintf("<pre>%s: ", f.label)
+	body += strings.Join(f.filters, ", ")
+	body += "</pre>"
+	return body
+}
+
+// parseFieldImpl extracts keys from (Filter)FieldMap implementations.
+// `map[string]string{"key":"value", "key2" : "valu2"}` should return []string{"key", key2"}
+//
+func parseFieldImpl(body, label string) *filterMapImpl {
+	reMapKey := regexp.MustCompile(`\".+\"\s*\:`)
+	fields := reMapKey.FindAllString(body, -1)
+
+	// mappings do not exist
+	if len(fields) < 0 {
+		return nil
+	}
+
+	for i, field := range fields {
+		fields[i] = field[1 : len(field)-2]
+	}
+	return &filterMapImpl{filters: fields, label: label}
+
 }
 
 // ParseResponse parses a Response line.
