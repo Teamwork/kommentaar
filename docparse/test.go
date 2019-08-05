@@ -15,3 +15,16 @@ type testObject struct {
 
 	Bar []string
 }
+
+func (t testObject) FilterFieldMap() map[string]string {
+	return map[string]string{
+		"a": "b",
+		"c": "d",
+	}
+}
+func (t testObject) SortFieldMap() map[string]string {
+	return map[string]string{
+		"e": "f",
+		"g": "h",
+	}
+}

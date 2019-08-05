@@ -157,7 +157,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 		op := Operation{
 			Summary:     e.Tagline,
-			Description: e.Info,
+			Description: string(e.Info),
 			OperationID: makeID(e),
 			Tags:        e.Tags,
 			Responses:   map[int]Response{},
