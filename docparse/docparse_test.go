@@ -3,6 +3,7 @@ package docparse
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/teamwork/test"
@@ -589,4 +590,43 @@ func TestParseResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseRequestFilter(t *testing.T) {
+	tests := []struct {
+		in          string
+		wantFields  string
+		wantFilters string
+		wantErr     bool
+	}{
+		{
+			`GET /test test
+test desc
+
+Request filter: testObject
+Response 200: {empty}
+`,
+			`Filters: a, c`,
+			`SortableFields: e, g`,
+			false,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			prog := NewProgram(false)
+			out, _, err := parseComment(prog, tt.in, ".", "test.go")
+			if err != nil {
+				t.Fatal(err)
+			}
+			info := out[0].Info
+			if !strings.Contains(string(info), tt.wantFields) {
+				t.Errorf("%v missing", tt.wantFields)
+			}
+			if !strings.Contains(string(info), tt.wantFilters) {
+				t.Errorf("%v missing", tt.wantFilters)
+			}
+		})
+	}
+
 }

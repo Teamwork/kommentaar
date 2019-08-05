@@ -306,7 +306,8 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 
 			split := strings.SplitN(filter[1], ".", 2)
 			if len(split) < 2 {
-				return nil, i, fmt.Errorf("could not parse filter type: %v", filter[1])
+				// look for it in same package
+				split = []string{".", split[0]}
 			}
 			pkg := split[0]
 			typ := split[1]
