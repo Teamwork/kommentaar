@@ -182,26 +182,10 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 
 			case strings.HasPrefix(t, "schema: "):
 				p.CustomSchema = filepath.Join(filepath.Dir(fName), t[8:])
-				schemaData, err := ioutil.ReadFile(p.CustomSchema)
+				err := readAndUnmarshalSchemaFile(p.CustomSchema, p)
 				if err != nil {
-					return fmt.Errorf("could not read %q: %v", p.CustomSchema, err)
+					return fmt.Errorf("custom schema: %v", err)
 				}
-
-				var f func([]byte, interface{}) error
-				switch strings.ToLower(filepath.Ext(p.CustomSchema)) {
-				default:
-					return fmt.Errorf("unknown file type: %q", p.CustomSchema)
-				case ".json":
-					f = json.Unmarshal
-				case ".yaml":
-					f = yaml.Unmarshal
-				}
-
-				err = f(schemaData, p)
-				if err != nil {
-					return fmt.Errorf("could not unmarshal openapi schema: %v", err)
-				}
-
 			default:
 				return fmt.Errorf("unknown parameter property for %#v: %#v",
 					name, t)
@@ -572,4 +556,25 @@ func canonicalType(currentFile, pkgPath string, typ *ast.Ident) (ast.Expr, error
 	}
 
 	return ts.Type, nil
+}
+
+func readAndUnmarshalSchemaFile(path string, target interface{}) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("could not read file %q: %v", path, err)
+	}
+
+	var f func([]byte, interface{}) error
+	switch strings.ToLower(filepath.Ext(path)) {
+	default:
+		return fmt.Errorf("unknown file type: %q", path)
+	case ".json":
+		f = json.Unmarshal
+	case ".yaml":
+		f = yaml.Unmarshal
+	}
+	if err := f(data, target); err != nil {
+		return fmt.Errorf("unmarshal schema: %q: %v", path, err)
+	}
+	return nil
 }
