@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -98,6 +99,7 @@ type Endpoint struct {
 	Info      string   // More detailed description (optional).
 	Request   Request
 	Responses map[int]Response
+	Extend    map[string]interface{} // Extension data to be applied on marshalling.
 	Pos, End  token.Position
 }
 
@@ -161,7 +163,7 @@ const (
 var allRefs = []string{refDefault, refEmpty, refData}
 
 var (
-	reBasicHeader    = regexp.MustCompile(`^(Path|Form|Query): (.+)`)
+	reBasicHeader    = regexp.MustCompile(`^(Path|Form|Query|Extend): (.+)`)
 	reRequestHeader  = regexp.MustCompile(`^Request body( \((.+?)\))?: (.+)`)
 	reResponseHeader = regexp.MustCompile(`^Response( (\d+?))?( \((.+?)\))?: (.+)`)
 )
@@ -223,6 +225,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 		// Form:
 		// Query:
 		// Path:
+		// Extend:
 		h := reBasicHeader.FindStringSubmatch(line)
 		if h != nil {
 			pastDesc = true
@@ -266,6 +269,15 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 					return nil, i, fmt.Errorf("%v already present", h[1])
 				}
 				e.Request.Form, err = parseRefValue(prog, "form", h[2], filePath)
+			case "Extend":
+				if e.Extend != nil {
+					return nil, i, fmt.Errorf("%v already present", h[1])
+				}
+				extendPath := filepath.Join(filepath.Dir(filePath), h[2])
+				err := readAndUnmarshalSchemaFile(extendPath, &e.Extend)
+				if err != nil {
+					return nil, i, fmt.Errorf("%v: %v", h[1], err)
+				}
 			}
 			if err != nil {
 				return nil, i, fmt.Errorf("could not parse %v params: %v", h[1], err)

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/goutil"
 	yaml "gopkg.in/yaml.v2"
@@ -85,6 +86,8 @@ type (
 		Produces    []string         `json:"produces,omitempty" yaml:"produces,omitempty"`
 		Parameters  []Parameter      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 		Responses   map[int]Response `json:"responses" yaml:"responses"`
+
+		Extend map[string]interface{} `json:"-" yaml:"-"`
 	}
 
 	// Reference other components in the specification, internally and
@@ -99,6 +102,58 @@ type (
 		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 )
+
+func (o *Operation) toMap() (map[string]interface{}, error) {
+	type Alias Operation
+	data, err := json.Marshal((*Alias)(o))
+	if err != nil {
+		return nil, fmt.Errorf("json marshal: %v", err)
+	}
+
+	m := map[string]interface{}{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, fmt.Errorf("json unmarshal: %v", err)
+	}
+
+	if o.Extend != nil {
+		if err := mergo.Merge(&m, o.Extend, mergo.WithOverride); err != nil {
+			return nil, fmt.Errorf("merge extend: %v", err)
+		}
+	}
+	return m, nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (o *Operation) MarshalJSON() ([]byte, error) {
+	if o.Extend == nil {
+		// no need for converting to map, use alias to avoid this method
+		// being called endlessly
+		type Alias Operation
+		return json.Marshal((*Alias)(o))
+	}
+
+	m, err := o.toMap()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m)
+}
+
+// MarshalYAML implements the yaml.Marshaler interface.
+func (o *Operation) MarshalYAML() (interface{}, error) {
+	if o.Extend == nil {
+		// no need for converting to map, use alias to avoid this method
+		// being called endlessly
+		type Alias Operation
+		return (*Alias)(o), nil
+	}
+
+	m, err := o.toMap()
+	if err != nil {
+		return nil, fmt.Errorf("toMap: %v", err)
+	}
+	return &m, nil
+}
 
 // WriteYAML writes w as YAML.
 func WriteYAML(w io.Writer, prog *docparse.Program) error {
@@ -161,6 +216,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			OperationID: makeID(e),
 			Tags:        e.Tags,
 			Responses:   map[int]Response{},
+			Extend:      e.Extend,
 		}
 
 		// Add path params.
