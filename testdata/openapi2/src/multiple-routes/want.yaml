@@ -6,6 +6,9 @@ consumes:
 - application/json
 produces:
 - application/json
+tags:
+- name: somethingelse
+- name: tag
 paths:
   /bar:
     put:
