@@ -30,6 +30,7 @@ type (
 		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
 		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 
+		Tags        []Tag                      `json:"tags,omitempty" yaml:"tags,omitempty"`
 		Paths       map[string]*Path           `json:"paths" yaml:"paths"`
 		Definitions map[string]docparse.Schema `json:"definitions" yaml:"definitions"`
 	}
@@ -64,6 +65,11 @@ type (
 		Minimum     int              `json:"minimum,omitempty" yaml:"minimum,omitempty"`
 		Maximum     int              `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
+	}
+
+	// Tag adds metadata to a single tag that is used by the Operation type.
+	Tag struct {
+		Name string `json:"name" yaml:"name"`
 	}
 
 	// Path describes the operations available on a single path.
@@ -206,6 +212,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 	}
 
+	seenTags := map[string]struct{}{}
+
 	// Add endpoints.
 	for _, e := range prog.Endpoints {
 		e.Path = prog.Config.Prefix + e.Path
@@ -217,6 +225,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			Tags:        e.Tags,
 			Responses:   map[int]Response{},
 			Extend:      e.Extend,
+		}
+
+		// Add their tags to the top level object to ensure ordering in
+		// various tools:
+		for _, t := range e.Tags {
+			seenTags[t] = struct{}{}
 		}
 
 		// Add path params.
@@ -398,6 +412,16 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
+	}
+
+	if len(seenTags) > 0 {
+		out.Tags = make([]Tag, 0, len(seenTags))
+		for tag := range seenTags {
+			out.Tags = append(out.Tags, Tag{Name: tag})
+		}
+		sort.Slice(out.Tags, func(i int, j int) bool {
+			return out.Tags[i].Name < out.Tags[j].Name
+		})
 	}
 
 	var (

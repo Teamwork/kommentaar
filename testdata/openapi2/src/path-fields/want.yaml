@@ -6,6 +6,8 @@ consumes:
 - application/json
 produces:
 - application/json
+tags:
+- name: tag
 paths:
   /path/{companyID}/{id}:
     post:
