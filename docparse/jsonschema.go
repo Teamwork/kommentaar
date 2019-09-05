@@ -492,6 +492,7 @@ var kindMap = map[string]string{
 	"int16":   "integer",
 	"int32":   "integer",
 	"int64":   "integer",
+	"uint":    "integer",
 	"uint8":   "integer",
 	"uint16":  "integer",
 	"uint32":  "integer",
