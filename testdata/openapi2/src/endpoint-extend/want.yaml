@@ -1,0 +1,30 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      consumes:
+      - application/xml
+      operationId: POST_path
+      parameters:
+      - in: body
+        name: endpoint-extend.reqRef
+        required: true
+        schema:
+          $ref: '#/definitions/endpoint-extend.reqRef'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 200 OK (no data)
+      x-private: true
+definitions:
+  endpoint-extend.reqRef:
+    title: reqRef
+    type: object

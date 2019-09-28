@@ -11,6 +11,11 @@
   "produces": [
     "application/json"
   ],
+  "tags": [
+    {
+      "name": "tag"
+    }
+  ],
   "paths": {
     "/path": {
       "post": {

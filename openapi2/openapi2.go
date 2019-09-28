@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/goutil"
 	yaml "gopkg.in/yaml.v2"
@@ -29,6 +30,7 @@ type (
 		Consumes []string `json:"consumes,omitempty" yaml:"consumes,omitempty"`
 		Produces []string `json:"produces,omitempty" yaml:"produces,omitempty"`
 
+		Tags        []Tag                      `json:"tags,omitempty" yaml:"tags,omitempty"`
 		Paths       map[string]*Path           `json:"paths" yaml:"paths"`
 		Definitions map[string]docparse.Schema `json:"definitions" yaml:"definitions"`
 	}
@@ -65,6 +67,11 @@ type (
 		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 
+	// Tag adds metadata to a single tag that is used by the Operation type.
+	Tag struct {
+		Name string `json:"name" yaml:"name"`
+	}
+
 	// Path describes the operations available on a single path.
 	Path struct {
 		Ref    string     `json:"ref,omitempty" yaml:"ref,omitempty"`
@@ -86,6 +93,8 @@ type (
 		Produces    []string         `json:"produces,omitempty" yaml:"produces,omitempty"`
 		Parameters  []Parameter      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 		Responses   map[int]Response `json:"responses" yaml:"responses"`
+
+		Extend map[string]interface{} `json:"-" yaml:"-"`
 	}
 
 	// Reference other components in the specification, internally and
@@ -100,6 +109,58 @@ type (
 		Schema      *docparse.Schema `json:"schema,omitempty" yaml:"schema,omitempty"`
 	}
 )
+
+func (o *Operation) toMap() (map[string]interface{}, error) {
+	type Alias Operation
+	data, err := json.Marshal((*Alias)(o))
+	if err != nil {
+		return nil, fmt.Errorf("json marshal: %v", err)
+	}
+
+	m := map[string]interface{}{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, fmt.Errorf("json unmarshal: %v", err)
+	}
+
+	if o.Extend != nil {
+		if err := mergo.Merge(&m, o.Extend, mergo.WithOverride); err != nil {
+			return nil, fmt.Errorf("merge extend: %v", err)
+		}
+	}
+	return m, nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (o *Operation) MarshalJSON() ([]byte, error) {
+	if o.Extend == nil {
+		// no need for converting to map, use alias to avoid this method
+		// being called endlessly
+		type Alias Operation
+		return json.Marshal((*Alias)(o))
+	}
+
+	m, err := o.toMap()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m)
+}
+
+// MarshalYAML implements the yaml.Marshaler interface.
+func (o *Operation) MarshalYAML() (interface{}, error) {
+	if o.Extend == nil {
+		// no need for converting to map, use alias to avoid this method
+		// being called endlessly
+		type Alias Operation
+		return (*Alias)(o), nil
+	}
+
+	m, err := o.toMap()
+	if err != nil {
+		return nil, fmt.Errorf("toMap: %v", err)
+	}
+	return &m, nil
+}
 
 // WriteYAML writes w as YAML.
 func WriteYAML(w io.Writer, prog *docparse.Program) error {
@@ -152,6 +213,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 	}
 
+	seenTags := map[string]struct{}{}
+
 	// Add endpoints.
 	for _, e := range prog.Endpoints {
 		e.Path = prog.Config.Prefix + e.Path
@@ -162,6 +225,13 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			OperationID: makeID(e),
 			Tags:        e.Tags,
 			Responses:   map[int]Response{},
+			Extend:      e.Extend,
+		}
+
+		// Add their tags to the top level object to ensure ordering in
+		// various tools:
+		for _, t := range e.Tags {
+			seenTags[t] = struct{}{}
 		}
 
 		// Add path params.
@@ -345,6 +415,16 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
 		}
+	}
+
+	if len(seenTags) > 0 {
+		out.Tags = make([]Tag, 0, len(seenTags))
+		for tag := range seenTags {
+			out.Tags = append(out.Tags, Tag{Name: tag})
+		}
+		sort.Slice(out.Tags, func(i int, j int) bool {
+			return out.Tags[i].Name < out.Tags[j].Name
+		})
 	}
 
 	var (

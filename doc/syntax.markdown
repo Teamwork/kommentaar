@@ -154,7 +154,7 @@ references are an error.
 Unexported fields are ignored; unexported fields with an applicable struct tag
 are considered an error.
 
-### Path, Query, and Form references
+### Path, Query, Form, and Extend references
 
 A `Path` reference can be used to document path parameters; for example:
 
@@ -189,6 +189,19 @@ and `query` struct tags. A value of `-` means it will be ignored; no struct tag
 means it will add the field name as-is.
 
     param-ref      = ( "Form" / "Path" / "Query" ) ": " ref LF
+
+
+The `Extend` parameter is optional and allows you to extend the generated
+endpoint with extra data. For example using Stoplight.io you can specify an
+endpoint as private with a non-standard key in the schema. For example:
+
+    Extend: private.yaml
+
+Where `private.yaml` contains the extra key/values for the schema:
+
+    x-private: true
+
+See the endpoint-extend test for full example.
 
 ### Request body
 
