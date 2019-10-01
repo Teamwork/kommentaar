@@ -2,13 +2,13 @@ package req
 
 // resp docs.
 type resp struct {
-		*other `json:"o"`
-	}
+	*other `json:"o"`
+}
 
 // other docs.
 type other struct {
-		Other string `json:"other"` // Other.
-	}
+	Other string `json:"other"` // Other.
+}
 
 // POST /path
 //

@@ -473,8 +473,12 @@ arrayStart:
 	}
 	p.Items = &Schema{Reference: sRef}
 
-	// Add to prog.References.
-	_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
+	// Add to prog.References if not there already
+	rName, rPkg := ParseLookup(lookup, ref.File)
+
+	if _, ok := prog.References[filepath.Base(rPkg)+"."+rName]; !ok {
+		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
+	}
 	return err
 }
 
@@ -515,7 +519,7 @@ func JSONSchemaType(t string) string {
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
 	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
-	name, pkg := parseLookup(lookup, filePath)
+	name, pkg := ParseLookup(lookup, filePath)
 
 	// Find type.
 	ts, _, _, err := findType(filePath, pkg, name)

@@ -128,13 +128,15 @@ The general structure for referencing types is:
 
 The various values for `<keyword>` are described below.
 
-`<ref>` refers to a type and can be in three formats:
+`<ref>` refers to a type and can be in five formats:
 
 - `t`                 – current package.
 - `pkg.t`             – imported package (e.g. `import "import/path/pkg"`).
 - `import/path/foo.t` – full import path; when the package isn't imported.
+- `[]t`               – an array of type t
+- `[x:t]`             – t is wrapped by the string x (e.g. `[comments:[]pkg.Comment]` results in a comments object containing an array of Comment type objects)
 
-Only `struct` and `interface` types can be referenced. Interfaces don't have
+Only `struct`, `interface` and `array` types can be referenced. Interfaces don't have
 fields and only the documentation for the interface will be added to the output.
 
 Embedded structs are merged in to the parent struct, unless they have the
