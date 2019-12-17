@@ -363,9 +363,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	var tagName string
 	switch ref.Context {
-	case "path", "query", "form":
+	case ctxPath, ctxQuery, ctxForm:
 		tagName = ref.Context
-	case "req", "resp":
+	case ctxReq, ctxResp:
 		tagName = prog.Config.StructTag
 	default:
 		return nil, fmt.Errorf("invalid context: %q", context)
@@ -375,7 +375,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	// TODO(param): only reason we do this is to make things a bit easier during
 	// refactor. We should pass st to structToSchema() or something.
 	for _, f := range st.Fields.List {
-		if f.Comment != nil && ref.Context != "path" {
+		if f.Comment != nil && ref.Context != ctxPath {
 			if hasTag(f.Comment.Text(), paramOmitDoc) {
 				continue
 			}
@@ -432,7 +432,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
-		if f.Comment != nil && ref.Context != "path" {
+		if f.Comment != nil && ref.Context != ctxPath {
 			if hasTag(f.Comment.Text(), paramOmitDoc) {
 				continue
 			}

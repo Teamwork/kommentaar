@@ -157,6 +157,12 @@ type Reference struct {
 }
 
 const (
+	ctxForm  = "form"
+	ctxPath  = "path"
+	ctxQuery = "query"
+	ctxReq   = "req"
+	ctxResp  = "resp"
+
 	refDefault = "{default}"
 	refEmpty   = "{empty}"
 	refData    = "{data}"
