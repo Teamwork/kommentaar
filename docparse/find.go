@@ -375,6 +375,11 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	// TODO(param): only reason we do this is to make things a bit easier during
 	// refactor. We should pass st to structToSchema() or something.
 	for _, f := range st.Fields.List {
+		if f.Comment != nil {
+			if hasTag(f.Comment.Text(), paramOmitDoc) {
+				continue
+			}
+		}
 
 		if len(f.Names) == 0 {
 			// Skip embedded structs without tags; we merge them later.
@@ -427,6 +432,12 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	// Scan all fields of f if it refers to a struct. Do this after storing the
 	// reference in prog.References to prevent cyclic lookup issues.
 	for _, f := range st.Fields.List {
+		if f.Comment != nil {
+			if hasTag(f.Comment.Text(), paramOmitDoc) {
+				continue
+			}
+		}
+
 		var isEmbed bool
 		if len(f.Names) == 0 {
 			isEmbed = true

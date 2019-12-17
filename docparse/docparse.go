@@ -505,6 +505,10 @@ func parseRefValue(prog *Program, context, value, filePath string) (*Ref, error)
 	return params, nil
 }
 
+func hasTag(s, tag string) bool {
+	return strings.Contains(s, fmt.Sprintf("{%s}", tag))
+}
+
 // parseTags get tags from {..} blocks.
 func parseTags(line string) (string, []string) {
 	var alltags []string
