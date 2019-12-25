@@ -340,6 +340,17 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
 		return GetReference(prog, context, isEmbed, arLookup, filePath)
+	case *ast.MapType:
+		// TODO, create the additional properties thing
+		var mp *ast.MapType = typ
+		ident, ok := mp.Value.(*ast.Ident)
+		if ok {
+			fmt.Printf("# ***** Is Ident %#v\n", ident)
+			panic("Is Ident")
+		} else {
+			fmt.Printf("# ***** Don't know what is this %#v", mp)
+			panic("Is not ident")
+		}
 	default:
 		return nil, ErrNotStruct{ts, fmt.Sprintf(
 			"%v is not a struct or interface but a %T", name, ts.Type)}
@@ -567,6 +578,34 @@ start:
 		case *ast.StarExpr:
 			asw = elementType.X
 			goto arrayStart
+
+		// Simple identifier
+		case *ast.Ident:
+			if !goutil.PredeclaredType(elementType.Name) {
+				name = elementType
+			}
+
+		// "pkg.foo"
+		case *ast.SelectorExpr:
+			pkgSel, ok := elementType.X.(*ast.Ident)
+			if !ok {
+				return "", fmt.Errorf("elementType.X is not ast.Ident: %#v",
+					elementType.X)
+			}
+			name = elementType.Sel
+			pkg = pkgSel.Name
+		}
+
+	case *ast.MapType:
+		msw := typ.Value
+
+	mapStart: // I feel dirty doing this...  :/
+		switch elementType := msw.(type) {
+
+		// Ignore *
+		case *ast.StarExpr:
+			msw = elementType.X
+			goto mapStart
 
 		// Simple identifier
 		case *ast.Ident:

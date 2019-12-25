@@ -36,6 +36,9 @@ type Schema struct {
 
 	// Store structs.
 	Properties map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
+	// We will not forbid to add propreties to an struct, so instead of using the
+	// bool value, we use the schema definition
+	AdditionalProperties *Schema `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 
 	OmitDoc      bool   `json:"-" yaml:"-"` // {omitdoc}
 	CustomSchema string `json:"-" yaml:"-"` // {schema: path}
@@ -357,6 +360,27 @@ start:
 		// As far as I can find there is no obvious/elegant way to represent
 		// this in JSON schema, so it's just an object.
 		p.Type = "object"
+		vtyp, vpkg, err := findTypeIdent(typ.Value, pkg)
+		if err != nil {
+			// we cannot find a mapping to a concrete type,
+			// so we cannot define the type of the maps -> ?
+			dbg("ERR FOUND MapType: %s", err.Error())
+			return &p, nil
+		}
+		if isPrimitive(vtyp.Name) {
+			// we are done, no need for a lookup of a custom type
+			p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
+			return &p, nil
+		}
+
+		_, ref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+		if err == nil {
+			// found additional properties
+			p.AdditionalProperties = &Schema{Reference: ref}
+			dbg("FOUND ADDITIONAL PROPERTIES: %s in %s", ref, pkg)
+		} else {
+			dbg("ERR FOUND ADDITIONAL PROPERTIES: %s", err.Error())
+		}
 		return &p, nil
 
 	// Array and slices.
@@ -399,6 +423,59 @@ start:
 	p.Reference = lookup
 
 	return &p, nil
+}
+
+func dropTypePointers(typ ast.Expr) ast.Expr {
+	var t *ast.StarExpr
+	ok := true
+	for t, ok = typ.(*ast.StarExpr); ok; t, ok = typ.(*ast.StarExpr) {
+		typ = t.X
+	}
+	return typ
+}
+
+func findTypeIdent(typ ast.Expr, curPkg string) (*ast.Ident, string, error) {
+	typ = dropTypePointers(typ)
+	if i, ok := typ.(*ast.Ident); ok {
+		// after droping the stars we have the ident:
+		return i, curPkg, nil
+	}
+
+	se, ok := typ.(*ast.SelectorExpr)
+	if !ok {
+		// not ident, not a package selector expr, cannot find ident
+		return nil, "", fmt.Errorf("fieldTypeIdent: cannot find ident for type: %T", typ)
+	}
+
+	pkgSel, ok := se.X.(*ast.Ident)
+	if !ok {
+		return nil, "", fmt.Errorf("fieldTypeIdent: SelectorExpr's typ.X is not ast.Ident: %#v", se.X)
+	}
+	return se.Sel, pkgSel.Name, nil
+}
+
+func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
+	// Check if the type resolves to a Go primitive.
+	lookup := pkg + "." + name
+	ts, _, _, err := findType(file, pkg, name)
+	if err != nil {
+		return "", "", err
+	}
+	ident, ok := ts.Type.(*ast.Ident)
+	if !ok {
+		// in getTypeInfo, there is a special case for anonymous stucts ?
+		// but I am not sure how can we be looking up for an anonymous struct
+		// O_o
+		return "", "", fmt.Errorf("could not find ident for file: %s, pkg: %s, name: %s",
+			file, pkg, name)
+	}
+	t := JSONSchemaType(ident.Name)
+
+	sRef := lookup
+	if i := strings.LastIndex(pkg, "/"); i > -1 {
+		sRef = pkg[i+1:] + "." + name
+	}
+	return t, sRef, nil
 }
 
 func resolveArray(prog *Program, ref Reference, pkg string, p *Schema, typ ast.Expr) error {
@@ -518,6 +595,8 @@ func JSONSchemaType(t string) string {
 }
 
 func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
+	// TODO: REMOVE THE prog PARAM, as this function is not
+	// using it anymore.
 	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
 	name, pkg := ParseLookup(lookup, filePath)
 
