@@ -373,13 +373,14 @@ start:
 			return &p, nil
 		}
 
-		_, ref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+		_, lref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
 		if err == nil {
 			// found additional properties
-			p.AdditionalProperties = &Schema{Reference: ref}
-			dbg("FOUND ADDITIONAL PROPERTIES: %s in %s", ref, pkg)
+			p.AdditionalProperties = &Schema{Reference: lref}
+			// Make sure the reference is added to `prog.References`:
+			GetReference(prog, ref.Context, false, lref, ref.File)
 		} else {
-			dbg("ERR FOUND ADDITIONAL PROPERTIES: %s", err.Error())
+			dbg("ERR, Could not find additionalProperties: %s", err.Error())
 		}
 		return &p, nil
 
