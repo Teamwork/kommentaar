@@ -478,6 +478,11 @@ func prefixPropertyReferences(properties map[string]*docparse.Schema) {
 				s.Items.Reference = "#/definitions/" + s.Items.Reference
 			}
 		}
+		if s.AdditionalProperties != nil && s.AdditionalProperties.Reference != "" {
+			if !strings.HasPrefix(s.AdditionalProperties.Reference, "#/definitions/") {
+				s.AdditionalProperties.Reference = "#/definitions/" + s.AdditionalProperties.Reference
+			}
+		}
 
 		if s.OmitDoc {
 			rm = append(rm, k)
