@@ -1,5 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/teamwork/kommentaar?status.svg)](https://godoc.org/github.com/teamwork/kommentaar)
-[![Build Status](https://travis-ci.org/Teamwork/kommentaar.svg?branch=master)](https://travis-ci.org/Teamwork/kommentaar)
+[![Build Status](https://travis-ci.com/Teamwork/kommentaar.svg?branch=master)](https://travis-ci.com/Teamwork/kommentaar)
 [![codecov](https://codecov.io/gh/Teamwork/kommentaar/branch/master/graph/badge.svg)](https://codecov.io/gh/Teamwork/kommentaar)
 
 Kommentaar generates documentation for Go APIs.
