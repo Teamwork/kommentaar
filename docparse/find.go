@@ -297,6 +297,7 @@ func (err ErrNotStruct) Error() string {
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
 	wrapper := ""
 	isSlice := false
+	isMap := false
 	if strings.HasPrefix(lookup, "[") && strings.HasSuffix(lookup, "]") && strings.Contains(lookup, ":") {
 		wrapper = strings.TrimPrefix(strings.Split(lookup, ":")[0], "[")
 		lookup = strings.TrimSuffix(strings.Split(lookup, ":")[1], "]")
@@ -340,17 +341,6 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
 		return GetReference(prog, context, isEmbed, arLookup, filePath)
-	case *ast.MapType:
-		// TODO, create the additional properties thing
-		var mp *ast.MapType = typ
-		ident, ok := mp.Value.(*ast.Ident)
-		if ok {
-			fmt.Printf("# ***** Is Ident %#v\n", ident)
-			panic("Is Ident")
-		} else {
-			fmt.Printf("# ***** Don't know what is this %#v", mp)
-			panic("Is not ident")
-		}
 	default:
 		return nil, ErrNotStruct{ts, fmt.Sprintf(
 			"%v is not a struct or interface but a %T", name, ts.Type)}
