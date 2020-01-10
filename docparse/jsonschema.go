@@ -378,7 +378,10 @@ start:
 			// found additional properties
 			p.AdditionalProperties = &Schema{Reference: lref}
 			// Make sure the reference is added to `prog.References`:
-			GetReference(prog, ref.Context, false, lref, ref.File)
+			_, err := GetReference(prog, ref.Context, false, lref, ref.File)
+			if err != nil {
+				dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+			}
 		} else {
 			dbg("ERR, Could not find additionalProperties: %s", err.Error())
 		}
@@ -428,7 +431,7 @@ start:
 
 func dropTypePointers(typ ast.Expr) ast.Expr {
 	var t *ast.StarExpr
-	ok := true
+	var ok bool
 	for t, ok = typ.(*ast.StarExpr); ok; t, ok = typ.(*ast.StarExpr) {
 		typ = t.X
 	}
