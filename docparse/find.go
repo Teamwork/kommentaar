@@ -297,7 +297,6 @@ func (err ErrNotStruct) Error() string {
 func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
 	wrapper := ""
 	isSlice := false
-	isMap := false
 	if strings.HasPrefix(lookup, "[") && strings.HasSuffix(lookup, "]") && strings.Contains(lookup, ":") {
 		wrapper = strings.TrimPrefix(strings.Split(lookup, ":")[0], "[")
 		lookup = strings.TrimSuffix(strings.Split(lookup, ":")[1], "]")
