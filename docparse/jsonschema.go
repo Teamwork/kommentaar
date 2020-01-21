@@ -465,17 +465,6 @@ func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	/*
-		ident, ok := ts.Name.(*ast.Ident)
-		if !ok {
-			// in getTypeInfo, there is a special case for anonymous stucts ?
-			// but I am not sure how can we be looking up for an anonymous struct
-			// O_o
-			return "", "", fmt.Errorf("could not find ident for file: %s, pkg: %s, name: %s",
-				file, pkg, name)
-		}
-		t := JSONSchemaType(ident.Name)
-	*/
 	t := JSONSchemaType(ts.Name.Name)
 
 	sRef := lookup
