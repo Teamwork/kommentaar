@@ -46,5 +46,7 @@ definitions:
       custom:
         description: Custom comment.
         type: object
+        additionalProperties:
+          type: string
       otherStruct:
         $ref: '#/definitions/otherpkg.OtherStruct'

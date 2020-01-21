@@ -278,11 +278,18 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					continue
 				}
 
+				queryType := schema.Type
+				if len(queryType) == 0 {
+					// if the parameter is a struct, and not mapped,
+					// we should fallback to a string to have a valid swagger file
+					// (we can not have a field without schema nor type )
+					queryType = "string"
+				}
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        f.Name,
 					In:          "query",
 					Description: schema.Description,
-					Type:        schema.Type,
+					Type:        queryType,
 					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
 					Readonly:    schema.Readonly,
@@ -317,11 +324,18 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					continue
 				}
 
+				formType := schema.Type
+				if len(formType) == 0 {
+					// if the parameter is a struct, and not mapped,
+					// we should fallback to a string to have a valid swagger file
+					// (we can not have a field without schema nor type )
+					formType = "string"
+				}
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        f.Name,
 					In:          "formData",
 					Description: schema.Description,
-					Type:        schema.Type,
+					Type:        formType,
 					Items:       schema.Items,
 					Required:    len(schema.Required) > 0,
 					Readonly:    schema.Readonly,
@@ -476,6 +490,11 @@ func prefixPropertyReferences(properties map[string]*docparse.Schema) {
 		if s.Items != nil && s.Items.Reference != "" {
 			if !strings.HasPrefix(s.Items.Reference, "#/definitions/") {
 				s.Items.Reference = "#/definitions/" + s.Items.Reference
+			}
+		}
+		if s.AdditionalProperties != nil && s.AdditionalProperties.Reference != "" {
+			if !strings.HasPrefix(s.AdditionalProperties.Reference, "#/definitions/") {
+				s.AdditionalProperties.Reference = "#/definitions/" + s.AdditionalProperties.Reference
 			}
 		}
 
