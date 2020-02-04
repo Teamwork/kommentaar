@@ -285,12 +285,23 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					// (we can not have a field without schema nor type )
 					queryType = "string"
 				}
+
+				items := schema.Items
+				if items != nil && len(items.Reference) != 0 {
+					// in swagger 2.0, arrays in the query can only
+					// contain basic type, so, if it holds a reference
+					// we change it to a string
+					items = &docparse.Schema{
+						Type: "string",
+					}
+				}
+
 				op.Parameters = append(op.Parameters, Parameter{
 					Name:        f.Name,
 					In:          "query",
 					Description: schema.Description,
 					Type:        queryType,
-					Items:       schema.Items,
+					Items:       items,
 					Required:    len(schema.Required) > 0,
 					Readonly:    schema.Readonly,
 					Enum:        schema.Enum,
