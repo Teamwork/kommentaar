@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/teamwork/utils/goutil"
+	"github.com/teamwork/utils/sliceutil"
 )
 
 // FindComments finds all comments in the given paths or packages.
@@ -414,10 +415,58 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 				continue
 			}
+			var p Param
+			// Check if the tag `includable` is present
+			if f.Tag != nil && strings.Contains(f.Tag.Value, "includable:") {
+				// Split the tags to extract the fields necessary
+				t := strings.Split(f.Tag.Value, "includable:")[1][1:]
+				// Cut off trailing "
+				t = t[:len(t)-2]
+				// Split into the fields to include
+				toInclude := strings.Split(t, ",")
 
-			p := Param{
-				Name:      fName.Name,
-				KindField: f,
+				// Get lookup for struct
+				split := strings.Split(lookup, ".")
+				lookupStruct := strings.Join(split[:len(split)-1], ".")
+
+				// Find the referenced struct
+				ref, err := GetReference(prog, context, false, lookupStruct+"."+f.Names[0].String(), "")
+				if err != nil {
+					return nil, fmt.Errorf("could not get referenced struct %s", f.Names[0].String())
+				}
+
+				// Construct a slice of fields to be included in the generated struct by their names
+				fields := []*ast.Field{}
+				for _, field := range ref.Fields {
+					if sliceutil.InStringSlice(toInclude, strings.ToLower(field.Name)) {
+						fields = append(fields, field.KindField)
+					}
+				}
+
+				// Construct the parameter using the given fields
+				p = Param{
+					Name: fName.Name,
+					KindField: &ast.Field{
+						Doc: &ast.CommentGroup{
+							List: []*ast.Comment{{Slash: 0, Text: ref.Schema.Description}},
+						},
+						Names: f.Names,
+						Type: &ast.StructType{
+							Struct: 0,
+							Fields: &ast.FieldList{
+								Opening: 0,
+								List:    fields,
+							},
+						},
+						Tag:     f.Tag,
+						Comment: f.Comment,
+					},
+				}
+			} else {
+				p = Param{
+					Name:      fName.Name,
+					KindField: f,
+				}
 			}
 			ref.Fields = append(ref.Fields, p)
 		}
