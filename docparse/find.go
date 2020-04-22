@@ -415,59 +415,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 				continue
 			}
-			var p Param
-			// Check if the tag `includable` is present
-			if f.Tag != nil && strings.Contains(f.Tag.Value, "includable:") {
-				// Split the tags to extract the fields necessary
-				includeList := reflect.StructTag(f.Tag.Value).Get("includable")
-				// Split into the fields to include
-				toInclude := strings.Split(includeList, ",")
-
-				// Get lookup for struct
-				split := strings.Split(lookup, ".")
-				lookupStruct := strings.Join(split[:len(split)-1], ".")
-				if lookupStruct != "" {
-					lookupStruct = lookupStruct + "."
-				}
-
-				// Find the referenced struct
-				ref, err := GetReference(prog, context, false, lookupStruct+f.Names[0].String(), filePath)
-				if err != nil {
-					return nil, fmt.Errorf("could not get referenced struct %s", f.Names[0].String())
-				}
-
-				// Construct a slice of fields to be included in the generated struct by their names
-				fields := []*ast.Field{}
-				for _, field := range ref.Fields {
-					if sliceutil.InStringSlice(toInclude, strings.ToLower(field.Name)) {
-						fields = append(fields, field.KindField)
-					}
-				}
-
-				// Construct the parameter using the given fields
-				p = Param{
-					Name: fName.Name,
-					KindField: &ast.Field{
-						Doc: &ast.CommentGroup{
-							List: []*ast.Comment{{Slash: 0, Text: ref.Schema.Description}},
-						},
-						Names: f.Names,
-						Type: &ast.StructType{
-							Struct: 0,
-							Fields: &ast.FieldList{
-								Opening: 0,
-								List:    fields,
-							},
-						},
-						Tag:     f.Tag,
-						Comment: f.Comment,
-					},
-				}
-			} else {
-				p = Param{
-					Name:      fName.Name,
-					KindField: f,
-				}
+			p := Param{
+				Name:      fName.Name,
+				KindField: f,
 			}
 			ref.Fields = append(ref.Fields, p)
 		}
@@ -540,6 +490,72 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
 	}
 	ref.Schema = schema
+
+	changed := false
+
+	for _, p := range ref.Schema.Properties {
+		// Check if any fields are whitelisted, if not continue onto next property
+		if len(p.FieldWhitelist) == 0 {
+			continue
+		}
+
+		changed = true
+
+		// Get the package so we can lookup the correct reference
+		split := strings.Split(p.Reference, ".")
+		lookupStruct := strings.Join(split[:len(split)-1], ".")
+		if lookupStruct != "" {
+			lookupStruct = lookupStruct + "."
+		}
+
+		for i, f := range ref.Fields {
+			if lookupStruct+f.Name != p.Reference {
+				continue
+			}
+
+			// Find the referenced struct
+			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
+			if err != nil {
+				return nil, fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
+			}
+
+			fields := []*ast.Field{}
+			for _, field := range reference.Fields {
+				if sliceutil.InStringSlice(p.FieldWhitelist, strings.ToLower(field.Name)) {
+					fields = append(fields, field.KindField)
+				}
+			}
+
+			// Construct the parameter using the given fields
+			ref.Fields[i] = Param{
+				Name: f.Name,
+				KindField: &ast.Field{
+					Doc: &ast.CommentGroup{
+						List: []*ast.Comment{{Slash: 0, Text: reference.Schema.Description}},
+					},
+					Names: f.KindField.Names,
+					Type: &ast.StructType{
+						Struct: 0,
+						Fields: &ast.FieldList{
+							Opening: 0,
+							List:    fields,
+						},
+					},
+					Tag:     f.KindField.Tag,
+					Comment: f.KindField.Comment,
+				},
+			}
+		}
+	}
+
+	// If the fields have been changed, regenerate the schema with the new fields
+	if changed {
+		schema, err = structToSchema(prog, name, tagName, ref)
+		if err != nil {
+			return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
+		}
+		ref.Schema = schema
+	}
 
 	// Merge for embedded structs without a tag.
 	for _, n := range nested {

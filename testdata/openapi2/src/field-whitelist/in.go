@@ -8,7 +8,7 @@ type FirstStruct struct {
 
 // SecondStruct docs
 type SecondStruct struct {
-	FirstStruct FirstStruct `json:"firststruct" includable:"fieldtwo"`
+	FirstStruct FirstStruct `json:"firststruct"` // {field-whitelist: fieldtwo}
 }
 
 // POST /path

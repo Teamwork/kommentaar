@@ -16,9 +16,9 @@ paths:
         200:
           description: 200 OK
           schema:
-            $ref: '#/definitions/includable.SecondStruct'
+            $ref: '#/definitions/field-whitelist.SecondStruct'
 definitions:
-  includable.FirstStruct:
+  field-whitelist.FirstStruct:
     title: FirstStruct
     description: FirstStruct docs
     type: object
@@ -27,7 +27,7 @@ definitions:
         type: string
       field_two:
         type: string
-  includable.SecondStruct:
+  field-whitelist.SecondStruct:
     title: SecondStruct
     description: SecondStruct docs
     type: object

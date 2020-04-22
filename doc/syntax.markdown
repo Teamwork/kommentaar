@@ -284,6 +284,7 @@ Supported parameters:
 - `schema: path`    – use a JSON schema file (as JSON as YAML) to describe this
                       parameter, ignoring the Kommentaar directives for it. The
                       path is relative to the file in which it's found.
+- `field-whitelist: field_one field_two` - whitelist certain fields to be included in the struct's parameters
 - Any [format from JSON schema][json-schema-format].
 
 Examples:
