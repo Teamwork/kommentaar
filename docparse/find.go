@@ -419,18 +419,19 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			// Check if the tag `includable` is present
 			if f.Tag != nil && strings.Contains(f.Tag.Value, "includable:") {
 				// Split the tags to extract the fields necessary
-				t := strings.Split(f.Tag.Value, "includable:")[1][1:]
-				// Cut off trailing "
-				t = t[:len(t)-2]
+				includeList := reflect.StructTag(f.Tag.Value).Get("includable")
 				// Split into the fields to include
-				toInclude := strings.Split(t, ",")
+				toInclude := strings.Split(includeList, ",")
 
 				// Get lookup for struct
 				split := strings.Split(lookup, ".")
 				lookupStruct := strings.Join(split[:len(split)-1], ".")
+				if lookupStruct != "" {
+					lookupStruct = lookupStruct + "."
+				}
 
 				// Find the referenced struct
-				ref, err := GetReference(prog, context, false, lookupStruct+"."+f.Names[0].String(), "")
+				ref, err := GetReference(prog, context, false, lookupStruct+f.Names[0].String(), filePath)
 				if err != nil {
 					return nil, fmt.Errorf("could not get referenced struct %s", f.Names[0].String())
 				}

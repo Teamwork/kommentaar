@@ -1,0 +1,40 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      produces:
+      - application/json
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/includable.SecondStruct'
+definitions:
+  includable.FirstStruct:
+    title: FirstStruct
+    description: FirstStruct docs
+    type: object
+    properties:
+      field_one:
+        type: string
+      field_two:
+        type: string
+  includable.SecondStruct:
+    title: SecondStruct
+    description: SecondStruct docs
+    type: object
+    properties:
+      firststruct:
+        description: FirstStruct docs
+        type: object
+        properties:
+          field_two:
+            type: string
