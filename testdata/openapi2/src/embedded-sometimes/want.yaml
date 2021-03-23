@@ -1,0 +1,57 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+tags:
+- name: foobar
+paths:
+  /foo/{id}:
+    post:
+      operationId: POST_foo_{id}
+      tags:
+      - foobar
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        type: integer
+        required: true
+      - name: embedded-sometimes.RequestObj
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/embedded-sometimes.RequestObj'
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/embedded-sometimes.AnObject'
+definitions:
+  embedded-sometimes.AnObject:
+    title: AnObject
+    description: AnObject is another object.
+    type: object
+    properties:
+      Properties:
+        $ref: '#/definitions/embedded-sometimes.CommonProperties'
+  embedded-sometimes.CommonProperties:
+    title: CommonProperties
+    description: CommonProperties has common properties.
+    type: object
+    properties:
+      Field:
+        type: string
+  embedded-sometimes.RequestObj:
+    title: RequestObj
+    description: RequestObj is a request object.
+    type: object
+    properties:
+      Field:
+        type: string

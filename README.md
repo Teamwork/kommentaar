@@ -90,6 +90,11 @@ Configuration
 Kommentaar can be configured with a configuration file; see
 [`config.example`](config.example) for the documentation.
 
+Running Tests
+-------------
+
+`GO111MODULE=off ./bin/test ./...`
+
 Motivation and rationale
 ------------------------
 

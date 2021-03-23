@@ -18,15 +18,6 @@ paths:
           schema:
             $ref: '#/definitions/field-whitelist.SecondStruct'
 definitions:
-  field-whitelist.FirstStruct:
-    title: FirstStruct
-    description: FirstStruct docs
-    type: object
-    properties:
-      field_one:
-        type: string
-      field_two:
-        type: string
   field-whitelist.SecondStruct:
     title: SecondStruct
     description: SecondStruct docs

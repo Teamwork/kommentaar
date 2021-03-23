@@ -197,23 +197,15 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		Definitions: map[string]docparse.Schema{},
 	}
 
-	// Add definitions.
-	for k, v := range prog.References {
-		if v.Schema == nil {
-			return fmt.Errorf("schema is nil for %q", k)
-		}
-		switch v.Context {
-		case "form", "query", "path":
-			// Nothing, this will be inline in the operation.
-		default:
-			if !v.IsEmbed {
-				prefixPropertyReferences(v.Schema.Properties)
-				out.Definitions[k] = *v.Schema
-			}
-		}
-	}
-
 	seenTags := map[string]struct{}{}
+	// track which defs are referenced so we can remove unreferenced ones, e.g embedded
+	// but also handle where it is both embedded and named
+	referencedDefs := map[string]struct{}{}
+	ref := func(s string) string {
+		s = strings.TrimPrefix(s, "#/definitions/")
+		referencedDefs[s] = struct{}{}
+		return "#/definitions/" + s
+	}
 
 	// Add endpoints.
 	for _, e := range prog.Endpoints {
@@ -383,7 +375,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 				Description: e.Request.Body.Description,
 				Required:    true,
 				Schema: &docparse.Schema{
-					Reference: "#/definitions/" + e.Request.Body.Reference,
+					Reference: ref(e.Request.Body.Reference),
 				},
 			})
 			op.Consumes = append(op.Consumes, e.Request.ContentType)
@@ -403,11 +395,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			// Link reference.
 			if resp.Body != nil && resp.Body.Reference != "" {
 				r.Schema = &docparse.Schema{
-					Reference: "#/definitions/" + resp.Body.Reference,
+					Reference: ref(resp.Body.Reference),
 				}
 			} else if dr, ok := prog.Config.DefaultResponse[code]; ok {
 				r.Schema = &docparse.Schema{
-					Reference: "#/definitions/" + dr.Body.Reference,
+					Reference: ref(dr.Body.Reference),
 				}
 				if dr.ContentType != "" {
 					resp.ContentType = dr.ContentType
@@ -452,6 +444,26 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		})
 	}
 
+	// Add definitions.
+	for k, v := range prog.References {
+		if v.Schema == nil {
+			return fmt.Errorf("schema is nil for %q", k)
+		}
+		switch v.Context {
+		case "form", "query", "path":
+			// Nothing, this will be inline in the operation.
+		default:
+			prefixPropertyReferences(v.Schema.Properties, ref)
+			out.Definitions[k] = *v.Schema
+		}
+	}
+	// Remove unreferenced definitions.
+	for k := range out.Definitions {
+		if _, ok := referencedDefs[k]; !ok {
+			delete(out.Definitions, k)
+		}
+	}
+
 	var (
 		d   []byte
 		err error
@@ -492,21 +504,17 @@ func appendIfNotExists(xs []string, y string) []string {
 	return append(xs, y)
 }
 
-func prefixPropertyReferences(properties map[string]*docparse.Schema) {
+func prefixPropertyReferences(properties map[string]*docparse.Schema, getRef func(string) string) {
 	var rm []string
 	for k, s := range properties {
-		if s.Reference != "" && !strings.HasPrefix(s.Reference, "#/definitions/") {
-			s.Reference = "#/definitions/" + s.Reference
+		if s.Reference != "" {
+			s.Reference = getRef(s.Reference)
 		}
 		if s.Items != nil && s.Items.Reference != "" {
-			if !strings.HasPrefix(s.Items.Reference, "#/definitions/") {
-				s.Items.Reference = "#/definitions/" + s.Items.Reference
-			}
+			s.Items.Reference = getRef(s.Items.Reference)
 		}
 		if s.AdditionalProperties != nil && s.AdditionalProperties.Reference != "" {
-			if !strings.HasPrefix(s.AdditionalProperties.Reference, "#/definitions/") {
-				s.AdditionalProperties.Reference = "#/definitions/" + s.AdditionalProperties.Reference
-			}
+			s.AdditionalProperties.Reference = getRef(s.AdditionalProperties.Reference)
 		}
 
 		if s.OmitDoc {
@@ -514,7 +522,7 @@ func prefixPropertyReferences(properties map[string]*docparse.Schema) {
 		}
 
 		if s.Properties != nil {
-			prefixPropertyReferences(s.Properties)
+			prefixPropertyReferences(s.Properties, getRef)
 		}
 	}
 
