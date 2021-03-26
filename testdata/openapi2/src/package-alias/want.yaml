@@ -46,6 +46,12 @@ paths:
           schema:
             $ref: '#/definitions/package-alias.ErrorResponse'
 definitions:
+  otherpkg.Error:
+    title: Error
+    type: object
+    properties:
+      Message:
+        type: string
   otherpkg.Something:
     title: Something
     description: Something is something.
@@ -58,6 +64,10 @@ definitions:
     type: object
     properties:
       Errors:
+        type: array
+        items:
+          $ref: '#/definitions/otherpkg.Error'
+      PErrors:
         type: array
         items:
           $ref: '#/definitions/otherpkg.Error'

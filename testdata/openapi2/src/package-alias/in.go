@@ -15,7 +15,8 @@ type OtherThing struct {
 }
 
 type ErrorResponse struct {
-	Errors []alias.Error
+	Errors  []alias.Error
+	PErrors []*alias.Error
 }
 
 // POST /foo/{id} foobar

@@ -535,6 +535,15 @@ arrayStart:
 		pkg = pkgSel.Name
 		name = typ.Sel
 
+		// handle import aliases
+		_, _, importPath, err := findType(ref.File, pkg, name.Name)
+		if err != nil {
+			return fmt.Errorf("resolveArray: findType: %v", err)
+		}
+		if !strings.HasSuffix(importPath, pkg) {
+			pkg = importPath
+		}
+
 	default:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
 	}
