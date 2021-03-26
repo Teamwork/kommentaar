@@ -50,10 +50,3 @@ definitions:
             type: string
           other:
             type: string
-  param-schema.dontInclude:
-    title: dontInclude
-    description: I've got a title already
-    type: object
-    properties:
-      DontIncludeThis:
-        type: string

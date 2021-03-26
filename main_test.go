@@ -84,7 +84,8 @@ func TestOpenAPI2(t *testing.T) {
 
 			d := diff.TextDiff(string(want), out)
 			if d != "" {
-				t.Fatalf("wrong output\n%v", d)
+				t.Errorf("incorrect output: \n%s", out)
+				t.Fatalf("diff\n%v", d)
 			}
 
 			if len(wantJSON) > 1 {

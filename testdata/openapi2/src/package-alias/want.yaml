@@ -1,0 +1,80 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+- application/json
+produces:
+- application/json
+tags:
+- name: foobar
+paths:
+  /foo/{id}:
+    post:
+      operationId: POST_foo_{id}
+      tags:
+      - foobar
+      consumes:
+      - application/x-www-form-urlencoded
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: Field
+        in: formData
+        type: string
+      - name: package-alias.OtherThing
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/package-alias.OtherThing'
+      - name: id
+        in: path
+        type: integer
+        required: true
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/otherpkg.Something'
+        201:
+          description: 201 Created
+          schema:
+            $ref: '#/definitions/otherpkg.Something'
+        400:
+          description: 400 Bad Request
+          schema:
+            $ref: '#/definitions/package-alias.ErrorResponse'
+definitions:
+  otherpkg.Error:
+    title: Error
+    type: object
+    properties:
+      Message:
+        type: string
+  otherpkg.Something:
+    title: Something
+    description: Something is something.
+    type: object
+    properties:
+      Field:
+        type: string
+  package-alias.ErrorResponse:
+    title: ErrorResponse
+    type: object
+    properties:
+      Errors:
+        type: array
+        items:
+          $ref: '#/definitions/otherpkg.Error'
+      PErrors:
+        type: array
+        items:
+          $ref: '#/definitions/otherpkg.Error'
+  package-alias.OtherThing:
+    title: OtherThing
+    description: OtherThing is another thing.
+    type: object
+    properties:
+      Something:
+        $ref: '#/definitions/otherpkg.Something'

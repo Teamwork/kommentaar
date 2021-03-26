@@ -2,9 +2,6 @@ package path
 
 import "encoding/json"
 
-// Ideally we don't want dontInclude in the output, as it's not referenced
-// anywhere; but that's a bit hard with the current design.
-
 // I've got a title already
 type dontInclude struct {
 	DontIncludeThis string
