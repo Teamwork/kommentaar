@@ -449,13 +449,8 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if v.Schema == nil {
 			return fmt.Errorf("schema is nil for %q", k)
 		}
-		switch v.Context {
-		case "form", "query", "path":
-			// Nothing, this will be inline in the operation.
-		default:
-			prefixPropertyReferences(v.Schema.Properties, ref)
-			out.Definitions[k] = *v.Schema
-		}
+		prefixPropertyReferences(v.Schema.Properties, ref)
+		out.Definitions[k] = *v.Schema
 	}
 	// Remove unreferenced definitions.
 	for k := range out.Definitions {

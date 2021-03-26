@@ -348,9 +348,12 @@ start:
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, _, err := findType(ref.File, pkg, name.Name)
+		ts, _, importPath, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
+		}
+		if !strings.HasSuffix(importPath, pkg) { // import alias
+			pkg = importPath
 		}
 
 		switch resolvType := ts.Type.(type) {
