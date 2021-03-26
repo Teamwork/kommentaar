@@ -4,3 +4,7 @@ package otherpkg
 type Something struct {
 	Field string
 }
+
+type Error struct {
+	Message string
+}

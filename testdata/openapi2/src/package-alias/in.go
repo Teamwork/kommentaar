@@ -14,9 +14,14 @@ type OtherThing struct {
 	Something alias.Something
 }
 
+type ErrorResponse struct {
+	Errors []alias.Error
+}
+
 // POST /foo/{id} foobar
 //
 // Request body (application/json): OtherThing
 // Form: alias.Something
 // Response 200: otherpkg.Something
-// Response 400: alias.Something
+// Response 201: alias.Something
+// Response 400: ErrorResponse

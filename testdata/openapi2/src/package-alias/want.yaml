@@ -37,10 +37,14 @@ paths:
           description: 200 OK
           schema:
             $ref: '#/definitions/otherpkg.Something'
+        201:
+          description: 201 Created
+          schema:
+            $ref: '#/definitions/otherpkg.Something'
         400:
           description: 400 Bad Request
           schema:
-            $ref: '#/definitions/otherpkg.Something'
+            $ref: '#/definitions/package-alias.ErrorResponse'
 definitions:
   otherpkg.Something:
     title: Something
@@ -49,6 +53,14 @@ definitions:
     properties:
       Field:
         type: string
+  package-alias.ErrorResponse:
+    title: ErrorResponse
+    type: object
+    properties:
+      Errors:
+        type: array
+        items:
+          $ref: '#/definitions/otherpkg.Error'
   package-alias.OtherThing:
     title: OtherThing
     description: OtherThing is another thing.
