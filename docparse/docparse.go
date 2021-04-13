@@ -351,7 +351,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 
 	// expand variables
 	var expandErr error
-	e.Info = regexp.MustCompile(`(\\)?\$[a-zA-Z0-9\.]+`).
+	e.Info = regexp.MustCompile(`(\\)?\$[a-zA-Z0-9\.\/]+`).
 		ReplaceAllStringFunc(e.Info, func(m string) string {
 			if strings.HasPrefix(m, `\`) { // escaped
 				return m[1:] // strip "$"
