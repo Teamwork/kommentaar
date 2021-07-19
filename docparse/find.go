@@ -15,66 +15,59 @@ import (
 
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
+	"golang.org/x/tools/go/packages"
 )
 
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
-	pkgPaths, err := goutil.Expand(prog.Config.Packages, build.FindOnly)
+	pkgs, err := packages.Load(&packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles,
+	}, prog.Config.Packages...)
 	if err != nil {
 		return err
 	}
 
 	allErr := []error{}
-	for _, p := range pkgPaths {
-		fset := token.NewFileSet()
-		pkgs, err := parser.ParseDir(fset, p.Dir, nil, parser.ParseComments)
-		if err != nil {
-			return err
+	for _, pkg := range pkgs {
+		// Ignore test package.
+		if strings.HasSuffix(pkg.Name, "_test") {
+			continue
 		}
 
-		for _, pkg := range pkgs {
-			// Ignore test package.
-			if strings.HasSuffix(pkg.Name, "_test") {
+		for _, fullPath := range pkg.GoFiles {
+			// Print as just <pkgname>/<file> in errors instead of full path.
+			relPath := pkg.PkgPath + "/" + filepath.Base(fullPath)
+			fset := token.NewFileSet()
+			f, err := parser.ParseFile(fset, fullPath, nil, parser.ParseComments)
+			if err != nil {
+				allErr = append(allErr, err)
 				continue
 			}
 
-			for fullPath, f := range pkg.Files {
-				// Print as just <pkgname>/<file> in errors instead of full path.
-				relPath := fullPath
-				if p.ImportPath == "." {
-					x := strings.Split(relPath, "/")
-					relPath = x[len(x)-2] + "/" + x[len(x)-1]
-				} else {
-					if i := strings.Index(relPath, p.ImportPath); i > -1 {
-						relPath = relPath[i:]
-					}
+			for _, c := range f.Comments {
+				e, relLine, err := parseComment(prog, c.Text(), pkg.PkgPath, fullPath)
+				if err != nil {
+					p := fset.Position(c.Pos())
+					allErr = append(allErr, fmt.Errorf("%v:%v %v",
+						relPath, p.Line+relLine, err))
+					continue
+				}
+				if e == nil || e[0] == nil {
+					continue
+				}
+				e[0].Pos = fset.Position(c.Pos())
+				e[0].End = fset.Position(c.End())
+
+				// Copy info from main endpoint to aliases.
+				for i, a := range e[1:] {
+					s := *e[0]
+					e[i+1] = &s
+					e[i+1].Path = a.Path
+					e[i+1].Method = a.Method
+					e[i+1].Tags = a.Tags
 				}
 
-				for _, c := range f.Comments {
-					e, relLine, err := parseComment(prog, c.Text(), p.ImportPath, fullPath)
-					if err != nil {
-						p := fset.Position(c.Pos())
-						allErr = append(allErr, fmt.Errorf("%v:%v %v",
-							relPath, p.Line+relLine, err))
-						continue
-					}
-					if e == nil || e[0] == nil {
-						continue
-					}
-					e[0].Pos = fset.Position(c.Pos())
-					e[0].End = fset.Position(c.End())
-
-					// Copy info from main endpoint to aliases.
-					for i, a := range e[1:] {
-						s := *e[0]
-						e[i+1] = &s
-						e[i+1].Path = a.Path
-						e[i+1].Method = a.Method
-						e[i+1].Tags = a.Tags
-					}
-
-					prog.Endpoints = append(prog.Endpoints, e...)
-				}
+				prog.Endpoints = append(prog.Endpoints, e...)
 			}
 		}
 	}
@@ -124,7 +117,6 @@ func findType(currentFile, pkgPath, name string) (
 	importPath string,
 	err error,
 ) {
-	dbg("findType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
 	resolvedPath, pkg, err := resolvePackage(currentFile, pkgPath)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
@@ -191,6 +183,7 @@ func findValue(currentFile, pkgPath, name string) (
 func resolvePackage(currentFile, pkgPath string) (
 	resolvedPath string, pkg *build.Package, err error,
 ) {
+
 	resolvedPath = pkgPath
 	pkg, err = goutil.ResolvePackage(pkgPath, 0)
 	if err != nil && currentFile != "" {
@@ -206,6 +199,7 @@ func resolvePackage(currentFile, pkgPath string) (
 	if err != nil {
 		return "", nil, err
 	}
+
 	return resolvedPath, pkg, nil
 }
 
