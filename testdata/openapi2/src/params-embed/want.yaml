@@ -27,11 +27,21 @@ paths:
         type: array
         items:
           type: string
-        enum:
-        - name
-        - priority
-        - status
-        - description
+          enum:
+          - name
+          - priority
+          - status
+          - description
+      - name: customTypes
+        in: query
+        description: CustomTypes common description.
+        type: array
+        items:
+          type: integer
+          enum:
+          - blue
+          - red
+          - yellow
       responses:
         200:
           description: 200 OK (no data)

@@ -1,10 +1,17 @@
 package params
 
+type customType int64
+
 type common struct {
 	// FieldTasks common description.
 	//
 	// {enum: name priority status description}
 	FieldTasks []string `query:"fields[tasks]"`
+
+	// CustomTypes common description.
+	//
+	// {enum: blue red yellow}
+	CustomTypes []customType `query:"customTypes"`
 }
 
 type queryRef struct {
