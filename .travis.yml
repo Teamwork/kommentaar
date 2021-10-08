@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.10.x
+  - 1.17.x
 go_import_path: github.com/teamwork/kommentaar
 notifications:
   email: false
@@ -10,6 +10,8 @@ cache:
     - $HOME/.cache/go-build
 install:
   - ./bin/setup-travis
+env:
+  - GO111MODULE=off
 script:
   - cd $HOME/gopath/src/github.com/teamwork/kommentaar
   - ./bin/test -race ./...
