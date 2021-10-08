@@ -30,7 +30,7 @@ func TestFieldToProperty(t *testing.T) {
 		"deeper":    {Reference: "a.refAnother"},
 		"docs": {Type: "string", Description: "This has some documentation!",
 			Required: []string{"docs"},
-			Enum:     []string{"one", "two", "three"},
+			Enum:     []string{"one", "two", "three", "four", "five", "six", "seven"},
 		},
 	}
 
