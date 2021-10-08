@@ -30,7 +30,8 @@ type foo struct {
 	deeper    refAnother
 
 	// This has some documentation! {required}
-	// {enum: one two three}
+	// {enum: one two three
+	//	four five six seven}
 	docs string
 	//m      map[string]int
 }
