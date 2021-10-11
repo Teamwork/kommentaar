@@ -27,6 +27,7 @@ type foo struct {
 	pkg       mail.Address
 	pkgSlice  []mail.Address
 	pkgSliceP []*mail.Address
+	cSlice    []customStr
 	deeper    refAnother
 
 	// This has some documentation! {required}
