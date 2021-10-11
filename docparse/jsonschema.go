@@ -569,8 +569,6 @@ arrayStart:
 			p.Items.Type = t
 			return nil
 		}
-		// It's an array. Why are we changing its type here?
-		p.Type = t
 	}
 
 	sRef := lookup

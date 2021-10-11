@@ -2,6 +2,10 @@ package params
 
 type customType int64
 
+type magic interface{}
+
+type magics []magic
+
 type common struct {
 	// FieldTasks common description.
 	//
@@ -12,6 +16,9 @@ type common struct {
 	//
 	// {enum: blue red yellow}
 	CustomTypes []customType `query:"customTypes"`
+
+	// Magics common description.
+	Magics magics `query:"magics"`
 }
 
 type queryRef struct {
