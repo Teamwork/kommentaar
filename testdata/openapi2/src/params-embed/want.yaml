@@ -21,12 +21,6 @@ paths:
         default: "10"
         minimum: 10
         maximum: 100
-      - name: magics
-        in: query
-        description: Magics common description.
-        type: array
-        items:
-          type: string
       - name: fields[tasks]
         in: query
         description: FieldTasks common description.
@@ -43,7 +37,7 @@ paths:
         description: CustomTypes common description.
         type: array
         items:
-          type: integer
+          type: string
           enum:
           - blue
           - red
@@ -51,7 +45,4 @@ paths:
       responses:
         200:
           description: 200 OK (no data)
-definitions:
-  params-embed.magic:
-    title: magic
-    type: object
+definitions: {}
