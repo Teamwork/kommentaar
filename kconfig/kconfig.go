@@ -6,12 +6,12 @@ import (
 	"io"
 	"strings"
 
-	"arp242.net/sconfig"
-	_ "arp242.net/sconfig/handlers/html/template" // template.HTML handler
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi2"
 	"github.com/teamwork/utils/goutil"
+	"zgo.at/sconfig"
+	_ "zgo.at/sconfig/handlers/html/template" // template.HTML handler
 )
 
 // Load the configuration.

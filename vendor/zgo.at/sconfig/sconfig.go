@@ -1,10 +1,7 @@
-// Copyright © 2016-2017 Martin Tournoij
-// See the bottom of this file for the full copyright.
-
 // Package sconfig is a simple yet functional configuration file parser.
 //
 // See the README.markdown for an introduction.
-package sconfig // import "arp242.net/sconfig"
+package sconfig
 
 import (
 	"bufio"
@@ -68,7 +65,7 @@ func readFile(file string) (lines [][]string, err error) {
 	if err != nil {
 		return lines, err
 	}
-	defer func() { _ = fp.Close() }()
+	defer fp.Close()
 
 	i := 0
 	no := 0
@@ -86,24 +83,28 @@ func readFile(file string) (lines [][]string, err error) {
 
 		line = collapseWhitespace(removeComments(line))
 
-		if isIndented {
+		switch {
+		// Regular line.
+		default:
+			lines = append(lines, []string{fmt.Sprintf("%d", no), line})
+			i++
+
+		// Indented.
+		case isIndented:
 			if i == 0 {
 				return lines, fmt.Errorf("first line can't be indented")
 			}
 			// Append to previous line; don't increment i since there may be
 			// more indented lines.
-			lines[i-1][1] += " " + line
-		} else {
-			// Source command
-			if strings.HasPrefix(line, "source ") {
-				sourced, err := readFile(line[7:])
-				if err != nil {
-					return nil, err
-				}
-				lines = append(lines, sourced...)
-			} else {
-				lines = append(lines, []string{fmt.Sprintf("%d", no), line})
+			lines[i-1][1] += " " + strings.TrimSpace(line)
+
+		// Source command.
+		case strings.HasPrefix(line, "source "):
+			sourced, err := readFile(line[7:])
+			if err != nil {
+				return nil, err
 			}
+			lines = append(lines, sourced...)
 			i++
 		}
 	}
@@ -126,8 +127,8 @@ func removeComments(line string) string {
 		if line[cmt-1] == '\\' {
 			line = line[:cmt-1] + line[cmt:]
 		} else {
-			// Found comment
-			line = line[:cmt]
+			// Found comment, remove the comment text and trailing whitespace.
+			line = strings.TrimRightFunc(line[:cmt], unicode.IsSpace)
 			break
 		}
 	}
@@ -234,9 +235,10 @@ func Parse(config interface{}, file string, handlers Handlers) (returnErr error)
 		// Split by spaces
 		v := strings.Split(line[1], " ")
 
-		var field reflect.Value
-		var fieldName string
-
+		var (
+			field     reflect.Value
+			fieldName string
+		)
 		switch values.Kind() {
 
 		// TODO: Only support map[string][]string atm.
@@ -455,25 +457,3 @@ func FindConfig(file string) string {
 
 	return ""
 }
-
-// The MIT License (MIT)
-//
-// Copyright © 2016-2017 Martin Tournoij
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to
-// deal in the Software without restriction, including without limitation the
-// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-// sell copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// The software is provided "as is", without warranty of any kind, express or
-// implied, including but not limited to the warranties of merchantability,
-// fitness for a particular purpose and noninfringement. In no event shall the
-// authors or copyright holders be liable for any claim, damages or other
-// liability, whether in an action of contract, tort or otherwise, arising
-// from, out of or in connection with the software or the use or other dealings
-// in the software.

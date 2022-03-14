@@ -1,0 +1,19 @@
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/imdario/mergo v0.3.7
+github.com/imdario/mergo
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/teamwork/test v0.0.0-20181126061546-2ff8918eb6a4
+github.com/teamwork/test
+github.com/teamwork/test/diff
+# github.com/teamwork/utils v0.0.0-20190114034940-d6a1f27ce92c
+github.com/teamwork/utils/goutil
+github.com/teamwork/utils/jsonutil
+github.com/teamwork/utils/sliceutil
+github.com/teamwork/utils/stringutil
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2
+# zgo.at/sconfig v1.2.2-0.20211017232425-870f818a71b7
+zgo.at/sconfig
+zgo.at/sconfig/handlers/html/template
