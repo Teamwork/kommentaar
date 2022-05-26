@@ -3,9 +3,9 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
@@ -39,7 +39,7 @@ paths:
 
         I'm escaped $foo
       produces:
-      - application/json
+        - application/json
       responses:
         200:
           description: 200 OK (no data)

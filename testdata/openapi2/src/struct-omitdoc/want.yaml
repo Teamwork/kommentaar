@@ -3,38 +3,38 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path/{companyID}/{id}:
     post:
       operationId: POST_path_{companyID}_{id}
       consumes:
-      - application/x-www-form-urlencoded
-      - application/json
+        - application/x-www-form-urlencoded
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: struct-omitdoc.req
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/struct-omitdoc.req'
-      - name: id
-        in: path
-        type: integer
-        required: true
-      - name: id
-        in: query
-        type: integer
-      - name: id
-        in: formData
-        type: integer
-      - name: companyID
-        in: path
-        type: integer
-        required: true
+        - name: struct-omitdoc.req
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/struct-omitdoc.req'
+        - name: id
+          in: path
+          type: integer
+          required: true
+        - name: id
+          in: query
+          type: integer
+        - name: id
+          in: formData
+          type: integer
+        - name: companyID
+          in: path
+          type: integer
+          required: true
       responses:
         200:
           description: 200 OK

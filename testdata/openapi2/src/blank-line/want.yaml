@@ -3,21 +3,21 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 tags:
-- name: tag
+  - name: tag
 paths:
   /path:
     post:
       operationId: POST_path
       tags:
-      - tag
+        - tag
       consumes:
-      - application/x-www-form-urlencoded
+        - application/x-www-form-urlencoded
       produces:
-      - application/json
+        - application/json
       responses:
         200:
           description: 200 OK (no data)

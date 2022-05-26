@@ -12,8 +12,8 @@ github.com/teamwork/utils/goutil
 github.com/teamwork/utils/jsonutil
 github.com/teamwork/utils/sliceutil
 github.com/teamwork/utils/stringutil
-# gopkg.in/yaml.v2 v2.2.2
-gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0
+gopkg.in/yaml.v3
 # zgo.at/sconfig v1.2.2-0.20211017232425-870f818a71b7
 zgo.at/sconfig
 zgo.at/sconfig/handlers/html/template
