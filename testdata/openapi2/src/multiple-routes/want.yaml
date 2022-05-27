@@ -3,35 +3,35 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 tags:
-- name: somethingelse
-- name: tag
+  - name: somethingelse
+  - name: tag
 paths:
   /bar:
     put:
       operationId: PUT_bar
       tags:
-      - somethingelse
+        - somethingelse
       summary: Tagline
       description: Desc
       consumes:
-      - application/x-www-form-urlencoded
+        - application/x-www-form-urlencoded
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: id
-        in: path
-        type: string
-        required: true
-      - name: id
-        in: query
-        type: string
-      - name: id
-        in: formData
-        type: string
+        - name: id
+          in: path
+          type: string
+          required: true
+        - name: id
+          in: query
+          type: string
+        - name: id
+          in: formData
+          type: string
       responses:
         200:
           description: 200 OK (no data)
@@ -39,24 +39,24 @@ paths:
     get:
       operationId: GET_foo
       tags:
-      - tag
+        - tag
       summary: Tagline
       description: Desc
       consumes:
-      - application/x-www-form-urlencoded
+        - application/x-www-form-urlencoded
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: id
-        in: path
-        type: string
-        required: true
-      - name: id
-        in: query
-        type: string
-      - name: id
-        in: formData
-        type: string
+        - name: id
+          in: path
+          type: string
+          required: true
+        - name: id
+          in: query
+          type: string
+        - name: id
+          in: formData
+          type: string
       responses:
         200:
           description: 200 OK (no data)
@@ -64,24 +64,24 @@ paths:
     post:
       operationId: POST_path_{id}
       tags:
-      - tag
+        - tag
       summary: Tagline
       description: Desc
       consumes:
-      - application/x-www-form-urlencoded
+        - application/x-www-form-urlencoded
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: id
-        in: path
-        type: string
-        required: true
-      - name: id
-        in: query
-        type: string
-      - name: id
-        in: formData
-        type: string
+        - name: id
+          in: path
+          type: string
+          required: true
+        - name: id
+          in: query
+          type: string
+        - name: id
+          in: formData
+          type: string
       responses:
         200:
           description: 200 OK (no data)

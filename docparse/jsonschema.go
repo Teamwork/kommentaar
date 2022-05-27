@@ -11,7 +11,7 @@ import (
 
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // The Schema Object allows the definition of input and output data types.

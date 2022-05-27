@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/teamwork/kommentaar/docparse"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var funcMap = template.FuncMap{

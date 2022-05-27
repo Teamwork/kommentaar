@@ -5,6 +5,7 @@
 package openapi2 // import "github.com/teamwork/kommentaar/openapi2"
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/goutil"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type (
@@ -469,7 +470,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	case "json":
 		d, err = json.Marshal(&out)
 	case "yaml":
-		d, err = yaml.Marshal(&out)
+		var b bytes.Buffer
+		yamlEncoder := yaml.NewEncoder(&b)
+		yamlEncoder.SetIndent(2)
+		err = yamlEncoder.Encode(&out)
+		d = b.Bytes()
 	default:
 		err = fmt.Errorf("unknown format: %#v", outFormat)
 	}

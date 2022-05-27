@@ -3,23 +3,23 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
       consumes:
-      - application/xml
+        - application/xml
       operationId: POST_path
       parameters:
-      - in: body
-        name: endpoint-extend.reqRef
-        required: true
-        schema:
-          $ref: '#/definitions/endpoint-extend.reqRef'
+        - in: body
+          name: endpoint-extend.reqRef
+          required: true
+          schema:
+            $ref: '#/definitions/endpoint-extend.reqRef'
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 200 OK (no data)
