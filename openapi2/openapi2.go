@@ -385,8 +385,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		// TODO: preserve order in which they were defined in the struct, but
 		// for now sort it like this so the output is stable.
 		sort.Slice(op.Parameters, func(i, j int) bool {
-			left := op.Parameters[i].In + op.Parameters[i].Type + op.Parameters[i].Name
-			right := op.Parameters[j].In + op.Parameters[j].Type + op.Parameters[j].Name
+			left := op.Parameters[i].Type + op.Parameters[i].Name
+			right := op.Parameters[j].Type + op.Parameters[j].Name
+			if left == right {
+				specificOrder := map[string]int64{"path": 0, "query": 1, "formData": 2, "body": 3}
+				return specificOrder[op.Parameters[i].In] < specificOrder[op.Parameters[j].In]
+			}
 			return left > right
 		})
 
