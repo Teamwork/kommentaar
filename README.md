@@ -93,7 +93,7 @@ Kommentaar can be configured with a configuration file; see
 Running Tests
 -------------
 
-`GO111MODULE=off ./bin/test ./...`
+`./bin/test ./...`
 
 Motivation and rationale
 ------------------------
