@@ -3,23 +3,23 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
       operationId: POST_path
       consumes:
-      - text/plain
+        - text/plain
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: req-ct.reqRef
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/req-ct.reqRef'
+        - name: req-ct.reqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/req-ct.reqRef'
       responses:
         200:
           description: 200 OK (no data)

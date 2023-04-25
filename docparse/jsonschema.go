@@ -11,7 +11,7 @@ import (
 
 	"github.com/teamwork/utils/goutil"
 	"github.com/teamwork/utils/sliceutil"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // The Schema Object allows the definition of input and output data types.
@@ -507,6 +507,12 @@ arrayStart:
 
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
+		// Generally an item is an enum rather than the array itself
+		if p.Enum != nil {
+			p.Items.Enum = p.Enum
+			p.Enum = nil
+		}
+
 		// Map []byte to []string.
 		if typ.Name == "byte" {
 			p.Items = nil
@@ -556,8 +562,11 @@ arrayStart:
 		return err
 	}
 	if t != "" {
-		p.Type = t
-		if isPrimitive(p.Type) {
+		if isPrimitive(t) {
+			if p.Items == nil {
+				p.Items = &Schema{}
+			}
+			p.Items.Type = t
 			return nil
 		}
 	}

@@ -3,32 +3,32 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
       operationId: POST_path
       consumes:
-      - application/json
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: struct-required.req
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/struct-required.req'
-      - name: id
-        in: query
-        type: integer
-        required: true
-      - name: companyID
-        in: query
-        description: Hello there
-        type: integer
-        required: true
+        - name: struct-required.req
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/struct-required.req'
+        - name: id
+          in: query
+          type: integer
+          required: true
+        - name: companyID
+          in: query
+          description: Hello there
+          type: integer
+          required: true
       responses:
         200:
           description: 200 OK (no data)
@@ -37,20 +37,20 @@ definitions:
     title: req
     type: object
     required:
-    - data
-    - createdBy
+      - data
+      - createdBy
     properties:
       createdBy:
         type: integer
       data:
         type: object
         required:
-        - meta
+          - meta
         properties:
           meta:
             type: object
             required:
-            - booly
+              - booly
             properties:
               booly:
                 description: Another level

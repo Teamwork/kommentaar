@@ -1,11 +1,7 @@
-# arp242.net/sconfig v0.0.0-20180901013357-c014d3b7a101
-## explicit
-arp242.net/sconfig
-arp242.net/sconfig/handlers/html/template
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/imdario/mergo v0.3.7
+# github.com/imdario/mergo v0.3.13
 ## explicit
 github.com/imdario/mergo
 # github.com/pmezard/go-difflib v1.0.0
@@ -41,6 +37,10 @@ golang.org/x/tools/internal/typesinternal
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
-# gopkg.in/yaml.v2 v2.2.2
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
-gopkg.in/yaml.v2
+gopkg.in/yaml.v3
+# zgo.at/sconfig v1.2.2-0.20211017232425-870f818a71b7
+## explicit
+zgo.at/sconfig
+zgo.at/sconfig/handlers/html/template

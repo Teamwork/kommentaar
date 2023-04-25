@@ -3,15 +3,15 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
       operationId: POST_path
       produces:
-      - text/plain
+        - text/plain
       responses:
         200:
           description: 200 OK

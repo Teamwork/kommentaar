@@ -3,23 +3,23 @@ info:
   title: x
   version: x
 consumes:
-- application/json
+  - application/json
 produces:
-- application/json
+  - application/json
 paths:
   /path:
     post:
       operationId: POST_path
       consumes:
-      - application/json
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
-      - name: type-block.reqRef
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/type-block.reqRef'
+        - name: type-block.reqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/type-block.reqRef'
       responses:
         200:
           description: 200 OK (no data)

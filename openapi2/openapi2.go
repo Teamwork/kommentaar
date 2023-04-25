@@ -5,6 +5,7 @@
 package openapi2 // import "github.com/teamwork/kommentaar/openapi2"
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/goutil"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type (
@@ -384,7 +385,13 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		// TODO: preserve order in which they were defined in the struct, but
 		// for now sort it like this so the output is stable.
 		sort.Slice(op.Parameters, func(i, j int) bool {
-			return op.Parameters[i].Type+op.Parameters[i].Name > op.Parameters[j].Type+op.Parameters[j].Name
+			left := op.Parameters[i].Type + op.Parameters[i].Name
+			right := op.Parameters[j].Type + op.Parameters[j].Name
+			if left == right {
+				specificOrder := map[string]int64{"path": 0, "query": 1, "formData": 2, "body": 3}
+				return specificOrder[op.Parameters[i].In] < specificOrder[op.Parameters[j].In]
+			}
+			return left > right
 		})
 
 		for code, resp := range e.Responses {
@@ -469,7 +476,11 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	case "json":
 		d, err = json.Marshal(&out)
 	case "yaml":
-		d, err = yaml.Marshal(&out)
+		var b bytes.Buffer
+		yamlEncoder := yaml.NewEncoder(&b)
+		yamlEncoder.SetIndent(2)
+		err = yamlEncoder.Encode(&out)
+		d = b.Bytes()
 	default:
 		err = fmt.Errorf("unknown format: %#v", outFormat)
 	}
