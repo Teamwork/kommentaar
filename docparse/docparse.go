@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/teamwork/utils/goutil"
-	"github.com/teamwork/utils/sliceutil"
-	"github.com/teamwork/utils/stringutil"
+	"github.com/teamwork/utils/v2/goutil"
+	"github.com/teamwork/utils/v2/sliceutil"
+	"github.com/teamwork/utils/v2/stringutil"
 )
 
 // Program is the entire program: all collected endpoints and all collected
@@ -260,7 +260,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 							name = p.Name
 						}
 
-						if !sliceutil.InStringSlice(pp, name) {
+						if !sliceutil.Contains(pp, name) {
 							return nil, i, fmt.Errorf("parameter %q is not in the path %q",
 								name, e.Path)
 						}
@@ -460,12 +460,13 @@ var allMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost,
 	http.MethodOptions, http.MethodTrace}
 
 // Get the first "start line" of a documentation block:
-//   POST /path tag1 tag2
+//
+//	POST /path tag1 tag2
 //
 // The tags are optional, and the method is case-sensitive.
 func parseStartLine(line string) (string, string, []string) {
 	words := strings.Fields(line)
-	if len(words) < 2 || !sliceutil.InStringSlice(allMethods, words[0]) {
+	if len(words) < 2 || !sliceutil.Contains(allMethods, words[0]) {
 		return "", "", nil
 	}
 
@@ -489,7 +490,7 @@ func parseRefValue(prog *Program, context, value, filePath string) (*Ref, error)
 
 	// {keyword}
 	if value[0] == '{' && value[len(value)-1] == '}' {
-		if !sliceutil.InStringSlice(allRefs, value) {
+		if !sliceutil.Contains(allRefs, value) {
 			return nil, fmt.Errorf("invalid keyword: %q", value)
 		}
 

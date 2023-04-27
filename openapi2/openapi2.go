@@ -14,7 +14,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
-	"github.com/teamwork/utils/goutil"
+	"github.com/teamwork/utils/v2/goutil"
 	yaml "gopkg.in/yaml.v3"
 )
 

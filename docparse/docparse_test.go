@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseComments(t *testing.T) {
-	stdResp := map[int]Response{200: Response{
+	stdResp := map[int]Response{200: {
 		ContentType: "application/json",
 		Body:        &Ref{Description: "200 OK (no data)"},
 	}}
