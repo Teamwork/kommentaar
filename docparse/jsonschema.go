@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/teamwork/utils/goutil"
-	"github.com/teamwork/utils/sliceutil"
+	"github.com/teamwork/utils/v2/goutil"
+	"github.com/teamwork/utils/v2/sliceutil"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -74,7 +74,7 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
 
-		if !sliceutil.InStringSlice([]string{"path", "query", "form"}, ref.Context) {
+		if !sliceutil.Contains([]string{"path", "query", "form"}, ref.Context) {
 			fixRequired(schema, prop)
 		}
 
@@ -587,9 +587,9 @@ arrayStart:
 }
 
 func isPrimitive(n string) bool {
-	//"null", "boolean", "object", "array", "number", "string", "integer",
-	return sliceutil.InStringSlice([]string{
-		"null", "boolean", "number", "string", "integer",
+	//"null", "boolean", "object", "array", "number", "string", "integer", "any"
+	return sliceutil.Contains([]string{
+		"null", "boolean", "number", "string", "integer", "any",
 	}, n)
 }
 
@@ -670,7 +670,7 @@ func canonicalType(currentFile, pkgPath string, typ *ast.Ident) (ast.Expr, error
 }
 
 func readAndUnmarshalSchemaFile(path string, target interface{}) error {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("could not read file %q: %v", path, err)
 	}

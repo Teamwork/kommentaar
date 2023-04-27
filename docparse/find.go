@@ -13,68 +13,62 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/teamwork/utils/goutil"
-	"github.com/teamwork/utils/sliceutil"
+	"github.com/teamwork/utils/v2/goutil"
+	"github.com/teamwork/utils/v2/sliceutil"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"golang.org/x/tools/go/packages"
 )
 
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
-	pkgPaths, err := goutil.Expand(prog.Config.Packages, build.FindOnly)
+	pkgs, err := goutil.Expand(prog.Config.Packages, packages.NeedName|packages.NeedFiles)
 	if err != nil {
 		return err
 	}
 
 	allErr := []error{}
-	for _, p := range pkgPaths {
-		fset := token.NewFileSet()
-		pkgs, err := parser.ParseDir(fset, p.Dir, nil, parser.ParseComments)
-		if err != nil {
-			return err
+
+	for _, pkg := range pkgs {
+		// Ignore test package.
+		if strings.HasSuffix(pkg.Name, "_test") {
+			continue
 		}
 
-		for _, pkg := range pkgs {
-			// Ignore test package.
-			if strings.HasSuffix(pkg.Name, "_test") {
+		for _, fullPath := range pkg.GoFiles {
+			// Print as just <pkgname>/<file> in errors instead of full path.
+			relPath := pkg.PkgPath + "/" + filepath.Base(fullPath)
+			fset := token.NewFileSet()
+			f, err := parser.ParseFile(fset, fullPath, nil, parser.ParseComments)
+			if err != nil {
+				allErr = append(allErr, err)
 				continue
 			}
 
-			for fullPath, f := range pkg.Files {
-				// Print as just <pkgname>/<file> in errors instead of full path.
-				relPath := fullPath
-				if p.ImportPath == "." {
-					x := strings.Split(relPath, "/")
-					relPath = x[len(x)-2] + "/" + x[len(x)-1]
-				} else {
-					if i := strings.Index(relPath, p.ImportPath); i > -1 {
-						relPath = relPath[i:]
-					}
+			for _, c := range f.Comments {
+				e, relLine, err := parseComment(prog, c.Text(), pkg.PkgPath, fullPath)
+				if err != nil {
+					p := fset.Position(c.Pos())
+					allErr = append(allErr, fmt.Errorf("%v:%v %v",
+						relPath, p.Line+relLine, err))
+					continue
+				}
+				if e == nil || e[0] == nil {
+					continue
+				}
+				e[0].Pos = fset.Position(c.Pos())
+				e[0].End = fset.Position(c.End())
+
+				// Copy info from main endpoint to aliases.
+				for i, a := range e[1:] {
+					s := *e[0]
+					e[i+1] = &s
+					e[i+1].Path = a.Path
+					e[i+1].Method = a.Method
+					e[i+1].Tags = a.Tags
 				}
 
-				for _, c := range f.Comments {
-					e, relLine, err := parseComment(prog, c.Text(), p.ImportPath, fullPath)
-					if err != nil {
-						p := fset.Position(c.Pos())
-						allErr = append(allErr, fmt.Errorf("%v:%v %v",
-							relPath, p.Line+relLine, err))
-						continue
-					}
-					if e == nil || e[0] == nil {
-						continue
-					}
-					e[0].Pos = fset.Position(c.Pos())
-					e[0].End = fset.Position(c.End())
-
-					// Copy info from main endpoint to aliases.
-					for i, a := range e[1:] {
-						s := *e[0]
-						e[i+1] = &s
-						e[i+1].Path = a.Path
-						e[i+1].Method = a.Method
-						e[i+1].Tags = a.Tags
-					}
-
-					prog.Endpoints = append(prog.Endpoints, e...)
-				}
+				prog.Endpoints = append(prog.Endpoints, e...)
 			}
 		}
 	}
@@ -289,9 +283,9 @@ func (err ErrNotStruct) Error() string {
 // References are stored in prog.References. This also finds and stores all
 // nested references, so for:
 //
-//  type Foo struct {
-//    Field Bar
-//  }
+//	type Foo struct {
+//	  Field Bar
+//	}
 //
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
@@ -474,7 +468,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// Add in embedded structs with a tag.
 	for _, n := range nestedTagged {
-		ename := strings.Title(goutil.TagName(n, tagName))
+		ename := cases.Title(language.English).String(goutil.TagName(n, tagName))
 		n.Names = []*ast.Ident{{
 			Name: ename,
 		}}
@@ -521,7 +515,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 			fields := []*ast.Field{}
 			for _, field := range reference.Fields {
-				if sliceutil.InStringSlice(p.FieldWhitelist, strings.ToLower(field.Name)) {
+				if sliceutil.Contains(p.FieldWhitelist, strings.ToLower(field.Name)) {
 					fields = append(fields, field.KindField)
 				}
 			}

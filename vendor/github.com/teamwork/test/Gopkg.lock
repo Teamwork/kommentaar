@@ -2,29 +2,40 @@
 
 
 [[projects]]
-  name = "github.com/davecgh/go-spew"
-  packages = ["spew"]
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  digest = "1:8fe9eaf238a90fc911cecf4601d6c6978f0e1e64427abec58ac701c4d9045609"
+  name = "github.com/Strum355/go-difflib"
+  packages = ["difflib"]
+  pruneopts = ""
+  revision = "43378a715f0d3820475197386f3ed5b354d5712e"
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/pmezard/go-difflib"
-  packages = ["difflib"]
-  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
+  digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = ""
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:0e87b400a7d0c15902dfa596a41360d24118e18f9675e631dc3363b4c87898e7"
   name = "github.com/teamwork/utils"
   packages = [
     "jsonutil",
-    "stringutil"
+    "stringutil",
   ]
-  revision = "25cfdf9788fd470f3d664452bfc40ea3750618bb"
+  pruneopts = ""
+  revision = "d6a1f27ce92cf2ae11c9073add82330cea965293"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "00a209cf6fc367c3b2f5e0b2fcd5f6b18496e6ea6f5f56510b6f2d22b8b1943d"
+  input-imports = [
+    "github.com/Strum355/go-difflib/difflib",
+    "github.com/davecgh/go-spew/spew",
+    "github.com/teamwork/utils/jsonutil",
+    "github.com/teamwork/utils/stringutil",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -9,7 +9,7 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi2"
-	"github.com/teamwork/utils/goutil"
+	"github.com/teamwork/utils/v2/goutil"
 	"zgo.at/sconfig"
 	_ "zgo.at/sconfig/handlers/html/template" // template.HTML handler
 )

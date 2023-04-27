@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Strum355/go-difflib/difflib"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/pmezard/go-difflib/difflib"
 )
 
 // Context indicates the number of lines of context to add.
@@ -33,12 +33,23 @@ func Diff(expected, actual interface{}) string {
 // TextDiff returns a unified diff of the two passed strings, or "" if they are
 // the same.
 func TextDiff(expected, actual string) string {
+	return textDiff(expected, actual, false)
+}
+
+// TextDiffColored returns a unified diff of the two passed strings, or "" if they are
+// the same. This function also colors the output
+func TextDiffColored(expected, actual string) string {
+	return textDiff(expected, actual, true)
+}
+
+func textDiff(expected, actual string, colored bool) string {
 	udiff := difflib.UnifiedDiff{
 		A:        strings.SplitAfter(expected, "\n"),
 		FromFile: "expected",
 		B:        strings.SplitAfter(actual, "\n"),
 		ToFile:   "actual",
 		Context:  Context,
+		Colored:  colored,
 	}
 	diff, err := difflib.GetUnifiedDiffString(udiff)
 	if err != nil {
@@ -49,7 +60,6 @@ func TextDiff(expected, actual string) string {
 		diff = "\n" + diff
 	}
 	return diff
-
 }
 
 // ContextDiff returns a "context diff" of the two passed strings, or "" if they
@@ -57,12 +67,25 @@ func TextDiff(expected, actual string) string {
 //
 // This usually works better than a unified diff if the strings are long.
 func ContextDiff(expected, actual string) string {
+	return contextDiff(expected, actual, false)
+}
+
+// ContextDiffColored returns a "context diff" of the two passed strings, or "" if they
+// are the same. This function also colors the output
+//
+// This usually works better than a unified diff if the strings are long.
+func ContextDiffColored(expected, actual string) string {
+	return contextDiff(expected, actual, true)
+}
+
+func contextDiff(expected, actual string, colored bool) string {
 	cdiff := difflib.ContextDiff{
 		A:        strings.SplitAfter(expected, "\n"),
 		FromFile: "expected",
 		B:        strings.SplitAfter(actual, "\n"),
 		ToFile:   "actual",
 		Context:  Context,
+		Colored:  colored,
 	}
 	diff, err := difflib.GetContextDiffString(cdiff)
 	if err != nil {

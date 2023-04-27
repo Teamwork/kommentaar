@@ -4,7 +4,22 @@ package stringutil // import "github.com/teamwork/utils/stringutil"
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
+
+// Truncate returns the "n" left characters of the string.
+func Truncate(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+
+	return string([]rune(s)[:n])
+}
 
 // Left returns the "n" left characters of the string.
 //
@@ -14,6 +29,8 @@ func Left(s string, n int) string {
 	if n < 0 {
 		n = 0
 	}
+
+	// Quick check for non-multibyte strings.
 	if len(s) <= n {
 		return s
 	}
@@ -23,13 +40,14 @@ func Left(s string, n int) string {
 		bytei int
 	)
 	for bytei = range s {
-		if chari >= n {
-			break
-		}
 		chari++
+
+		if chari > n {
+			return s[:bytei] + "…"
+		}
 	}
 
-	return s[:bytei] + "…"
+	return s
 }
 
 // UpperFirst transforms the first character to upper case, leaving the rest of
@@ -74,4 +92,14 @@ func GetLine(in string, n int) string {
 		return ""
 	}
 	return arr[n-1]
+}
+
+// StripWhitespaces removes every whitespace in a string.
+func StripWhitespaces(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, str)
 }
