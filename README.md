@@ -47,6 +47,27 @@ See `kommentaar -h` for the full list of options.
 You can also the [Go API](https://godoc.org/github.com/teamwork/kommentaar), for
 example to serve documentation in an HTTP endpoint.
 
+### Usage with Docker
+
+
+There is a kommentaar Docker image available at `ghcr.io/teamwork/kommentaar` which in some cases may simplify the setup process.
+It takes in the following parameters:
+
+- `MODULE_PATH` env var (required) - path to your module, e.g. `github.com/teamwork/amazingapp`
+- `EXEC_PATH` env var (optional) - path passed to kommentaar - can be relative or absolute, e.g. `./api/v3/...`, or `/go/src/github.com/teamwork/amazingapp/api/v3/...`. Default value is `/go/src/$MODULE_PATH/...`
+- `CONFIG_NAME` env var (optional) - name of kommentaar config file in the `/config` volume (see below). Default value is `kommentaar.conf`
+- `/code` volume (required) - folder containing your go code
+- `/config` volume (optional) - folder containing your kommentaar config file, by default the included `config.example` file is copied there as `kommentaar.conf`
+- `/output` volume (required) - folder where the generated `swagger.yaml` file will be placed.
+
+Usage examples:
+- `docker run --rm -it -e MODULE_PATH="github.com/teamwork/amazingapp" -v .:/code -v .:/config -v .:/output ghcr.io/teamwork/kommentaar`
+  - This assumes you are running the command in `amazingapp` folder
+  - This is roughly equivalent to `kommentaar -config ./kommentaar.conf github.com/teamwork/amazingapp... > ./swagger.yaml`
+- `docker run --rm -it -e MODULE_PATH="github.com/teamwork/amazingapp" -e EXEC_PATH="./api/v3/controller/..." -e CONFIG_NAME=".kommentaar.v3" -v $HOME/dev/amazingapp:/code -v $HOME/dev/amazingapp/config:/config -v %HOME/dev/amazingapp/api/v3:/output ghcr.io/teamwork/kommentaar`
+  - This will run the equivalent of `kommentaar -config $HOME/dev/amazingapp/config/.kommentaar.v3 $GOPATH/src/github.com/teamwork/amazingapp/api/v3/controller/... > $HOME/dev/amazingapp/api/v3/swagger.yaml`
+
+
 Syntax
 ------
 
