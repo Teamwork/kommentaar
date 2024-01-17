@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -105,7 +104,7 @@ func run(
 ) (string, error) {
 
 	if args.NoScan {
-		o, err := ioutil.ReadFile(file)
+		o, err := os.ReadFile(file)
 		return string(o), err
 	}
 

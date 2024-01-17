@@ -1,8 +1,8 @@
 package srvhttp
 
 import (
-	"io/ioutil"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/teamwork/test/diff"
@@ -41,7 +41,7 @@ func TestFromFile(t *testing.T) {
 		YAMLFile: "../testdata/openapi2/src/blank-line/want.yaml",
 	}
 
-	want, err := ioutil.ReadFile("../testdata/openapi2/src/blank-line/want.yaml")
+	want, err := os.ReadFile("../testdata/openapi2/src/blank-line/want.yaml")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
 	}
