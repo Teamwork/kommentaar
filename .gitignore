@@ -2,3 +2,5 @@
 /coverage.html
 .DS_Store
 .idea
+*.coverage
+*_coverage

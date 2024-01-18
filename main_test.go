@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"go/build"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +29,7 @@ func TestStart(t *testing.T) {
 }
 
 func TestOpenAPI2(t *testing.T) {
-	tests, err := ioutil.ReadDir("./testdata/openapi2/src")
+	tests, err := os.ReadDir("./testdata/openapi2/src")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,19 +38,19 @@ func TestOpenAPI2(t *testing.T) {
 		t.Run(tt.Name(), func(t *testing.T) {
 			path := "./testdata/openapi2/src/" + tt.Name()
 
-			want, err := ioutil.ReadFile(path + "/want.yaml")
+			want, err := os.ReadFile(path + "/want.yaml")
 			if err != nil && !os.IsNotExist(err) {
 				t.Fatalf("could not read output: %v", err)
 			}
 			want = append(bytes.TrimSpace(want), '\n')
 
-			wantJSON, err := ioutil.ReadFile(path + "/want.json")
+			wantJSON, err := os.ReadFile(path + "/want.json")
 			if err != nil && !os.IsNotExist(err) {
 				t.Fatalf("could not read output: %v", err)
 			}
 			wantJSON = append(bytes.TrimSpace(wantJSON), '\n')
 
-			wantErr, err := ioutil.ReadFile(path + "/wantErr")
+			wantErr, err := os.ReadFile(path + "/wantErr")
 			if err != nil && !os.IsNotExist(err) {
 				t.Fatalf("could not read wantErr: %v", err)
 			}
