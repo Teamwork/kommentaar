@@ -1,6 +1,6 @@
 module github.com/teamwork/kommentaar
 
-go 1.20
+go 1.22
 
 require (
 	github.com/imdario/mergo v0.3.13
