@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -46,7 +47,7 @@ func FindComments(w io.Writer, prog *Program) error {
 			}
 
 			for _, c := range f.Comments {
-				e, relLine, err := parseComment(prog, c.Text(), pkg.PkgPath, fullPath)
+				e, relLine, err := parseComment(prog, c.Text(), fullPath)
 				if err != nil {
 					p := fset.Position(c.Pos())
 					allErr = append(allErr, fmt.Errorf("%v:%v %v",
@@ -316,6 +317,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		return &ref, nil
 	}
 
+	// hack to bypass package resolution for debugging specific test scenario
+	originalPkg := pkg
+
 	// Find type.
 	ts, foundPath, pkg, err := findType(filePath, pkg, name)
 	if err != nil {
@@ -342,7 +346,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	ref := Reference{
 		Name:    name,
-		Package: pkg,
+		Package: originalPkg,
 		Lookup:  filepath.Base(pkg) + "." + name,
 		File:    foundPath,
 		Context: context,
@@ -733,9 +737,13 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 // in the case of current package the filePath is used, e.g:
 // pkg: Dir(filePath), name: Foofunc ParseLookup(lookup string, filePath string) (name, pkg string) {
 func ParseLookup(lookup string, filePath string) (name, pkg string) {
-	if c := strings.LastIndex(lookup, "."); c > -1 {
-		// imported path: models.Foo
-		return lookup[c+1:], lookup[:c]
+	lookupParts := strings.Split(lookup, string(os.PathSeparator))
+	if len(lookupParts) > 1 {
+		lookupWithoutPath := lookupParts[len(lookupParts)-1]
+		if c := strings.LastIndex(lookupWithoutPath, "."); c > -1 {
+			// imported path: models.Foo
+			return lookupWithoutPath[c+1:], lookupWithoutPath[:c]
+		}
 	}
 
 	// Current package: Foo

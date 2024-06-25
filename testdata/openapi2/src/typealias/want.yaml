@@ -1,0 +1,48 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: typealias.ReqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/typealias.ReqRef'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  typealias.ReqRef:
+    title: ReqRef
+    description: ReqRef is a request reference.
+    type: object
+    properties:
+      anonymous:
+        type: object
+        properties:
+          alias:
+            type: object
+            additionalProperties:
+              $ref: '#/definitions/typealias.ExampleItem'
+  typealias.ExampleItem:
+    title: ExampleItem
+    description: ExampleItem is an example item.
+    type: object
+    properties:
+      properties:
+        field1:
+          type: string
+        field2:
+          type: integer

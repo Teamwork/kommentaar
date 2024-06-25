@@ -421,7 +421,7 @@ start:
 
 	// Check if the type resolves to a Go primitive.
 	lookup := pkg + "." + name.Name
-	t, err := getTypeInfo(prog, lookup, ref.File)
+	t, err := getTypeInfo(lookup, ref.File)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +557,7 @@ arrayStart:
 
 	// Check if the type resolves to a Go primitive.
 	lookup := pkg + "." + name.Name
-	t, err := getTypeInfo(prog, lookup, ref.File)
+	t, err := getTypeInfo(lookup, ref.File)
 	if err != nil {
 		return err
 	}
@@ -621,9 +621,7 @@ func JSONSchemaType(t string) string {
 	return t
 }
 
-func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
-	// TODO: REMOVE THE prog PARAM, as this function is not
-	// using it anymore.
+func getTypeInfo(lookup, filePath string) (string, error) {
 	dbg("getTypeInfo: %#v in %#v", lookup, filePath)
 	name, pkg := ParseLookup(lookup, filePath)
 

@@ -308,7 +308,7 @@ Response 400 (w00t): {empty}
 			}
 			tt.in = test.NormalizeIndent(tt.in)
 
-			out, _, err := parseComment(prog, tt.in, ".", "docparse.go")
+			out, _, err := parseComment(prog, tt.in, "docparse.go")
 			if !test.ErrorContains(err, tt.wantErr) {
 				t.Fatalf("wrong err\nout:  %#v\nwant: %#v\n", err, tt.wantErr)
 			}
