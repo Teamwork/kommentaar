@@ -432,9 +432,10 @@ start:
 		}
 	}
 
-	if i := strings.LastIndex(lookup, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
-	}
+	fmt.Fprintf(os.Stderr, "=======fieldToSchema %s\n", lookup)
+	//if i := strings.LastIndex(lookup, "/"); i > -1 {
+	//lookup = pkg[i+1:] + "." + name.Name
+	//}
 
 	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
 	p.Reference = lookup
@@ -580,7 +581,7 @@ arrayStart:
 	// Add to prog.References if not there already
 	rName, rPkg := ParseLookup(lookup, ref.File)
 
-	if _, ok := prog.References[filepath.Base(rPkg)+"."+rName]; !ok {
+	if _, ok := prog.References[rPkg+"."+rName]; !ok {
 		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
 	}
 	return err

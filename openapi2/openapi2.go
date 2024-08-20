@@ -202,14 +202,20 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 	// track which defs are referenced so we can remove unreferenced ones, e.g embedded
 	// but also handle where it is both embedded and named
 	referencedDefs := map[string]struct{}{}
-	ref := func(s string) string {
-		s = strings.TrimPrefix(s, "#/definitions/")
+	refMapper := func(ref *docparse.Reference) string {
+		ref.Package = docparse.MapPackage(prog, ref.Package)
+		s := strings.TrimPrefix(ref.String(), "#/definitions/")
 		referencedDefs[s] = struct{}{}
 		return "#/definitions/" + s
 	}
 
 	// Add endpoints.
 	for _, e := range prog.Endpoints {
+		// dbg := e.Path == "/v2/tickets/{ticketId}/messages/{id}.json" //&& e.Method == "PATCH"
+		// if !dbg {
+		// 	continue
+		// }
+
 		e.Path = prog.Config.Prefix + e.Path
 
 		op := Operation{
@@ -231,21 +237,22 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if e.Request.Path != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
-			ref := prog.References[e.Request.Path.Reference]
+			ref := prog.References[e.Request.Path.Reference.String()]
+			if ref.Schema != nil {
+				for name, p := range ref.Schema.Properties {
+					if p.OmitDoc {
+						// path is required, so just blank description.
+						p.Description = ""
+					}
 
-			for name, p := range ref.Schema.Properties {
-				if p.OmitDoc {
-					// path is required, so just blank description.
-					p.Description = ""
+					op.Parameters = append(op.Parameters, Parameter{
+						Name:        name,
+						In:          "path",
+						Description: p.Description,
+						Type:        p.Type,
+						Required:    true,
+					})
 				}
-
-				op.Parameters = append(op.Parameters, Parameter{
-					Name:        name,
-					In:          "path",
-					Description: p.Description,
-					Type:        p.Type,
-					Required:    true,
-				})
 			}
 		}
 
@@ -253,7 +260,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if e.Request.Query != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
-			ref := prog.References[e.Request.Query.Reference]
+			ref := prog.References[e.Request.Query.Reference.String()]
 
 			for _, f := range ref.Fields {
 				// TODO: this should be done in docparse.
@@ -310,7 +317,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if e.Request.Form != nil {
 			// TODO: Don't access prog.References directly. This probably
 			// shouldn't be there anyway.
-			ref := prog.References[e.Request.Form.Reference]
+			ref := prog.References[e.Request.Form.Reference.String()]
 
 			for _, f := range ref.Fields {
 				// TODO: this should be done in docparse
@@ -371,12 +378,12 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if e.Request.Body != nil {
 			op.Parameters = append(op.Parameters, Parameter{
 				// TODO: name required, is there a better value to use?
-				Name:        e.Request.Body.Reference,
+				Name:        e.Request.Body.Reference.Lookup,
 				In:          "body",
 				Description: e.Request.Body.Description,
 				Required:    true,
 				Schema: &docparse.Schema{
-					Reference: ref(e.Request.Body.Reference),
+					Reference: refMapper(e.Request.Body.Reference),
 				},
 			})
 			op.Consumes = append(op.Consumes, e.Request.ContentType)
@@ -400,13 +407,13 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			}
 
 			// Link reference.
-			if resp.Body != nil && resp.Body.Reference != "" {
+			if resp.Body != nil && resp.Body.Reference != nil && resp.Body.Reference.Lookup != "" {
 				r.Schema = &docparse.Schema{
-					Reference: ref(resp.Body.Reference),
+					Reference: refMapper(resp.Body.Reference),
 				}
 			} else if dr, ok := prog.Config.DefaultResponse[code]; ok {
 				r.Schema = &docparse.Schema{
-					Reference: ref(dr.Body.Reference),
+					Reference: refMapper(dr.Body.Reference),
 				}
 				if dr.ContentType != "" {
 					resp.ContentType = dr.ContentType
@@ -456,7 +463,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		if v.Schema == nil {
 			return fmt.Errorf("schema is nil for %q", k)
 		}
-		prefixPropertyReferences(v.Schema.Properties, ref)
+		prefixPropertyReferences(v.Schema.Properties, refMapper)
 		out.Definitions[k] = *v.Schema
 	}
 	// Remove unreferenced definitions.
@@ -510,17 +517,17 @@ func appendIfNotExists(xs []string, y string) []string {
 	return append(xs, y)
 }
 
-func prefixPropertyReferences(properties map[string]*docparse.Schema, getRef func(string) string) {
+func prefixPropertyReferences(properties map[string]*docparse.Schema, getRef func(*docparse.Reference) string) {
 	var rm []string
 	for k, s := range properties {
 		if s.Reference != "" {
-			s.Reference = getRef(s.Reference)
+			s.Reference = getRef(&docparse.Reference{Lookup: s.Reference})
 		}
 		if s.Items != nil && s.Items.Reference != "" {
-			s.Items.Reference = getRef(s.Items.Reference)
+			s.Items.Reference = getRef(&docparse.Reference{Lookup: s.Items.Reference})
 		}
 		if s.AdditionalProperties != nil && s.AdditionalProperties.Reference != "" {
-			s.AdditionalProperties.Reference = getRef(s.AdditionalProperties.Reference)
+			s.AdditionalProperties.Reference = getRef(&docparse.Reference{Lookup: s.AdditionalProperties.Reference})
 		}
 
 		if s.OmitDoc {

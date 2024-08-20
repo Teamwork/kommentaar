@@ -7,9 +7,11 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -37,6 +39,7 @@ func FindComments(w io.Writer, prog *Program) error {
 
 		for _, fullPath := range pkg.GoFiles {
 			// Print as just <pkgname>/<file> in errors instead of full path.
+			//printDebug = strings.Contains(fullPath, "/thread_controller.go")
 			relPath := pkg.PkgPath + "/" + filepath.Base(fullPath)
 			fset := token.NewFileSet()
 			f, err := parser.ParseFile(fset, fullPath, nil, parser.ParseComments)
@@ -46,6 +49,7 @@ func FindComments(w io.Writer, prog *Program) error {
 			}
 
 			for _, c := range f.Comments {
+				//printDebug = printDebug || strings.Contains(c.Text(), "PATCH /v2/tickets/{ticketId}/messages/{id}.json Messages")
 				e, relLine, err := parseComment(prog, c.Text(), pkg.PkgPath, fullPath)
 				if err != nil {
 					p := fset.Position(c.Pos())
@@ -69,8 +73,21 @@ func FindComments(w io.Writer, prog *Program) error {
 				}
 
 				prog.Endpoints = append(prog.Endpoints, e...)
+				//printDebug = false
 			}
 		}
+	}
+
+	for i, ref := range prog.References {
+		old := ref.Package
+		ref.Package = MapPackage(prog, ref.Package)
+		delete(prog.References, i)
+		i = strings.Replace(i, old, ref.Package, 1)
+		if prev, ok := prog.References[i]; ok {
+			return fmt.Errorf("name collition: %s.%s <-> %s.%s(%s)", old, ref.Name, prev.Package, prev.Name, prev.File)
+		}
+		prog.References[i] = ref
+		FixSchemaPackage(ref.Schema)
 	}
 
 	if len(allErr) > 0 {
@@ -118,11 +135,11 @@ func findType(currentFile, pkgPath, name string) (
 	importPath string,
 	err error,
 ) {
-	dbg("findType: file: %#v, pkgPath: %#v, name: %#v", currentFile, pkgPath, name)
 	resolvedPath, pkg, err := resolvePackage(currentFile, pkgPath)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("could not resolve package: %v", err)
 	}
+	dbg("findType: file: %#v, pkgPath: %#v, name: %#v resolvedPath:%s pkg:%s", currentFile, pkgPath, name, resolvedPath, pkg.Name)
 
 	decls, err := getDecls(pkg, resolvedPath)
 	if err != nil {
@@ -133,17 +150,22 @@ func findType(currentFile, pkgPath, name string) (
 		if ts.ts == nil {
 			continue
 		}
+
 		if ts.ts.Name.Name == name {
-			impPath := pkg.ImportPath
-			if impPath == "." {
-				impPath = pkg.Name
-			}
-			return ts.ts, ts.file, impPath, nil
+			dbg("findType: declaration file:%s importpath: %s ts.name:%s name:%s", ts.file, pkg.ImportPath, ts.ts.Name.Name, name)
+			// impPath := pkg.ImportPath
+			// if impPath == "." {
+			// 	impPath = pkg.Name
+			// }
+			return ts.ts, ts.file, pkg.ImportPath, nil
 		}
 	}
 
-	return nil, "", "", fmt.Errorf("could not find type %#v in package %#v",
-		name, resolvedPath)
+	if name == "pathParams" {
+		debug.PrintStack()
+	}
+	return nil, "", "", fmt.Errorf("could not find type %#v in package %#v:%s",
+		name, resolvedPath, pkg.ImportPath)
 }
 
 func findValue(currentFile, pkgPath, name string) (
@@ -205,7 +227,7 @@ func resolvePackage(currentFile, pkgPath string) (
 
 func getDecls(pkg *build.Package, pkgPath string) ([]declCache, error) {
 	// Try to load from cache.
-	decls, ok := declsCache[pkgPath]
+	decls, ok := declsCache[pkg.ImportPath]
 	if ok {
 		return decls, nil
 	}
@@ -260,7 +282,7 @@ func getDecls(pkg *build.Package, pkgPath string) ([]declCache, error) {
 		}
 	}
 
-	declsCache[pkgPath] = decls
+	declsCache[pkg.ImportPath] = decls
 	return decls, nil
 }
 
@@ -289,7 +311,7 @@ func (err ErrNotStruct) Error() string {
 //
 // A GetReference("Foo", "") call will add two entries to prog.References: Foo
 // and Bar (but only Foo is returned).
-func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath string) (*Reference, error) {
+func GetReference(prog *Program, context string, isEmbed bool, lookup, sourceFilePath string) (*Reference, error) {
 	wrapper := ""
 	isSlice := false
 	if strings.HasPrefix(lookup, "[") && strings.HasSuffix(lookup, "]") && strings.Contains(lookup, ":") {
@@ -302,24 +324,24 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		lookup = lookup[2:]
 	}
 
-	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, filePath)
-	name, pkg := ParseLookup(lookup, filePath)
-	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
+	dbg("getReference: lookup: %#v -> filepath: %#v", lookup, sourceFilePath)
+	refName, pkgAlias := ParseLookup(lookup, sourceFilePath)
+	dbg("getReference: pkg: %#v -> name: %#v", pkgAlias, refName)
+
+	// Find type.
+	ts, refFilePath, refPkg, err := findType(sourceFilePath, pkgAlias, refName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Already parsed this one, don't need to do it again.
-	if ref, ok := prog.References[lookup]; ok {
+	if ref, ok := prog.References[Reference{Name: refName, Package: refPkg}.String()]; ok {
 		// Update context: some structs are embedded but also referenced
 		// directly.
 		if ref.IsEmbed {
-			prog.References[lookup] = ref
+			prog.References[ref.String()] = ref
 		}
 		return &ref, nil
-	}
-
-	// Find type.
-	ts, foundPath, pkg, err := findType(filePath, pkg, name)
-	if err != nil {
-		return nil, err
 	}
 
 	var st *ast.StructType
@@ -334,21 +356,28 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		if wrapper != "" {
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
-		return GetReference(prog, context, isEmbed, arLookup, filePath)
+		return GetReference(prog, context, isEmbed, arLookup, sourceFilePath)
 	default:
 		return nil, ErrNotStruct{ts, fmt.Sprintf(
-			"%v is not a struct or interface but a %T", name, ts.Type)}
+			"%v is not a struct or interface but a %T", refName, ts.Type)}
 	}
 
 	ref := Reference{
-		Name:    name,
-		Package: pkg,
-		Lookup:  filepath.Base(pkg) + "." + name,
-		File:    foundPath,
+		Name:    refName,
+		Package: refPkg,
+		// NOTE: Is it needed? there's a lookup param which i think it's the same
+		// Lookup looks like the way a variable is defined in the doc
+		// i.e. Request body: >>>> threadupdate.Message <<<< this
+		//Lookup:  filepath.Base(refPkg) + "." + refName,
+		Lookup:  lookup,
+		File:    refFilePath,
 		Context: context,
 		IsEmbed: isEmbed,
 		IsSlice: isSlice,
 	}
+
+	prog.References[ref.String()] = ref
+
 	if ts.Doc != nil {
 		ref.Info = strings.TrimSpace(ts.Doc.Text())
 	}
@@ -382,18 +411,23 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				continue
 			}
 
+			var (
+				ref *Reference
+				err error
+			)
 			switch t := f.Type.(type) {
 			case *ast.Ident:
-				err = resolveType(prog, context, false, t, "", pkg)
+				ref, err = resolveType(prog, context, false, t, refFilePath, refPkg)
 			case *ast.StarExpr:
 				ex, _ := t.X.(*ast.Ident)
-				err = resolveType(prog, context, false, ex, "", pkg)
+				ref, err = resolveType(prog, context, false, ex, refFilePath, refPkg)
 			}
 
 			if err != nil {
 				return nil, fmt.Errorf("could not lookup %s in %s: %s",
 					err, f.Type, lookup)
 			}
+			lookup = ref.String()
 		}
 
 		// Names is an array in cases like "Foo, Bar string".
@@ -403,7 +437,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 					tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
 					if tag != "" {
 						return nil, fmt.Errorf("not exported but has %q tag: %s.%s field %v",
-							tagName, pkg, name, f.Names)
+							tagName, refPkg, refName, f.Names)
 					}
 				}
 
@@ -417,7 +451,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 	}
 
-	prog.References[ref.Lookup] = ref
+	prog.References[ref.String()] = ref
 	var (
 		nested       []string
 		nestedTagged []*ast.Field
@@ -453,7 +487,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			}
 		}
 
-		nestLookup, err := findNested(prog, context, isEmbed, f, foundPath, pkg)
+		nestLookup, err := findNested(prog, context, isEmbed, f, refFilePath, refPkg)
 		if err != nil {
 			return nil, fmt.Errorf("\n  findNested: %v", err)
 		}
@@ -479,9 +513,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 
 	// Convert to JSON Schema.
-	schema, err := structToSchema(prog, name, tagName, ref)
+	schema, err := structToSchema(prog, refName, tagName, ref)
 	if err != nil {
-		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
+		return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", refName, err)
 	}
 	ref.Schema = schema
 
@@ -508,7 +542,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			}
 
 			// Find the referenced struct
-			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
+			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, sourceFilePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
 			}
@@ -544,9 +578,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// If the fields have been changed, regenerate the schema with the new fields
 	if changed {
-		schema, err = structToSchema(prog, name, tagName, ref)
+		schema, err = structToSchema(prog, refName, tagName, ref)
 		if err != nil {
-			return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
+			return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", refName, err)
 		}
 		ref.Schema = schema
 	}
@@ -583,7 +617,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		ref.Schema = wrappedSchema
 	}
 
-	prog.References[ref.Lookup] = ref
+	prog.References[ref.String()] = ref
 
 	return &ref, nil
 }
@@ -679,37 +713,42 @@ start:
 	}
 
 	lookup := pkg + "." + name.Name
-	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
-	}
+
+	// if i := strings.LastIndex(pkg, "/"); i > -1 {
+	// 	lookup = pkg[i+1:] + "." + name.Name
+	// }
 
 	// Don't need to add stuff we map to Go primitives.
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}
 	if _, ok := prog.References[lookup]; !ok {
-		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
+		ref, err := resolveType(prog, context, isEmbed, name, filePath, pkg)
 		if err != nil {
 			return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
+		}
+
+		if ref != nil {
+			return ref.String(), nil
 		}
 	}
 	return lookup, nil
 }
 
 // Add the type declaration to references.
-func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, filePath, pkg string) error {
+func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, filePath, pkg string) (*Reference, error) {
 	var ts *ast.TypeSpec
 	if typ.Obj == nil {
 		var err error
 		ts, _, _, err = findType(filePath, pkg, typ.Name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		var ok bool
 		ts, ok = typ.Obj.Decl.(*ast.TypeSpec)
 		if !ok {
-			return fmt.Errorf("resolveType: not a type declaration but %T",
+			return nil, fmt.Errorf("resolveType: not a type declaration but %T",
 				typ.Obj.Decl)
 		}
 	}
@@ -718,13 +757,15 @@ func resolveType(prog *Program, context string, isEmbed bool, typ *ast.Ident, fi
 	// simply a string.
 	_, ok := ts.Type.(*ast.StructType)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	// This sets prog.References
 	lookup := pkg + "." + typ.Name
-	_, err := GetReference(prog, context, isEmbed, lookup, filePath)
-	return err
+	ref, err := GetReference(prog, context, isEmbed, lookup, filePath)
+	fmt.Fprintf(os.Stderr, "=====resolved %s -> %s\n", lookup, ref.String())
+
+	return ref, err
 }
 
 // ParseLookup for the package and name, if lookup is an imported path e.g

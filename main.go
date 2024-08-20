@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/kconfig"
@@ -33,6 +34,8 @@ func main() {
 var stdout io.Writer = os.Stdout
 
 func start() (bool, error) {
+	paths := flag.String("paths", "", "only these paths")
+	methods := flag.String("methods", "", "only these methods")
 	config := flag.String("config", "", "configuration file")
 	debug := flag.Bool("debug", false, "print debug output to stderr")
 	addr := flag.String("serve", "", "serve HTML output on this address, instead of writing to\n"+
@@ -61,6 +64,12 @@ func start() (bool, error) {
 	}
 
 	prog := docparse.NewProgram(*debug)
+	if *methods != "" {
+		prog.Config.Methods = strings.Split(*methods, ",")
+	}
+	if *paths != "" {
+		prog.Config.Paths = strings.Split(*paths, ",")
+	}
 
 	if *config != "" {
 		err := kconfig.Load(prog, *config)

@@ -101,6 +101,9 @@ map-types
 	zero.String string
 	zero.Time   string
 
+map-packages
+    github.com/errors errors
+
 # Map some times to an OpenAPI format.
 #
 # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#dataTypeFormat

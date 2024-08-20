@@ -30,9 +30,10 @@ type Program struct {
 // Config for the program.
 type Config struct {
 	// Kommentaar control.
-	Packages []string
-	Output   func(io.Writer, *Program) error
-	Debug    bool
+	Packages       []string
+	Output         func(io.Writer, *Program) error
+	Paths, Methods []string
+	Debug          bool
 
 	// General information.
 	Title        string
@@ -50,6 +51,7 @@ type Config struct {
 	Basepath          string
 	StructTag         string
 	MapTypes          map[string]string
+	MapPackages       map[string]string
 	MapFormats        map[string]string
 }
 
@@ -75,11 +77,35 @@ func NewProgram(dbg bool) *Program {
 			DefaultResponseCt: "application/json",
 			MapTypes:          make(map[string]string),
 			MapFormats:        make(map[string]string),
+			MapPackages:       make(map[string]string),
 
 			// Override from commandline.
 			Debug: dbg,
 		},
 	}
+}
+
+func (p Program) ShouldExport(e Endpoint) bool {
+	okPath := len(p.Config.Paths) == 0
+	okMethod := len(p.Config.Methods) == 0
+	if okPath && okMethod {
+		return true
+	}
+
+	for _, path := range p.Config.Paths {
+		if path == e.Path {
+			okPath = true
+			break
+		}
+	}
+	for _, method := range p.Config.Methods {
+		if method == e.Method {
+			okMethod = true
+			break
+		}
+	}
+
+	return okPath && okMethod
 }
 
 var printDebug bool
@@ -124,7 +150,7 @@ type Ref struct {
 	// Main reason to store as a string (and Refs as a map) for now is so that
 	// it looks pretties in the pretty.Print() output. May not want to keep
 	// this.
-	Reference string //*Reference
+	Reference *Reference //*Reference
 }
 
 // Param is a path, query, or form parameter.
@@ -156,6 +182,10 @@ type Reference struct {
 	Fields []Param // Struct fields.
 }
 
+func (r Reference) String() string {
+	return fmt.Sprintf("%s.%s", r.Package, r.Name)
+}
+
 const (
 	ctxForm  = "form"
 	ctxPath  = "path"
@@ -184,6 +214,10 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 	line1 := stringutil.GetLine(comment, 1)
 	e.Method, e.Path, e.Tags = parseStartLine(line1)
 	if e.Method == "" {
+		return nil, 0, nil
+	}
+	if !prog.ShouldExport(*e) {
+		// fmt.Fprintf(os.Stderr, "skipping %s %s\n", e.Method, e.Path)
 		return nil, 0, nil
 	}
 
@@ -245,7 +279,7 @@ func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint
 				e.Request.Path, err = parseRefValue(prog, "path", h[2], filePath)
 
 				if err == nil {
-					pathRef, err := GetReference(prog, "query", false, e.Request.Path.Reference, filePath)
+					pathRef, err := GetReference(prog, "query", false, e.Request.Path.Reference.Lookup, filePath)
 					if err != nil {
 						return nil, i, err
 					}
@@ -507,7 +541,7 @@ func parseRefValue(prog *Program, context, value, filePath string) (*Ref, error)
 	// intermediate format (otherwise pretty.Print() show the full object, which
 	// is kind of noisy). We should probably store it as a pointer once I'm done
 	// with the docparse part.
-	params.Reference = ref.Lookup
+	params.Reference = ref
 
 	return params, nil
 }
@@ -579,6 +613,38 @@ func MapType(prog *Program, in string) (kind, format string) {
 	}
 
 	return kind, format
+}
+
+func MapPackage(prog *Program, pkg string) string {
+	if v, ok := prog.Config.MapPackages[pkg]; ok {
+		return v
+	}
+
+	// fallback to previous behavior(trim lib name)
+	i := strings.LastIndex(pkg, "/")
+	if i == -1 {
+		return pkg
+	}
+
+	return pkg[i+1:]
+}
+
+func FixSchemaPackage(s *Schema) {
+	if s == nil {
+		return
+	}
+
+	// fmt.Fprintf(os.Stderr, " ==== fixing schema %s\n", s.Reference)
+	FixSchemaProportiesPackage(s.Properties)
+}
+
+func FixSchemaProportiesPackage(props map[string]*Schema) {
+	for _, prop := range props {
+		// fmt.Fprintf(os.Stderr, " ==== ==== %s -- %s\n", i, prop.Reference)
+		FixSchemaPackage(prop.Items)
+		FixSchemaPackage(prop.AdditionalProperties)
+		FixSchemaProportiesPackage(prop.Properties)
+	}
 }
 
 func exprToString(node ast.Expr) string {
