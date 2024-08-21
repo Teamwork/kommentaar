@@ -66,6 +66,7 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			continue
 		}
 		if name == "" {
+			fmt.Fprintf(os.Stderr, "empty `%s` tag for %s. tags value: %s\n", tagName, schema.Title, p.KindField.Tag.Value)
 			name = p.Name
 		}
 
