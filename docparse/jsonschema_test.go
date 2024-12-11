@@ -22,6 +22,8 @@ func TestFieldToProperty(t *testing.T) {
 		"sliceP":    {Type: "array", Items: &Schema{Type: "string"}},
 		"cstr":      {Type: "string"},
 		"cstrP":     {Type: "string"},
+		"enumStr":   {Type: "string", Enum: []string{"a", "b", "c"}},
+		"enumsStr":  {Type: "array", Items: &Schema{Type: "string", Enum: []string{"a", "b", "c"}}},
 		"bar":       {Reference: "a.bar"},
 		"barP":      {Reference: "a.bar"},
 		"pkg":       {Reference: "mail.Address"},
