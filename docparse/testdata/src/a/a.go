@@ -11,17 +11,21 @@ import "net/mail"
 type foo struct {
 	// Documented str field.
 	// Newline.
-	str       string
-	byt       []byte
-	r         rune
-	b         bool // Inline docs.
-	fl        float64
-	err       error
-	strP      *string
-	slice     []string
-	sliceP    []*string
-	cstr      customStr
-	cstrP     *customStr
+	str    string
+	byt    []byte
+	r      rune
+	b      bool // Inline docs.
+	fl     float64
+	err    error
+	strP   *string
+	slice  []string
+	sliceP []*string
+	cstr   customStr
+	cstrP  *customStr
+	// {enum}
+	enumStr customStr
+	// {enum}
+	enumsStr  []customStr
 	bar       bar
 	barP      *bar
 	pkg       mail.Address
@@ -41,7 +45,15 @@ type nested struct {
 	deeper refAnother
 }
 
+type customStrs []customStr
+
 type customStr string
+
+const (
+	customStrA customStr = "a"
+	customStrB customStr = "b"
+	customStrC customStr = "c"
+)
 
 // Document me bar!
 type bar struct {

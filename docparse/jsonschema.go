@@ -110,6 +110,7 @@ const (
 	paramOmitEmpty = "omitempty"
 	paramReadOnly  = "readonly"
 	paramOmitDoc   = "omitdoc"
+	paramEnum      = "enum"
 )
 
 func setTags(name, fName string, p *Schema, tags []string) error {
@@ -129,6 +130,9 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 		case paramReadOnly:
 			t := true
 			p.Readonly = &t
+		case paramEnum:
+			// For this type of enum, we figure out the variations based on the type.
+			p.Type = "enum"
 
 		// Various string formats.
 		// https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-7.3
@@ -274,7 +278,18 @@ start:
 
 	// Simple identifiers such as "string", "int", "MyType", etc.
 	case *ast.Ident:
+
 		mappedType, mappedFormat := MapType(prog, pkg+"."+typ.Name)
+		if mappedType != "" {
+			p.Type = JSONSchemaType(mappedType)
+		}
+		if p.Type == "enum" && len(p.Enum) == 0 {
+			if variations, err := getEnumVariations(ref.File, pkg, typ.Name); len(variations) > 0 {
+				p.Enum = variations
+			} else if err != nil {
+				return nil, err
+			}
+		}
 		if mappedType == "" {
 			// Only check for canonicalType if this isn't mapped.
 			canon, err := canonicalType(ref.File, pkg, typ)
@@ -285,10 +300,6 @@ start:
 				sw = canon
 				goto start
 			}
-		}
-		if mappedType != "" {
-			p.Type = JSONSchemaType(mappedType)
-		} else {
 			p.Type = JSONSchemaType(typ.Name)
 		}
 		if mappedFormat != "" {
@@ -360,8 +371,9 @@ start:
 
 		switch resolvType := ts.Type.(type) {
 		case *ast.ArrayType:
+			isEnum := p.Type == "enum"
 			p.Type = "array"
-			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt)
+			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum)
 			if err != nil {
 				return nil, err
 			}
@@ -403,9 +415,10 @@ start:
 
 	// Array and slices.
 	case *ast.ArrayType:
+		isEnum := p.Type == "enum"
 		p.Type = "array"
 
-		err := resolveArray(prog, ref, pkg, &p, typ.Elt)
+		err := resolveArray(prog, ref, pkg, &p, typ.Elt, isEnum)
 		if err != nil {
 			return nil, err
 		}
@@ -441,6 +454,37 @@ start:
 	p.Reference = lookup
 
 	return &p, nil
+}
+
+// Helper function to extract enum variations from a file.
+func getEnumVariations(currentFile, pkgPath, typeName string) ([]string, error) {
+	resolvedPath, pkg, err := resolvePackage(currentFile, pkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve package: %v", err)
+	}
+	decls, err := getDecls(pkg, resolvedPath)
+	if err != nil {
+		return nil, err
+	}
+	var variations []string
+	for _, decl := range decls {
+		if decl.vs == nil {
+			continue
+		}
+		if exprToString(decl.vs.Type) != typeName {
+			continue
+		}
+		if len(decl.vs.Names) == 0 || len(decl.vs.Values) == 0 {
+			continue
+		}
+		// All enums variations are required to have the type as their prefix.
+		if !strings.HasPrefix(exprToString(decl.vs.Names[0]), typeName) {
+			continue
+		}
+		variations = append(variations, exprToString(decl.vs.Values[0]))
+	}
+
+	return variations, nil
 }
 
 func dropTypePointers(typ ast.Expr) ast.Expr {
@@ -488,7 +532,7 @@ func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
 	return t, sRef, nil
 }
 
-func resolveArray(prog *Program, ref Reference, pkg string, p *Schema, typ ast.Expr) error {
+func resolveArray(prog *Program, ref Reference, pkg string, p *Schema, typ ast.Expr, isEnum bool) error {
 	asw := typ
 
 	var name *ast.Ident
@@ -509,7 +553,7 @@ arrayStart:
 		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
 		// Generally an item is an enum rather than the array itself
-		if p.Enum != nil {
+		if len(p.Enum) > 0 {
 			p.Items.Enum = p.Enum
 			p.Enum = nil
 		}
@@ -562,14 +606,19 @@ arrayStart:
 	if err != nil {
 		return err
 	}
-	if t != "" {
-		if isPrimitive(t) {
-			if p.Items == nil {
-				p.Items = &Schema{}
-			}
-			p.Items.Type = t
-			return nil
+	if t != "" && isPrimitive(t) {
+		if p.Items == nil {
+			p.Items = &Schema{}
 		}
+		p.Items.Type = t
+		if isEnum && len(p.Items.Enum) == 0 {
+			if variations, err := getEnumVariations(ref.File, pkg, name.Name); len(variations) > 0 {
+				p.Items.Enum = variations
+			} else if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	sRef := lookup
