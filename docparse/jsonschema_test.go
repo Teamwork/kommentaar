@@ -55,7 +55,7 @@ func TestFieldToProperty(t *testing.T) {
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
 				Context: "req",
-			}, f)
+			}, f, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +91,7 @@ func TestFieldToProperty(t *testing.T) {
 			out, err := fieldToSchema(prog, f.Names[0].Name, "json", Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
-			}, f)
+			}, f, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

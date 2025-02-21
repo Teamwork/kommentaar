@@ -70,7 +70,7 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			name = p.Name
 		}
 
-		prop, err := fieldToSchema(prog, name, tagName, ref, p.KindField)
+		prop, err := fieldToSchema(prog, name, tagName, ref, p.KindField, nil)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
@@ -215,7 +215,13 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 }
 
 // Convert a struct field to JSON schema.
-func fieldToSchema(prog *Program, fName, tagName string, ref Reference, f *ast.Field) (*Schema, error) {
+func fieldToSchema(
+	prog *Program,
+	fName, tagName string,
+	ref Reference,
+	f *ast.Field,
+	generics map[string]string,
+) (*Schema, error) {
 	var p Schema
 
 	if f.Doc != nil {
@@ -283,6 +289,10 @@ start:
 		if mappedType != "" {
 			p.Type = JSONSchemaType(mappedType)
 		}
+		if generics != nil && generics[typ.Name] != "" {
+			mappedType = "generics"
+			p.Type = JSONSchemaType(generics[typ.Name])
+		}
 		if p.Type == "enum" && len(p.Enum) == 0 {
 			if variations, err := getEnumVariations(ref.File, pkg, typ.Name); len(variations) > 0 {
 				p.Enum = variations
@@ -320,7 +330,7 @@ start:
 		p.Properties = map[string]*Schema{}
 		for _, f := range typ.Fields.List {
 			propName := goutil.TagName(f, tagName)
-			prop, err := fieldToSchema(prog, propName, tagName, ref, f)
+			prop, err := fieldToSchema(prog, propName, tagName, ref, f, generics)
 			if err != nil {
 				return nil, fmt.Errorf("anon struct: %v", err)
 			}
@@ -373,7 +383,7 @@ start:
 		case *ast.ArrayType:
 			isEnum := p.Type == "enum"
 			p.Type = "array"
-			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum)
+			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum, generics)
 			if err != nil {
 				return nil, err
 			}
@@ -392,6 +402,9 @@ start:
 			// so we cannot define the type of the maps -> ?
 			dbg("ERR FOUND MapType: %s", err.Error())
 			return &p, nil
+		}
+		if generics != nil && generics[vtyp.Name] != "" {
+			vtyp.Name = generics[vtyp.Name]
 		}
 		if isPrimitive(vtyp.Name) {
 			// we are done, no need for a lookup of a custom type
@@ -418,11 +431,32 @@ start:
 		isEnum := p.Type == "enum"
 		p.Type = "array"
 
-		err := resolveArray(prog, ref, pkg, &p, typ.Elt, isEnum)
+		err := resolveArray(prog, ref, pkg, &p, typ.Elt, isEnum, generics)
 		if err != nil {
 			return nil, err
 		}
 
+		return &p, nil
+
+	// Generic types
+	case *ast.IndexExpr:
+		genericsIdent, ok := typ.X.(*ast.Ident)
+		if !ok {
+			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
+		}
+		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsIdent, generics, typ.Index); err != nil {
+			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
+		}
+		return &p, nil
+
+	case *ast.IndexListExpr:
+		genericsIdent, ok := typ.X.(*ast.Ident)
+		if !ok {
+			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
+		}
+		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsIdent, generics, typ.Indices...); err != nil {
+			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
+		}
 		return &p, nil
 
 	default:
@@ -454,6 +488,69 @@ start:
 	p.Reference = lookup
 
 	return &p, nil
+}
+
+// fillGenericsSchema fills the schema with the generic type information. As the
+// types can be different for every generics declaration they will need to be a
+// anonymos object in the schema output instead of a reusable reference.
+func fillGenericsSchema(
+	prog *Program,
+	p *Schema,
+	tagName string,
+	ref Reference,
+	genericsIdent *ast.Ident,
+	generics map[string]string,
+	indices ...ast.Expr,
+) error {
+	genericsType, _, _, err := findType(ref.File, ref.Package, genericsIdent.Name)
+	if err != nil {
+		return fmt.Errorf("cannot find generic type: %v", err)
+	}
+
+	var genericsTemplateIDs []string
+	for _, item := range genericsType.TypeParams.List {
+		for _, name := range item.Names {
+			genericsTemplateIDs = append(genericsTemplateIDs, name.Name)
+		}
+	}
+
+	if generics == nil {
+		generics = make(map[string]string)
+	}
+	if len(genericsTemplateIDs) > 0 {
+		if len(indices) != len(genericsTemplateIDs) {
+			return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
+				len(genericsTemplateIDs), len(indices))
+		}
+		for i := 0; i < len(indices); i++ {
+			arg, _, err := findTypeIdent(indices[i], ref.Package)
+			if err != nil {
+				return fmt.Errorf("cannot find generic type argument: %v", err)
+			}
+			generics[genericsTemplateIDs[i]] = arg.Name
+		}
+	}
+
+	genericsStruct, ok := genericsType.Type.(*ast.StructType)
+	if !ok {
+		return fmt.Errorf("generic type is not a struct: %T", genericsType.Type)
+	}
+
+	p.Type = "object"
+	if p.Properties == nil {
+		p.Properties = make(map[string]*Schema)
+	}
+
+	for _, field := range genericsStruct.Fields.List {
+		fieldName := goutil.TagName(field, tagName)
+		schema, err := fieldToSchema(prog, fieldName, tagName, ref, field, generics)
+		if err != nil {
+			return fmt.Errorf("generic fieldToSchema: %v", err)
+		}
+		p.Properties[fieldName] = schema
+	}
+
+	return nil
 }
 
 // Helper function to extract enum variations from a file.
@@ -532,7 +629,15 @@ func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
 	return t, sRef, nil
 }
 
-func resolveArray(prog *Program, ref Reference, pkg string, p *Schema, typ ast.Expr, isEnum bool) error {
+func resolveArray(
+	prog *Program,
+	ref Reference,
+	pkg string,
+	p *Schema,
+	typ ast.Expr,
+	isEnum bool,
+	generics map[string]string,
+) error {
 	asw := typ
 
 	var name *ast.Ident
@@ -550,7 +655,11 @@ arrayStart:
 
 		dbg("resolveArray: ident: %#v in %#v", typ.Name, pkg)
 
-		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
+		if generics != nil && generics[typ.Name] != "" {
+			p.Items = &Schema{Type: JSONSchemaType(generics[typ.Name])}
+		} else {
+			p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
+		}
 
 		// Generally an item is an enum rather than the array itself
 		if len(p.Enum) > 0 {
@@ -671,7 +780,7 @@ func JSONSchemaType(t string) string {
 	return t
 }
 
-func getTypeInfo(prog *Program, lookup, filePath string) (string, error) {
+func getTypeInfo(_ *Program, lookup, filePath string) (string, error) {
 	// TODO: REMOVE THE prog PARAM, as this function is not
 	// using it anymore.
 	dbg("getTypeInfo: %#v in %#v", lookup, filePath)

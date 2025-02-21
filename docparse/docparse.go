@@ -177,7 +177,7 @@ var (
 )
 
 // parseComment a single comment block in the file filePath.
-func parseComment(prog *Program, comment, pkgPath, filePath string) ([]*Endpoint, int, error) {
+func parseComment(prog *Program, comment, _, filePath string) ([]*Endpoint, int, error) {
 	e := &Endpoint{}
 
 	// Get start line and determine if this is a comment block.

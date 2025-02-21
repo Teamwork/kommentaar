@@ -585,7 +585,7 @@ func TestParseResponse(t *testing.T) {
 				t.Errorf("wrong code\nwant: %v\ngot:  %v", tt.wantCode, code)
 			}
 			if d := diff.Diff(tt.wantResp, resp); d != "" {
-				t.Errorf(d)
+				t.Error(d)
 			}
 		})
 	}
