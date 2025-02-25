@@ -18,12 +18,17 @@ import (
 // Join converts a slice of T to a comma separated string. Useful for
 // inserting into a query without the option of parameterization.
 func Join[T any](tt []T) string {
-	var str []string
-	for _, t := range tt {
-		str = append(str, fmt.Sprintf("%v", t))
+	return JoinWith(tt, ", ")
+}
+
+// JoinWith converts a slice of T to a string using the provided delim.
+func JoinWith[T any](tt []T, delim string) string {
+	str := make([]string, len(tt))
+	for i, t := range tt {
+		str[i] = fmt.Sprintf("%v", t)
 	}
 
-	return strings.Join(str, ", ")
+	return strings.Join(str, delim)
 }
 
 // Unique removes duplicate entries from a list. The list does not have to be sorted.
@@ -185,4 +190,23 @@ func InterfaceSliceTo(src []interface{}, dst interface{}) interface{} {
 	}
 
 	return dstV.Interface()
+}
+
+// ToAnySlice converts a slice of T to a slice of any.
+func ToAnySlice[T any](tt []T) []any {
+	ret := make([]any, len(tt))
+	for i, t := range tt {
+		ret[i] = t
+	}
+	return ret
+}
+
+// Values returns a list of items extracted from T, see test file for example
+func Values[T comparable, N any](tt []T, fn func(T) N) []N {
+	ret := make([]N, len(tt))
+	for i, t := range tt {
+		ret[i] = fn(t)
+	}
+
+	return ret
 }
