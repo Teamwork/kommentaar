@@ -1,4 +1,6 @@
 // Package goutil provides functions to work with Go source files.
+//
+//nolint:staticcheck
 package goutil // import "github.com/teamwork/utils/v2/goutil"
 
 import (
@@ -96,7 +98,7 @@ func ResolveWildcard(path string, mode build.ImportMode) ([]*build.Package, erro
 
 	// Gather a list of directories with *.go files.
 	goDirs := make(map[string]struct{})
-	err = filepath.Walk(root.Dir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(root.Dir, func(path string, info os.FileInfo, _ error) error {
 		if !strings.HasSuffix(path, ".go") || info.IsDir() || strings.Contains(path, "/vendor/") {
 			return nil
 		}
@@ -253,6 +255,12 @@ start:
 		return t.Name
 	case *ast.SelectorExpr:
 		return t.Sel.Name
+	case *ast.IndexExpr:
+		f = t.X
+		goto start
+	case *ast.IndexListExpr:
+		f = t.X
+		goto start
 	default:
 		panic(fmt.Sprintf("can't get name for %#v", f))
 	}

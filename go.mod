@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/imdario/mergo v0.3.13
 	github.com/teamwork/test v0.0.0-20200108114543-02621bae84ad
-	github.com/teamwork/utils/v2 v2.0.1
+	github.com/teamwork/utils/v2 v2.2.5
 	golang.org/x/text v0.9.0
 	golang.org/x/tools v0.8.0
 	gopkg.in/yaml.v3 v3.0.1

@@ -8,8 +8,8 @@ github.com/teamwork/test v0.0.0-20200108114543-02621bae84ad h1:25sEr0awm0ZPancg5
 github.com/teamwork/test v0.0.0-20200108114543-02621bae84ad/go.mod h1:TIbx7tx6WHBjQeLRM4eWQZBL7kmBZ7/KI4x4v7Y5YmA=
 github.com/teamwork/utils v1.0.1-0.20230426101410-71bb0b003654 h1:5wExUHbkpsRWC1BiavI1nlvc12KFrF/EIn1d7WEbLO8=
 github.com/teamwork/utils v1.0.1-0.20230426101410-71bb0b003654/go.mod h1:9GJXyhNsP6vGDt1oNW1Rt/Aj4+pWeT8BuUHFOF7lyrw=
-github.com/teamwork/utils/v2 v2.0.1 h1:+tSO+Ll4XBMVzeTzmAtM5dswzSF0kb/d9dFdRXVMsFg=
-github.com/teamwork/utils/v2 v2.0.1/go.mod h1:a2xpeXNKXYgxY/3UMMXhBy5SJ03dT7xRC0cNjwtkkc4=
+github.com/teamwork/utils/v2 v2.2.5 h1:IE692P67acrLtjpBMzvB1S7cxjtphSDJ3VGl01lNxLE=
+github.com/teamwork/utils/v2 v2.2.5/go.mod h1:a2xpeXNKXYgxY/3UMMXhBy5SJ03dT7xRC0cNjwtkkc4=
 golang.org/x/mod v0.10.0 h1:lFO9qtOdlre5W1jxS3r/4szv2/6iXxScdzjoBMXNhYk=
 golang.org/x/mod v0.10.0/go.mod h1:iBbtSCu2XBx23ZKBPSOrRkjjQPZFPuis4dIYUhu/chs=
 golang.org/x/sync v0.1.0 h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=
