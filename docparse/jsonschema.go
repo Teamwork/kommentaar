@@ -408,7 +408,9 @@ start:
 		}
 		if isPrimitive(vtyp.Name) {
 			// we are done, no need for a lookup of a custom type
-			p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
+			if vtyp.Name != "any" {
+				p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
+			}
 			return &p, nil
 		}
 
@@ -704,6 +706,10 @@ arrayStart:
 		if !strings.HasSuffix(importPath, pkg) {
 			pkg = importPath
 		}
+
+	case *ast.MapType:
+		p.Items = &Schema{Type: "object"}
+		return nil
 
 	default:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)

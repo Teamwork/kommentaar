@@ -335,6 +335,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
 		return GetReference(prog, context, isEmbed, arLookup, filePath)
+	case *ast.MapType:
+		st = &ast.StructType{Fields: &ast.FieldList{}}
 	default:
 		return nil, ErrNotStruct{ts, fmt.Sprintf(
 			"%v is not a struct or interface but a %T", name, ts.Type)}

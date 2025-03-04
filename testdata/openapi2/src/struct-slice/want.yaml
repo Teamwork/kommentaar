@@ -53,6 +53,11 @@ definitions:
           type: string
       deal:
         $ref: '#/definitions/struct-slice.deal'
+      oneMore:
+        description: OneMore comment.
+        type: array
+        items:
+          type: object
       structRef:
         description: structRefComment.
         type: array

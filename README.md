@@ -114,7 +114,7 @@ Kommentaar can be configured with a configuration file; see
 Running Tests
 -------------
 
-`GO111MODULE=off ./bin/test ./...`
+`GO111MODULE=off go test ./...`
 
 Motivation and rationale
 ------------------------

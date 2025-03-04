@@ -4,6 +4,7 @@ import "struct-map/otherpkg"
 
 type resp struct {
 	Basic       map[string]interface{} `json:"basic"`       // Basic comment.
+	Basic2      map[string]any         `json:"basic2"`      // Basic2 comment.
 	Custom      myMap                  `json:"custom"`      // Custom comment.
 	Struct      aStruct                `json:"aStruct"`     // Struct comment.
 	OtherStruct otherpkg.OtherStruct   `json:"otherStruct"` // OtherStruct comment.
