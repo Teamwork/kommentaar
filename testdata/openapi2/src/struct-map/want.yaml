@@ -43,6 +43,9 @@ definitions:
       basic:
         description: Basic comment.
         type: object
+      basic2:
+        description: Basic2 comment.
+        type: object
       custom:
         description: Custom comment.
         type: object

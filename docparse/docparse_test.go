@@ -521,7 +521,23 @@ func TestGetReference(t *testing.T) {
 		}},
 
 		{"UnknownObject", "could not find", nil},
-		{"net/http.Header", "not a struct", nil},
+		{"net/http.Header", "", &Reference{
+			Name:    "Header",
+			Package: "net/http",
+			Lookup:  "http.Header",
+			Info: "A Header represents the key-value pairs in an HTTP header.\n\n" +
+				"The keys should be in canonical form, as returned by\n" +
+				"[CanonicalHeaderKey].",
+			Context: "req",
+			Schema: &Schema{
+				Title: "Header",
+				Description: "A Header represents the key-value pairs in an HTTP header.\n\n" +
+					"The keys should be in canonical form, as returned by\n" +
+					"[CanonicalHeaderKey].",
+				Type:       "object",
+				Properties: map[string]*Schema{},
+			},
+		}},
 	}
 
 	for _, tt := range tests {

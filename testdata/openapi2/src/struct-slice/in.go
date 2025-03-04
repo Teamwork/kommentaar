@@ -4,6 +4,7 @@ type resp struct {
 	Basic     []string          `json:"basic"`     // Basic comment.
 	Custom    mySlice           `json:"custom"`    // Custom comment.
 	Double    anotherSlice      `json:"another"`   // Double comment.
+	OneMore   oneMoreSlice      `json:"oneMore"`   // OneMore comment.
 	StructRef customFieldValues `json:"structRef"` // structRefComment.
 	Deal      deal              `json:"deal"`
 }
@@ -13,6 +14,9 @@ type mySlice []string
 
 // anotherSlice comment.
 type anotherSlice mySlice
+
+// oneMoreSlice comment.
+type oneMoreSlice []map[string]any
 
 type customFieldValues []*customFieldValue
 
