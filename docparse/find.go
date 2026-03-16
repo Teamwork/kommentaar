@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -136,7 +137,13 @@ func findType(currentFile, pkgPath, name string) (
 		if ts.ts.Name.Name == name {
 			impPath := pkg.ImportPath
 			if impPath == "." {
-				impPath = pkg.Name
+				// build.ImportDir doesn't know the module import path. Derive it
+				// from go.mod so same-package cross-references resolve correctly.
+				if modPath, err := moduleImportPath(pkg.Dir); err == nil {
+					impPath = modPath
+				} else {
+					impPath = pkg.Name
+				}
 			}
 			return ts.ts, ts.file, impPath, nil
 		}
@@ -144,6 +151,36 @@ func findType(currentFile, pkgPath, name string) (
 
 	return nil, "", "", fmt.Errorf("could not find type %#v in package %#v",
 		name, resolvedPath)
+}
+
+// moduleImportPath returns the Go import path for dir by walking up to find
+// go.mod and computing the path relative to the module root.
+func moduleImportPath(dir string) (string, error) {
+	// Walk up looking for go.mod.
+	d := dir
+	for {
+		gomod := filepath.Join(d, "go.mod")
+		if data, err := os.ReadFile(gomod); err == nil {
+			// Extract module path from "module <path>" line.
+			for _, line := range strings.SplitN(string(data), "\n", 20) {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "module ") {
+					modName := strings.TrimSpace(strings.TrimPrefix(line, "module "))
+					rel, err := filepath.Rel(d, dir)
+					if err != nil || rel == "." {
+						return modName, nil
+					}
+					return modName + "/" + filepath.ToSlash(rel), nil
+				}
+			}
+		}
+		parent := filepath.Dir(d)
+		if parent == d {
+			break
+		}
+		d = parent
+	}
+	return "", fmt.Errorf("go.mod not found")
 }
 
 func findValue(currentFile, pkgPath, name string) (
@@ -182,11 +219,28 @@ func findValue(currentFile, pkgPath, name string) (
 		name, resolvedPath)
 }
 
+// resolvePackageWithFallback tries to resolve a package with vendor-aware
+// lookup first (mode 0). If that fails — which can happen in Go 1.25+ when the
+// package is in a custom GOPATH but not in vendor — it retries with
+// build.IgnoreVendor. The fallback error is returned so callers see the
+// canonical "cannot find package" message format.
+func resolvePackageWithFallback(pkgPath string) (*build.Package, error) {
+	pkg, err := goutil.ResolvePackage(pkgPath, 0)
+	if err != nil {
+		if pkg2, err2 := goutil.ResolvePackage(pkgPath, build.IgnoreVendor); err2 == nil {
+			return pkg2, nil
+		} else {
+			return nil, err2
+		}
+	}
+	return pkg, nil
+}
+
 func resolvePackage(currentFile, pkgPath string) (
 	resolvedPath string, pkg *build.Package, err error,
 ) {
 	resolvedPath = pkgPath
-	pkg, err = goutil.ResolvePackage(pkgPath, 0)
+	pkg, err = resolvePackageWithFallback(pkgPath)
 	if err != nil && currentFile != "" {
 		resolved, resolveErr := goutil.ResolveImport(currentFile, pkgPath)
 		if resolveErr != nil {
@@ -194,7 +248,7 @@ func resolvePackage(currentFile, pkgPath string) (
 		}
 		if resolved != "" {
 			resolvedPath = resolved
-			pkg, err = goutil.ResolvePackage(resolvedPath, 0)
+			pkg, err = resolvePackageWithFallback(resolvedPath)
 		}
 	}
 	if err != nil {

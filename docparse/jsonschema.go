@@ -11,7 +11,7 @@ import (
 
 	"github.com/teamwork/utils/v2/goutil"
 	"github.com/teamwork/utils/v2/sliceutil"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // The Schema Object allows the definition of input and output data types.
@@ -290,8 +290,17 @@ start:
 			p.Type = JSONSchemaType(mappedType)
 		}
 		if generics != nil && generics[typ.Name] != "" {
-			mappedType = "generics"
-			p.Type = JSONSchemaType(generics[typ.Name])
+			resolvedName := generics[typ.Name]
+			if primitiveType := JSONSchemaType(resolvedName); isPrimitive(primitiveType) {
+				// Primitive type arg (e.g. string, int): set directly.
+				mappedType = "generics"
+				p.Type = primitiveType
+			} else {
+				// Non-primitive type arg: replace the type parameter ident
+				// with the resolved name and let the normal canonicalType /
+				// reference resolution path handle it.
+				typ = &ast.Ident{Name: resolvedName}
+			}
 		}
 		if p.Type == "enum" && len(p.Enum) == 0 {
 			if variations, err := getEnumVariations(ref.File, pkg, typ.Name); len(variations) > 0 {
@@ -442,21 +451,45 @@ start:
 
 	// Generic types
 	case *ast.IndexExpr:
-		genericsIdent, ok := typ.X.(*ast.Ident)
-		if !ok {
+		var genericsPkg string
+		var genericsIdent *ast.Ident
+		switch x := typ.X.(type) {
+		case *ast.Ident:
+			genericsIdent = x
+			genericsPkg = ref.Package
+		case *ast.SelectorExpr:
+			pkgSel, ok := x.X.(*ast.Ident)
+			if !ok {
+				return nil, fmt.Errorf("unknown generic type selector: %T", x.X)
+			}
+			genericsIdent = x.Sel
+			genericsPkg = pkgSel.Name
+		default:
 			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
 		}
-		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsIdent, generics, typ.Index); err != nil {
+		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Index); err != nil {
 			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
 		}
 		return &p, nil
 
 	case *ast.IndexListExpr:
-		genericsIdent, ok := typ.X.(*ast.Ident)
-		if !ok {
+		var genericsPkg string
+		var genericsIdent *ast.Ident
+		switch x := typ.X.(type) {
+		case *ast.Ident:
+			genericsIdent = x
+			genericsPkg = ref.Package
+		case *ast.SelectorExpr:
+			pkgSel, ok := x.X.(*ast.Ident)
+			if !ok {
+				return nil, fmt.Errorf("unknown generic type selector: %T", x.X)
+			}
+			genericsIdent = x.Sel
+			genericsPkg = pkgSel.Name
+		default:
 			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
 		}
-		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsIdent, generics, typ.Indices...); err != nil {
+		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Indices...); err != nil {
 			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
 		}
 		return &p, nil
@@ -500,14 +533,19 @@ func fillGenericsSchema(
 	p *Schema,
 	tagName string,
 	ref Reference,
+	genericsPkg string,
 	genericsIdent *ast.Ident,
 	generics map[string]string,
 	indices ...ast.Expr,
 ) error {
-	genericsType, _, _, err := findType(ref.File, ref.Package, genericsIdent.Name)
+	genericsType, genericsFilePath, resolvedPkg, err := findType(ref.File, genericsPkg, genericsIdent.Name)
 	if err != nil {
 		return fmt.Errorf("cannot find generic type: %v", err)
 	}
+
+	genericRef := ref
+	genericRef.File = genericsFilePath
+	genericRef.Package = resolvedPkg
 
 	var genericsTemplateIDs []string
 	for _, item := range genericsType.TypeParams.List {
@@ -545,7 +583,7 @@ func fillGenericsSchema(
 
 	for _, field := range genericsStruct.Fields.List {
 		fieldName := goutil.TagName(field, tagName)
-		schema, err := fieldToSchema(prog, fieldName, tagName, ref, field, generics)
+		schema, err := fieldToSchema(prog, fieldName, tagName, genericRef, field, generics)
 		if err != nil {
 			return fmt.Errorf("generic fieldToSchema: %v", err)
 		}
@@ -752,14 +790,14 @@ arrayStart:
 }
 
 func isPrimitive(n string) bool {
-	//"null", "boolean", "object", "array", "number", "string", "integer", "any"
+	// "null", "boolean", "object", "array", "number", "string", "integer", "any"
 	return sliceutil.Contains([]string{
 		"null", "boolean", "number", "string", "integer", "any",
 	}, n)
 }
 
 var kindMap = map[string]string{
-	//"":     "string",
+	// "":     "string",
 	"int":     "integer",
 	"int8":    "integer",
 	"int16":   "integer",
