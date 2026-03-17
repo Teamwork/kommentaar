@@ -10,20 +10,20 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: false
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.10
+          version: v2.11
           only-new-issues: true
   test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-go@v6
       with:
-        go-version: '1.25'
+        go-version: '1.26'
 
     - uses: actions/checkout@v6
       with:
