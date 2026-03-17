@@ -15,7 +15,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/v2/goutil"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -362,7 +362,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Name: param,
 					In:   "path",
 					Type: "integer",
-					//Format:   "int64",
+					// Format:   "int64",
 					Required: true,
 				})
 			}
@@ -498,7 +498,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 func makeID(e *docparse.Endpoint) string {
 	return strings.Replace(fmt.Sprintf("%v_%v", e.Method,
-		strings.Replace(e.Path, "/", "_", -1)), "__", "_", 1)
+		strings.ReplaceAll(e.Path, "/", "_")), "__", "_", 1)
 }
 
 func appendIfNotExists(xs []string, y string) []string {

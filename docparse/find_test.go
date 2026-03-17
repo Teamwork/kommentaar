@@ -3,9 +3,10 @@ package docparse
 import (
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/teamwork/test"
@@ -47,7 +48,7 @@ func TestFindType(t *testing.T) {
 		if pkg != "net/http" {
 			t.Fatalf("pkg == %v", pkg)
 		}
-		if path != filepath.Join(runtime.GOROOT(), "src", "net", "http", "header.go") {
+		if path != filepath.Join(goroot(t), "src", "net", "http", "header.go") {
 			t.Fatalf("path == %v", path)
 		}
 
@@ -125,4 +126,15 @@ func TestFindType(t *testing.T) {
 			})
 		}
 	})
+}
+
+// goroot is a small helper to get the GOROOT environment variable.
+func goroot(t *testing.T) string {
+	t.Helper()
+
+	out, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		t.Fatalf("go env GOROOT: %v", err)
+	}
+	return strings.TrimSpace(string(out))
 }
