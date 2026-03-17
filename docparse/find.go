@@ -555,7 +555,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		split := strings.Split(p.Reference, ".")
 		lookupStruct := strings.Join(split[:len(split)-1], ".")
 		if lookupStruct != "" {
-			lookupStruct = lookupStruct + "."
+			lookupStruct += "."
 		}
 
 		for i, f := range ref.Fields {

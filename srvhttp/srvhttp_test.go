@@ -1,6 +1,7 @@
 package srvhttp
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestServe(t *testing.T) {
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	args := Args{
 		Packages: []string{"../example/..."},
 	}
@@ -34,7 +35,7 @@ func TestServe(t *testing.T) {
 }
 
 func TestFromFile(t *testing.T) {
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	args := Args{
 		Packages: []string{"../example/..."},
 		NoScan:   true,

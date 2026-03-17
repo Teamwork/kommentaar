@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"sort"
 	"strings"
 
@@ -424,17 +425,17 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 
 		switch e.Method {
-		case "GET":
+		case http.MethodGet:
 			out.Paths[e.Path].Get = &op
-		case "POST":
+		case http.MethodPost:
 			out.Paths[e.Path].Post = &op
-		case "PUT":
+		case http.MethodPut:
 			out.Paths[e.Path].Put = &op
-		case "PATCH":
+		case http.MethodPatch:
 			out.Paths[e.Path].Patch = &op
-		case "DELETE":
+		case http.MethodDelete:
 			out.Paths[e.Path].Delete = &op
-		case "HEAD":
+		case http.MethodHead:
 			out.Paths[e.Path].Head = &op
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)

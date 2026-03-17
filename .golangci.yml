@@ -1,0 +1,206 @@
+# https://golangci-lint.run/usage/configuration/
+
+# options for analysis running
+# https://golangci-lint.run/usage/configuration/#run-configuration
+version: "2"
+
+run:
+  # include test files or not, default is true
+  tests: true
+
+  # by default isn't set. If set we pass it to "go list -mod={option}". From "go
+  # help modules": If invoked with -mod=readonly, the go command is disallowed
+  # from the implicit automatic updating of go.mod described above. Instead, it
+  # fails when any changes to go.mod are needed. This setting is most useful to
+  # check that go.mod does not need updates, such as in a continuous integration
+  # and testing system. If invoked with -mod=vendor, the go command assumes that
+  # the vendor directory holds the correct copies of dependencies and ignores
+  # the dependency descriptions in go.mod.
+  modules-download-mode: vendor
+
+  # Allow multiple parallel golangci-lint instances running. If false,
+  # golangci-lint acquires file lock on start.
+  allow-parallel-runners: true
+
+  # Number of operating system threads (`GOMAXPROCS`) that can execute
+  # golangci-lint simultaneously. If it is explicitly set to 0 (i.e. not the
+  # default) then golangci-lint will automatically set the value to match Linux
+  # container CPU quota.
+  concurrency: 2
+
+linters:
+  # Default set of linters.
+  # The value can be: `standard`, `all`, `none`, or `fast`.
+  # Default: standard
+  default: standard
+
+  # Enable specific linters.
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - govet
+    - revive
+    - unused
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - unconvert
+    - misspell
+    - lll
+    - nakedret
+    - gocritic
+    - nolintlint
+    - gocyclo
+    - copyloopvar
+    - usestdlibvars
+
+  # all available settings of specific linters
+  settings:
+    # https://golangci-lint.run/usage/linters/#lll
+    lll:
+      # max line length, lines longer will be reported. Default is 120. '\t' is
+      # counted as 1 character by default and can be changed with the tab-width
+      # option
+      line-length: 120
+
+      # Tab width in spaces.
+      tab-width: 2
+
+    # https://golangci-lint.run/usage/linters/#gocyclo
+    gocyclo:
+      # Using a high number for now only to cover the existing codebase. We
+      # already have a plan to target a lower number. The value was chosen from
+      # the following command execution:
+      #
+      #     gocyclo -top 1 .
+      min-complexity: 65
+
+    # https://golangci-lint.run/usage/linters/#revive
+    revive:
+      # Maximum number of open files at the same time.
+      max-open-files: 1024
+
+      # Run `GL_DEBUG=revive golangci-lint run --enable-only=revive` to see default, all available rules, and enabled rules.
+      rules:
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#constant-logical-expr
+        - name: constant-logical-expr
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#datarace
+        - name: datarace
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#exported
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+            - disableChecksOnTypes
+            - disableChecksOnVariables
+            - disableChecksOnConstants
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#if-return
+        - name: if-return
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#redundant-import-alias
+        - name: redundant-import-alias
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#superfluous-else
+        - name: superfluous-else
+          arguments:
+            - preserveScope
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#unreachable-code
+        - name: unreachable-code
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#unused-parameter
+        - name: unused-parameter
+          arguments:
+            - allowRegex: ^_
+          severity: warning
+          disabled: false
+          exclude:
+            - ""
+
+    # https://golangci-lint.run/usage/linters/#unused
+    unused:
+      # Mark all struct fields that have been written to as used.
+      # Setting it to 'false' will report fields with writes but no reads (it might have false positives)
+      # Default: true
+      field-writes-are-uses: true
+      # Mark all exported fields as used.
+      # default: true
+      exported-fields-are-used: false
+      # Mark all local variables as used.
+      # default: true
+      local-variables-are-used: false
+
+  # Defines a set of rules to ignore issues.
+  # It does not skip the analysis, and so does not ignore "typecheck" errors.
+  exclusions:
+    # Mode of the generated files analysis.
+    #
+    # - `strict`: sources are excluded by strictly following the Go generated file convention.
+    #    Source files that have lines matching only the following regular expression will be excluded: `^// Code generated .* DO NOT EDIT\.$`
+    #    This line must appear before the first non-comment, non-blank text in the file.
+    #    https://go.dev/s/generatedcode
+    # - `lax`: sources are excluded if they contain lines like `autogenerated file`, `code generated`, `do not edit`, etc.
+    # - `disable`: disable the generated files exclusion.
+    #
+    # Default: lax
+    generated: lax
+
+    # Log a warning if an exclusion rule is unused.
+    # Default: false
+    warn-unused: true
+
+issues:
+  # Maximum count of issues with the same text. Setting this to zero will disable
+  # any limits, meaning all errors will be reported. This is useful if a linter
+  # always produces the same error message, or else some errors might be filtered
+  max-same-issues: 0
+
+formatters:
+  # Enable specific formatter.
+  # Default: [] (uses standard Go formatting)
+  enable:
+    - goimports
+
+  # Defines a set of rules to ignore issues.
+  # It does not skip the analysis, and so does not ignore "typecheck" errors.
+  exclusions:
+    # Mode of the generated files analysis.
+    #
+    # - `strict`: sources are excluded by strictly following the Go generated file convention.
+    #    Source files that have lines matching only the following regular expression will be excluded: `^// Code generated .* DO NOT EDIT\.$`
+    #    This line must appear before the first non-comment, non-blank text in the file.
+    #    https://go.dev/s/generatedcode
+    # - `lax`: sources are excluded if they contain lines like `autogenerated file`, `code generated`, `do not edit`, etc.
+    # - `disable`: disable the generated files exclusion.
+    #
+    # Default: lax
+    generated: lax
