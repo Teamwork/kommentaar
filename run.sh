@@ -6,7 +6,8 @@ fi
 
 echo "Running kommentaar for $MODULE_PATH"
 
-cp -r /code /go/src/$MODULE_PATH
+mkdir -p /go/src/$MODULE_PATH
+cp -r /code/. /go/src/$MODULE_PATH
 
 config=/config/kommentaar.conf
 # check if we should override with env var
@@ -37,7 +38,6 @@ echo "Kommentaar will be executed against $exec_path"
 
 export GOPATH=/go
 export GO111MODULE=off
-go install /go/src/github.com/teamwork/kommentaar
 
 cd /go/src/$MODULE_PATH
 /go/bin/kommentaar -config $config -output $output $exec_path > /output/swagger.$output_ext
