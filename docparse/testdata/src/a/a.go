@@ -1,4 +1,3 @@
-// nolint
 package a
 
 import "net/mail"
@@ -38,7 +37,7 @@ type foo struct {
 	// {enum: one two three
 	//	four five six seven}
 	docs string
-	//m      map[string]int
+	// m      map[string]int
 }
 
 type nested struct {

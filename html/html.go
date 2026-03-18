@@ -9,12 +9,12 @@ import (
 	"os"
 
 	"github.com/teamwork/kommentaar/docparse"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 var funcMap = template.FuncMap{
 	"add":    func(a, b int) int { return a + b },
-	"status": func(c int) string { return http.StatusText(c) },
+	"status": http.StatusText,
 	"schema": func(in interface{}) string {
 		// TODO: link ref?
 		d, err := yaml.Marshal(in)
@@ -301,7 +301,7 @@ func WriteHTML(w io.Writer, prog *docparse.Program) error {
 // ServeHTML serves HTML documentation at addr.
 func ServeHTML(addr string) func(io.Writer, *docparse.Program) error {
 	return func(_ io.Writer, prog *docparse.Program) error {
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 			// Rescan, but first clear some fields so we don't end up with
 			// duplicate data.
 			prog.Config.Output = func(io.Writer, *docparse.Program) error {
@@ -312,7 +312,7 @@ func ServeHTML(addr string) func(io.Writer, *docparse.Program) error {
 
 			err := docparse.FindComments(os.Stdout, prog)
 			if err != nil {
-				w.WriteHeader(500)
+				w.WriteHeader(http.StatusInternalServerError)
 				_, wErr := fmt.Fprintf(w, "could not parse comments: %v", err)
 				if wErr != nil {
 					_, _ = fmt.Fprintf(os.Stderr, "could not write response: %v", wErr)

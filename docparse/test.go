@@ -1,9 +1,10 @@
-// nolint
 package docparse
 
 // For tests. We don't parse test files.
 
 // testObject general documentation.
+//
+//nolint:unused
 type testObject struct {
 	// ID documentation {required}.
 	ID int

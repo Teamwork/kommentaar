@@ -124,18 +124,18 @@ type Ref struct {
 	// Main reason to store as a string (and Refs as a map) for now is so that
 	// it looks pretties in the pretty.Print() output. May not want to keep
 	// this.
-	Reference string //*Reference
+	Reference string // *Reference
 }
 
 // Param is a path, query, or form parameter.
 type Param struct {
 	Name string // Parameter name
-	//Info     string   // Detailed description
-	//Required bool     // Is this required to always be sent?
-	//Kind     string   // Type information
-	//KindEnum []string // Enum fields, only when Kind=enum.
-	//Format   string   // Format, such as "email", "date", etc.
-	//Ref      string   // Reference something else; for Kind=struct and Kind=array.
+	// Info     string   // Detailed description
+	// Required bool     // Is this required to always be sent?
+	// Kind     string   // Type information
+	// KindEnum []string // Enum fields, only when Kind=enum.
+	// Format   string   // Format, such as "email", "date", etc.
+	// Ref      string   // Reference something else; for Kind=struct and Kind=array.
 
 	KindField *ast.Field // Type information from struct field.
 }

@@ -388,12 +388,10 @@ start:
 			pkg = importPath
 		}
 
-		switch resolvType := ts.Type.(type) {
-		case *ast.ArrayType:
+		if resolvType, ok := ts.Type.(*ast.ArrayType); ok {
 			isEnum := p.Type == "enum"
 			p.Type = "array"
-			err := resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum, generics)
-			if err != nil {
+			if err = resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum, generics); err != nil {
 				return nil, err
 			}
 
@@ -489,7 +487,8 @@ start:
 		default:
 			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
 		}
-		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Indices...); err != nil {
+		err = fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Indices...)
+		if err != nil {
 			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
 		}
 		return &p, nil
@@ -527,7 +526,7 @@ start:
 
 // fillGenericsSchema fills the schema with the generic type information. As the
 // types can be different for every generics declaration they will need to be a
-// anonymos object in the schema output instead of a reusable reference.
+// anonymous object in the schema output instead of a reusable reference.
 func fillGenericsSchema(
 	prog *Program,
 	p *Schema,

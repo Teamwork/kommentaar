@@ -1,4 +1,4 @@
-// nolint
+//nolint:unused,revive
 package example
 
 // Single entity response.

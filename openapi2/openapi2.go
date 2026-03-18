@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"sort"
 	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/utils/v2/goutil"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -362,7 +363,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Name: param,
 					In:   "path",
 					Type: "integer",
-					//Format:   "int64",
+					// Format:   "int64",
 					Required: true,
 				})
 			}
@@ -424,17 +425,17 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 		}
 
 		switch e.Method {
-		case "GET":
+		case http.MethodGet:
 			out.Paths[e.Path].Get = &op
-		case "POST":
+		case http.MethodPost:
 			out.Paths[e.Path].Post = &op
-		case "PUT":
+		case http.MethodPut:
 			out.Paths[e.Path].Put = &op
-		case "PATCH":
+		case http.MethodPatch:
 			out.Paths[e.Path].Patch = &op
-		case "DELETE":
+		case http.MethodDelete:
 			out.Paths[e.Path].Delete = &op
-		case "HEAD":
+		case http.MethodHead:
 			out.Paths[e.Path].Head = &op
 		default:
 			return fmt.Errorf("unknown method: %#v", e.Method)
@@ -498,7 +499,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 
 func makeID(e *docparse.Endpoint) string {
 	return strings.Replace(fmt.Sprintf("%v_%v", e.Method,
-		strings.Replace(e.Path, "/", "_", -1)), "__", "_", 1)
+		strings.ReplaceAll(e.Path, "/", "_")), "__", "_", 1)
 }
 
 func appendIfNotExists(xs []string, y string) []string {

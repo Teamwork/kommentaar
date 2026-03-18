@@ -26,7 +26,7 @@ type Args struct {
 
 // YAML outputs as OpenAPI2 YAML.
 func YAML(args Args) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		out, err := run(args, openapi2.WriteYAML, args.YAMLFile)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func JSON(args Args) http.HandlerFunc {
 
 // HTML outputs as HTML documentation.
 func HTML(args Args) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		out, err := run(args, html.WriteHTML, args.HTMLFile)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
