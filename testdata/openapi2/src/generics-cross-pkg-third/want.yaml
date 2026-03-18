@@ -1,0 +1,40 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: generics-cross-pkg-third.reqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/generics-cross-pkg-third.reqRef'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  generics-cross-pkg-third.reqRef:
+    title: reqRef
+    type: object
+    properties:
+      Metric:
+        description: Metric documents a generic with a type arg from a third package.
+        type: object
+        properties:
+          Count:
+            description: Count is a fixed field.
+            type: integer
+          Value:
+            description: Value holds the generic field.
+            type: string

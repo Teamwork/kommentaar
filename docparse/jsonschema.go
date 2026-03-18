@@ -295,6 +295,16 @@ start:
 				// Primitive type arg (e.g. string, int): set directly.
 				mappedType = "generics"
 				p.Type = primitiveType
+			} else if dotIdx := strings.LastIndex(resolvedName, "."); dotIdx >= 0 {
+				// Cross-package type arg stored as "fullPkgPath.TypeName":
+				// reconstruct as SelectorExpr and re-dispatch so that the
+				// package is resolved correctly instead of falling back to the
+				// generic type's own package.
+				sw = &ast.SelectorExpr{
+					X:   &ast.Ident{Name: resolvedName[:dotIdx]},
+					Sel: &ast.Ident{Name: resolvedName[dotIdx+1:]},
+				}
+				goto start
 			} else {
 				// Non-primitive type arg: replace the type parameter ident
 				// with the resolved name and let the normal canonicalType /
@@ -562,11 +572,22 @@ func fillGenericsSchema(
 				len(genericsTemplateIDs), len(indices))
 		}
 		for i := 0; i < len(indices); i++ {
-			arg, _, err := findTypeIdent(indices[i], ref.Package)
+			arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
 			if err != nil {
 				return fmt.Errorf("cannot find generic type argument: %v", err)
 			}
-			generics[genericsTemplateIDs[i]] = arg.Name
+			if argPkg != ref.Package {
+				// Cross-package type argument: resolve the import alias to the
+				// full package path so it can be looked up unambiguously later,
+				// regardless of which file provides the resolution context.
+				resolvedArgPkg, _, resolveErr := resolvePackage(ref.File, argPkg)
+				if resolveErr != nil {
+					return fmt.Errorf("cannot resolve package %q for generic type argument: %v", argPkg, resolveErr)
+				}
+				generics[genericsTemplateIDs[i]] = resolvedArgPkg + "." + arg.Name
+			} else {
+				generics[genericsTemplateIDs[i]] = arg.Name
+			}
 		}
 	}
 
