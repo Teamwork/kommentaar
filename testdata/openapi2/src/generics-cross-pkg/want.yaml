@@ -1,0 +1,50 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: generics-cross-pkg.reqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/generics-cross-pkg.reqRef'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  generics-cross-pkg.reqRef:
+    title: reqRef
+    type: object
+    properties:
+      Bar:
+        description: Bar documents a cross-package generic with two type params.
+        type: object
+        properties:
+          First:
+            description: First is the first type param field.
+            type: string
+          Second:
+            description: Second is the second type param field.
+            type: string
+      Foo:
+        description: Foo documents a cross-package generic with single type param.
+        type: object
+        properties:
+          Count:
+            description: Count is a fixed field.
+            type: integer
+          Value:
+            description: Value is the generic value.
+            type: string
