@@ -1,0 +1,47 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: generics-map-types.reqRef
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/generics-map-types.reqRef'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  generics-map-types.reqRef:
+    title: reqRef
+    type: object
+    properties:
+      FullKey:
+        description: FullKey is mapped via full instantiated key Wrapper[string].
+        type: string
+        format: date-time
+      MainKey:
+        description: MainKey is mapped via main type key GroupBy (matches all instantiations).
+        type: string
+      Unmapped:
+        description: Unmapped is not in map-types so it expands as an object.
+        type: object
+        properties:
+          Extra:
+            description: Extra is additional metadata.
+            type: string
+          Value:
+            description: Value is the wrapped value.
+            type: integer
