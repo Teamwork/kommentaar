@@ -475,6 +475,11 @@ start:
 		default:
 			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
 		}
+		if mapped, err := genericMapTypeLookup(prog, &p, genericsPkg, genericsIdent.Name, ref, typ.Index); err != nil {
+			return nil, err
+		} else if mapped {
+			return &p, nil
+		}
 		if err := fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Index); err != nil {
 			return nil, fmt.Errorf("generic fieldToSchema: %v", err)
 		}
@@ -496,6 +501,11 @@ start:
 			genericsPkg = pkgSel.Name
 		default:
 			return nil, fmt.Errorf("unknown generic type: %T", typ.X)
+		}
+		if mapped, err := genericMapTypeLookup(prog, &p, genericsPkg, genericsIdent.Name, ref, typ.Indices...); err != nil {
+			return nil, err
+		} else if mapped {
+			return &p, nil
 		}
 		err = fillGenericsSchema(prog, &p, tagName, ref, genericsPkg, genericsIdent, generics, typ.Indices...)
 		if err != nil {
@@ -532,6 +542,62 @@ start:
 	p.Reference = lookup
 
 	return &p, nil
+}
+
+// applyMapType checks if key has a map-types entry and, if so, writes the
+// mapped type and optional format into p. Returns true when a mapping was found.
+func applyMapType(prog *Program, p *Schema, key string) bool {
+	mappedType, mappedFormat := MapType(prog, key)
+	if mappedType == "" {
+		return false
+	}
+	p.Type = JSONSchemaType(mappedType)
+	if mappedFormat != "" {
+		p.Format = mappedFormat
+	}
+	return true
+}
+
+// genericMapTypeLookup checks if a generic type has a map-types override in the
+// config. It first tries the full instantiated key (e.g. "pkg.Foo[Bar]"), then
+// falls back to the main type key (e.g. "pkg.Foo"). Returns true if a mapping
+// was found and the schema was populated.
+func genericMapTypeLookup(
+	prog *Program,
+	p *Schema,
+	genericsPkg string,
+	genericsName string,
+	ref Reference,
+	indices ...ast.Expr,
+) (bool, error) {
+	mainKey := genericsPkg + "." + genericsName
+
+	var args []string
+	for _, idx := range indices {
+		arg, argPkg, err := findTypeIdent(idx, ref.Package)
+		if err != nil {
+			// Unresolvable type arguments are normal for partial or external
+			// packages; skip the full-key lookup and fall through to the main key.
+			args = nil
+			break
+		}
+		if argPkg != ref.Package {
+			args = append(args, argPkg+"."+arg.Name)
+		} else {
+			args = append(args, arg.Name)
+		}
+	}
+
+	// Try full instantiated key first, e.g. "pkg.Foo[string, Bar]".
+	if len(args) > 0 {
+		fullKey := mainKey + "[" + strings.Join(args, ", ") + "]"
+		if applyMapType(prog, p, fullKey) {
+			return true, nil
+		}
+	}
+
+	// Fall back to main type key, e.g. "pkg.Foo".
+	return applyMapType(prog, p, mainKey), nil
 }
 
 // fillGenericsSchema fills the schema with the generic type information. As the

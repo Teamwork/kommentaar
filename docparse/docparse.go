@@ -574,6 +574,9 @@ func MapType(prog *Program, in string) (kind, format string) {
 	if v, ok := prog.Config.MapTypes[in]; ok {
 		kind = v
 	}
+	if kind == "" {
+		return
+	}
 	if v, ok := prog.Config.MapFormats[in]; ok {
 		format = v
 	}
