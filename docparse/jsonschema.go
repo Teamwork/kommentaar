@@ -736,12 +736,20 @@ func resolveMap(
 ) error {
 	p.Type = "object"
 
-	if arr, ok := dropTypePointers(typ.Value).(*ast.ArrayType); ok {
+	switch v := dropTypePointers(typ.Value).(type) {
+	case *ast.ArrayType:
 		items := &Schema{Type: "array"}
-		if err := resolveArray(prog, ref, pkg, items, arr.Elt, false, generics); err != nil {
+		if err := resolveArray(prog, ref, pkg, items, v.Elt, false, generics); err != nil {
 			return fmt.Errorf("resolveMap resolveArray: %v", err)
 		}
 		p.AdditionalProperties = items
+		return nil
+	case *ast.MapType:
+		inner := &Schema{}
+		if err := resolveMap(prog, ref, pkg, inner, v, generics); err != nil {
+			return fmt.Errorf("resolveMap nested: %v", err)
+		}
+		p.AdditionalProperties = inner
 		return nil
 	}
 

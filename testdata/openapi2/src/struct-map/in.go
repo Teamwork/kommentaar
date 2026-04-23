@@ -8,9 +8,10 @@ type resp struct {
 	Custom      myMap                             `json:"custom"`      // Custom comment.
 	Struct      aStruct                           `json:"aStruct"`     // Struct comment.
 	OtherStruct otherpkg.OtherStruct              `json:"otherStruct"` // OtherStruct comment.
-	PrimSlices  map[string][]string               `json:"primSlices"`  // Map of primitive slices.
-	StructSlice map[int64][]aStruct               `json:"structSlice"` // Map of local struct slices.
-	OtherSlice  map[string][]otherpkg.OtherStruct `json:"otherSlice"`  // Map of cross-package struct slices.
+	PrimSlices  map[string][]string                        `json:"primSlices"`  // Map of primitive slices.
+	StructSlice map[int64][]aStruct                        `json:"structSlice"` // Map of local struct slices.
+	OtherSlice  map[string][]otherpkg.OtherStruct          `json:"otherSlice"`  // Map of cross-package struct slices.
+	NestedMap   map[string]map[string]otherpkg.OtherStruct `json:"nestedMap"`   // Nested map of cross-package structs.
 }
 
 // Comments are lost here as its just in the doc as an object.
