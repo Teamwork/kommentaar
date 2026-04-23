@@ -385,24 +385,19 @@ start:
 		pkg = pkgSel.Name
 		name = typ.Sel
 
-		lookup := pkg + "." + name.Name
-		t, f := MapType(prog, lookup)
-		if t == "" {
-			// Only check for canonicalType if this isn't mapped.
-			canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
-			if err != nil {
-				return nil, fmt.Errorf("cannot get canonical type: %v", err)
-			}
-			if canon != nil {
-				sw = canon
-				goto start
-			}
+		// Try map-types with the short package alias first.
+		if applyMapType(prog, &p, pkg+"."+name.Name) {
+			return &p, nil
 		}
 
-		p.Format = f
-		if t != "" {
-			p.Type = JSONSchemaType(t)
-			return &p, nil
+		// Only check for canonicalType if this isn't mapped.
+		canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get canonical type: %v", err)
+		}
+		if canon != nil {
+			sw = canon
+			goto start
 		}
 
 		// Deal with array.
@@ -416,11 +411,9 @@ start:
 			pkg = importPath
 		}
 
-		// Retry map-types with the resolved full import path. The initial
-		// lookup above uses the short package alias (e.g. `view.Date`)
-		// because we don't yet know the full path; retrying here lets
+		// Retry map-types with the resolved full import path so
 		// fully-qualified config keys (e.g.
-		// `github.com/foo/bar/view.Date`) match selector references too.
+		// `github.com/foo/bar/view.Date`) also match selector references.
 		if applyMapType(prog, &p, importPath+"."+name.Name) {
 			return &p, nil
 		}
