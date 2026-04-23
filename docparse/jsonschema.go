@@ -385,24 +385,19 @@ start:
 		pkg = pkgSel.Name
 		name = typ.Sel
 
-		lookup := pkg + "." + name.Name
-		t, f := MapType(prog, lookup)
-		if t == "" {
-			// Only check for canonicalType if this isn't mapped.
-			canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
-			if err != nil {
-				return nil, fmt.Errorf("cannot get canonical type: %v", err)
-			}
-			if canon != nil {
-				sw = canon
-				goto start
-			}
+		// Try map-types with the short package alias first.
+		if applyMapType(prog, &p, pkg+"."+name.Name) {
+			return &p, nil
 		}
 
-		p.Format = f
-		if t != "" {
-			p.Type = JSONSchemaType(t)
-			return &p, nil
+		// Only check for canonicalType if this isn't mapped.
+		canon, err := canonicalType(ref.File, pkgSel.Name, typ.Sel)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get canonical type: %v", err)
+		}
+		if canon != nil {
+			sw = canon
+			goto start
 		}
 
 		// Deal with array.
@@ -414,6 +409,13 @@ start:
 		}
 		if !strings.HasSuffix(importPath, pkg) { // import alias
 			pkg = importPath
+		}
+
+		// Retry map-types with the resolved full import path so
+		// fully-qualified config keys (e.g.
+		// `github.com/foo/bar/view.Date`) also match selector references.
+		if applyMapType(prog, &p, importPath+"."+name.Name) {
+			return &p, nil
 		}
 
 		if resolvType, ok := ts.Type.(*ast.ArrayType); ok {
@@ -761,6 +763,9 @@ func resolveArray(
 	asw := typ
 
 	var name *ast.Ident
+	// importPath, when set, is the fully-qualified import path of the element
+	// type; used to retry map-types lookups with the full-path key.
+	var importPath string
 
 arrayStart:
 	switch typ := asw.(type) {
@@ -803,6 +808,9 @@ arrayStart:
 		// the switch.
 		p.Items.Type = ""
 		name = typ
+		// Bare ident: the element is declared in ref.Package, so the
+		// full-path key equals ref.Package.typ.Name.
+		importPath = ref.Package
 
 	// "pkg.foo"
 	case *ast.SelectorExpr:
@@ -817,12 +825,13 @@ arrayStart:
 		name = typ.Sel
 
 		// handle import aliases
-		_, _, importPath, err := findType(ref.File, pkg, name.Name)
+		_, _, resolved, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return fmt.Errorf("resolveArray: findType: %v", err)
 		}
-		if !strings.HasSuffix(importPath, pkg) {
-			pkg = importPath
+		importPath = resolved
+		if !strings.HasSuffix(resolved, pkg) {
+			pkg = resolved
 		}
 
 	case *ast.MapType:
@@ -833,8 +842,26 @@ arrayStart:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
 	}
 
-	// Check if the type resolves to a Go primitive.
+	// Honor map-types config for slice elements. Try the pkg-qualified
+	// lookup first, then the fully-qualified form, so both short keys
+	// like `view.Date` and fully-qualified keys match.
 	lookup := pkg + "." + name.Name
+	fullLookup := importPath + "." + name.Name
+	for _, key := range []string{lookup, fullLookup} {
+		if key == "." {
+			continue
+		}
+		if mt, mf := MapType(prog, key); mt != "" {
+			items := &Schema{Type: JSONSchemaType(mt)}
+			if mf != "" {
+				items.Format = mf
+			}
+			p.Items = items
+			return nil
+		}
+	}
+
+	// Check if the type resolves to a Go primitive.
 	t, err := getTypeInfo(prog, lookup, ref.File)
 	if err != nil {
 		return err

@@ -44,6 +44,15 @@ type nested struct {
 	deeper refAnother
 }
 
+// mapped exercises map-types resolution against both bare-ident and
+// selector references, in both single-field and slice-element form.
+type mapped struct {
+	b        bar
+	bSlice   []bar
+	pkg      mail.Address
+	pkgSlice []mail.Address
+}
+
 type customStrs []customStr
 
 type customStr string
