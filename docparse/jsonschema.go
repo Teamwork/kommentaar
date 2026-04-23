@@ -430,38 +430,8 @@ start:
 
 	// Maps
 	case *ast.MapType:
-		// As far as I can find there is no obvious/elegant way to represent
-		// this in JSON schema, so it's just an object.
-		p.Type = "object"
-		vtyp, vpkg, err := findTypeIdent(typ.Value, pkg)
-		if err != nil {
-			// we cannot find a mapping to a concrete type,
-			// so we cannot define the type of the maps -> ?
-			dbg("ERR FOUND MapType: %s", err.Error())
-			return &p, nil
-		}
-		if generics != nil && generics[vtyp.Name] != "" {
-			vtyp.Name = generics[vtyp.Name]
-		}
-		if isPrimitive(vtyp.Name) {
-			// we are done, no need for a lookup of a custom type
-			if vtyp.Name != "any" {
-				p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
-			}
-			return &p, nil
-		}
-
-		_, lref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
-		if err == nil {
-			// found additional properties
-			p.AdditionalProperties = &Schema{Reference: lref}
-			// Make sure the reference is added to `prog.References`:
-			_, err := GetReference(prog, ref.Context, false, lref, ref.File)
-			if err != nil {
-				dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
-			}
-		} else {
-			dbg("ERR, Could not find additionalProperties: %s", err.Error())
+		if err := resolveMap(prog, ref, pkg, &p, typ, generics); err != nil {
+			return nil, err
 		}
 		return &p, nil
 
@@ -749,6 +719,65 @@ func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
 		sRef = pkg[i+1:] + "." + name
 	}
 	return t, sRef, nil
+}
+
+// resolveMap fills p with an `object` schema describing a Go map. Where we can
+// identify the value type it's attached as `additionalProperties`; otherwise p
+// is left as an open object (what Swagger 2 gives us in the absence of better
+// information). Slice value types are handled explicitly so that e.g.
+// `map[K][]T` doesn't lose its element type.
+func resolveMap(
+	prog *Program,
+	ref Reference,
+	pkg string,
+	p *Schema,
+	typ *ast.MapType,
+	generics map[string]string,
+) error {
+	p.Type = "object"
+
+	switch v := dropTypePointers(typ.Value).(type) {
+	case *ast.ArrayType:
+		items := &Schema{Type: "array"}
+		if err := resolveArray(prog, ref, pkg, items, v.Elt, false, generics); err != nil {
+			return fmt.Errorf("resolveMap resolveArray: %v", err)
+		}
+		p.AdditionalProperties = items
+		return nil
+	case *ast.MapType:
+		inner := &Schema{}
+		if err := resolveMap(prog, ref, pkg, inner, v, generics); err != nil {
+			return fmt.Errorf("resolveMap nested: %v", err)
+		}
+		p.AdditionalProperties = inner
+		return nil
+	}
+
+	vtyp, vpkg, err := findTypeIdent(typ.Value, pkg)
+	if err != nil {
+		dbg("ERR FOUND MapType: %s", err.Error())
+		return nil
+	}
+	if generics != nil && generics[vtyp.Name] != "" {
+		vtyp.Name = generics[vtyp.Name]
+	}
+	if isPrimitive(JSONSchemaType(vtyp.Name)) {
+		if vtyp.Name != "any" {
+			p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
+		}
+		return nil
+	}
+
+	_, lref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+	if err != nil {
+		dbg("ERR, Could not find additionalProperties: %s", err.Error())
+		return nil
+	}
+	p.AdditionalProperties = &Schema{Reference: lref}
+	if _, err := GetReference(prog, ref.Context, false, lref, ref.File); err != nil {
+		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+	}
+	return nil
 }
 
 func resolveArray(

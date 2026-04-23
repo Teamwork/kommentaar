@@ -26,12 +26,16 @@ definitions:
       map:
         description: Map contains some random data :)
         type: object
+        additionalProperties:
+          type: object
   struct-map.aStruct:
     title: aStruct
     type: object
     properties:
       bar:
         type: object
+        additionalProperties:
+          type: object
       foo:
         type: string
   struct-map.resp:
@@ -51,5 +55,40 @@ definitions:
         type: object
         additionalProperties:
           type: string
+      nestedMap:
+        description: Nested map of cross-package structs.
+        type: object
+        additionalProperties:
+          type: object
+          additionalProperties:
+            $ref: '#/definitions/otherpkg.OtherStruct'
+      nestedPrim:
+        description: Nested map of primitives.
+        type: object
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: integer
+      otherSlice:
+        description: Map of cross-package struct slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            $ref: '#/definitions/otherpkg.OtherStruct'
       otherStruct:
         $ref: '#/definitions/otherpkg.OtherStruct'
+      primSlices:
+        description: Map of primitive slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      structSlice:
+        description: Map of local struct slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            $ref: '#/definitions/struct-map.aStruct'
