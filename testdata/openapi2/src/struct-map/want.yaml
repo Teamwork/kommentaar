@@ -51,5 +51,26 @@ definitions:
         type: object
         additionalProperties:
           type: string
+      otherSlice:
+        description: Map of cross-package struct slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            $ref: '#/definitions/otherpkg.OtherStruct'
       otherStruct:
         $ref: '#/definitions/otherpkg.OtherStruct'
+      primSlices:
+        description: Map of primitive slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      structSlice:
+        description: Map of local struct slices.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            $ref: '#/definitions/struct-map.aStruct'

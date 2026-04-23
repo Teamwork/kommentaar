@@ -514,26 +514,31 @@ func appendIfNotExists(xs []string, y string) []string {
 func prefixPropertyReferences(properties map[string]*docparse.Schema, getRef func(string) string) {
 	var rm []string
 	for k, s := range properties {
-		if s.Reference != "" {
-			s.Reference = getRef(s.Reference)
-		}
-		if s.Items != nil && s.Items.Reference != "" {
-			s.Items.Reference = getRef(s.Items.Reference)
-		}
-		if s.AdditionalProperties != nil && s.AdditionalProperties.Reference != "" {
-			s.AdditionalProperties.Reference = getRef(s.AdditionalProperties.Reference)
-		}
+		prefixSchemaReferences(s, getRef)
 
 		if s.OmitDoc {
 			rm = append(rm, k)
-		}
-
-		if s.Properties != nil {
-			prefixPropertyReferences(s.Properties, getRef)
 		}
 	}
 
 	for _, r := range rm {
 		delete(properties, r)
+	}
+}
+
+// prefixSchemaReferences rewrites all `$ref` strings inside a schema (including
+// nested items, additionalProperties, and properties) to their fully-qualified
+// `#/definitions/...` form.
+func prefixSchemaReferences(s *docparse.Schema, getRef func(string) string) {
+	if s == nil {
+		return
+	}
+	if s.Reference != "" {
+		s.Reference = getRef(s.Reference)
+	}
+	prefixSchemaReferences(s.Items, getRef)
+	prefixSchemaReferences(s.AdditionalProperties, getRef)
+	if s.Properties != nil {
+		prefixPropertyReferences(s.Properties, getRef)
 	}
 }

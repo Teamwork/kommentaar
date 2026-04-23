@@ -433,6 +433,20 @@ start:
 		// As far as I can find there is no obvious/elegant way to represent
 		// this in JSON schema, so it's just an object.
 		p.Type = "object"
+
+		// Map value is a slice (e.g. `map[K][]T`): describe it as an array
+		// schema and attach it via `additionalProperties`. Without this the
+		// item type is dropped entirely and the map renders as an opaque
+		// `type: object`.
+		if arr, ok := dropTypePointers(typ.Value).(*ast.ArrayType); ok {
+			items := &Schema{Type: "array"}
+			if err := resolveArray(prog, ref, pkg, items, arr.Elt, false, generics); err != nil {
+				return nil, fmt.Errorf("MapType resolveArray: %v", err)
+			}
+			p.AdditionalProperties = items
+			return &p, nil
+		}
+
 		vtyp, vpkg, err := findTypeIdent(typ.Value, pkg)
 		if err != nil {
 			// we cannot find a mapping to a concrete type,
