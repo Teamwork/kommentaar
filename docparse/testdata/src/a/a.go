@@ -1,6 +1,10 @@
 package a
 
-import "net/mail"
+import (
+	"net/mail"
+
+	"b"
+)
 
 // GET /
 //
@@ -77,4 +81,11 @@ type refAnother2 struct {
 	str   customStr
 	strct bar
 	pkg   mail.Address
+}
+
+type withExternalEnum struct {
+	// {enum}
+	status b.StatusType
+	// {enum}
+	statuses []b.StatusType
 }

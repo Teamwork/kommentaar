@@ -145,6 +145,45 @@ func TestFieldToProperty(t *testing.T) {
 		}
 	})
 
+	t.Run("external_enum", func(t *testing.T) {
+		wantExternal := map[string]*Schema{
+			"status":   {Type: "string", Enum: []string{"active", "inactive", "pending"}},
+			"statuses": {Type: "array", Items: &Schema{Type: "string", Enum: []string{"active", "inactive", "pending"}}},
+		}
+
+		prog := NewProgram(false)
+		ts, _, _, err := findType("./testdata/src/a/a.go", "a", "withExternalEnum")
+		if err != nil {
+			t.Fatalf("could not parse file: %v", err)
+		}
+
+		st, ok := ts.Type.(*ast.StructType)
+		if !ok {
+			t.Fatal("not a struct?!")
+		}
+
+		for _, f := range st.Fields.List {
+			out, err := fieldToSchema(prog, f.Names[0].Name, "json", Reference{
+				Package: "a",
+				File:    "./testdata/src/a/a.go",
+				Context: "req",
+			}, f, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, n := range f.Names {
+				w, ok := wantExternal[n.Name]
+				if !ok {
+					t.Fatalf("no test case for %v", n.Name)
+				}
+				if d := diff.Diff(w, out); d != "" {
+					t.Errorf("%v: %v", n.Name, d)
+				}
+			}
+		}
+	})
+
 	t.Run("nested", func(t *testing.T) {
 		prog := NewProgram(false)
 		ts, _, _, err := findType("./testdata/src/a/a.go", "a", "nested")
