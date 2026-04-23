@@ -761,7 +761,7 @@ func resolveMap(
 	if generics != nil && generics[vtyp.Name] != "" {
 		vtyp.Name = generics[vtyp.Name]
 	}
-	if isPrimitive(vtyp.Name) {
+	if isPrimitive(JSONSchemaType(vtyp.Name)) {
 		if vtyp.Name != "any" {
 			p.AdditionalProperties = &Schema{Type: JSONSchemaType(vtyp.Name)}
 		}

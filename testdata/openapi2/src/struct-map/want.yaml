@@ -62,6 +62,13 @@ definitions:
           type: object
           additionalProperties:
             $ref: '#/definitions/otherpkg.OtherStruct'
+      nestedPrim:
+        description: Nested map of primitives.
+        type: object
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: integer
       otherSlice:
         description: Map of cross-package struct slices.
         type: object

@@ -11,6 +11,7 @@ type resp struct {
 	PrimSlices  map[string][]string                        `json:"primSlices"`  // Map of primitive slices.
 	StructSlice map[int64][]aStruct                        `json:"structSlice"` // Map of local struct slices.
 	OtherSlice  map[string][]otherpkg.OtherStruct          `json:"otherSlice"`  // Map of cross-package struct slices.
+	NestedPrim  map[string]map[string]int                  `json:"nestedPrim"`  // Nested map of primitives.
 	NestedMap   map[string]map[string]otherpkg.OtherStruct `json:"nestedMap"`   // Nested map of cross-package structs.
 }
 
