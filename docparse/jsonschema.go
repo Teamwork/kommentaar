@@ -416,6 +416,15 @@ start:
 			pkg = importPath
 		}
 
+		// Retry map-types with the resolved full import path. The initial
+		// lookup above uses the short package alias (e.g. `view.Date`)
+		// because we don't yet know the full path; retrying here lets
+		// fully-qualified config keys (e.g.
+		// `github.com/foo/bar/view.Date`) match selector references too.
+		if applyMapType(prog, &p, importPath+"."+name.Name) {
+			return &p, nil
+		}
+
 		if resolvType, ok := ts.Type.(*ast.ArrayType); ok {
 			isEnum := p.Type == "enum"
 			p.Type = "array"
@@ -761,6 +770,9 @@ func resolveArray(
 	asw := typ
 
 	var name *ast.Ident
+	// importPath, when set, is the fully-qualified import path of the element
+	// type; used to retry map-types lookups with the full-path key.
+	var importPath string
 
 arrayStart:
 	switch typ := asw.(type) {
@@ -803,6 +815,9 @@ arrayStart:
 		// the switch.
 		p.Items.Type = ""
 		name = typ
+		// Bare ident: the element is declared in ref.Package, so the
+		// full-path key equals ref.Package.typ.Name.
+		importPath = ref.Package
 
 	// "pkg.foo"
 	case *ast.SelectorExpr:
@@ -817,12 +832,13 @@ arrayStart:
 		name = typ.Sel
 
 		// handle import aliases
-		_, _, importPath, err := findType(ref.File, pkg, name.Name)
+		_, _, resolved, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return fmt.Errorf("resolveArray: findType: %v", err)
 		}
-		if !strings.HasSuffix(importPath, pkg) {
-			pkg = importPath
+		importPath = resolved
+		if !strings.HasSuffix(resolved, pkg) {
+			pkg = resolved
 		}
 
 	case *ast.MapType:
@@ -833,8 +849,26 @@ arrayStart:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
 	}
 
-	// Check if the type resolves to a Go primitive.
+	// Honor map-types config for slice elements. Try the pkg-qualified
+	// lookup first, then the fully-qualified form, so both short keys
+	// like `view.Date` and fully-qualified keys match.
 	lookup := pkg + "." + name.Name
+	fullLookup := importPath + "." + name.Name
+	for _, key := range []string{lookup, fullLookup} {
+		if key == "." {
+			continue
+		}
+		if mt, mf := MapType(prog, key); mt != "" {
+			items := &Schema{Type: JSONSchemaType(mt)}
+			if mf != "" {
+				items.Format = mf
+			}
+			p.Items = items
+			return nil
+		}
+	}
+
+	// Check if the type resolves to a Go primitive.
 	t, err := getTypeInfo(prog, lookup, ref.File)
 	if err != nil {
 		return err

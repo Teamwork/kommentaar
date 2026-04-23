@@ -75,6 +75,76 @@ func TestFieldToProperty(t *testing.T) {
 		})
 	}
 
+	t.Run("mapped types", func(t *testing.T) {
+		cases := []struct {
+			name     string
+			mapTypes map[string]string
+			want     map[string]*Schema
+		}{
+			{
+				name: "short selector key",
+				mapTypes: map[string]string{
+					"mail.Address": "string",
+					"a.bar":        "string",
+				},
+				want: map[string]*Schema{
+					"b":        {Type: "string"},
+					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":      {Type: "string"},
+					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+				},
+			},
+			{
+				name: "fully-qualified key",
+				mapTypes: map[string]string{
+					"net/mail.Address": "string",
+					"a.bar":            "string",
+				},
+				want: map[string]*Schema{
+					"b":        {Type: "string"},
+					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":      {Type: "string"},
+					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+				},
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				ts, _, _, err := findType("./testdata/src/a/a.go", "a", "mapped")
+				if err != nil {
+					t.Fatalf("could not parse file: %v", err)
+				}
+				st, ok := ts.Type.(*ast.StructType)
+				if !ok {
+					t.Fatal("not a struct?!")
+				}
+
+				prog := NewProgram(false)
+				prog.Config.MapTypes = tc.mapTypes
+
+				for _, f := range st.Fields.List {
+					name := f.Names[0].Name
+					out, err := fieldToSchema(prog, name, "json", Reference{
+						Package: "a",
+						File:    "./testdata/src/a/a.go",
+						Context: "req",
+					}, f, nil)
+					if err != nil {
+						t.Fatalf("%s: %v", name, err)
+					}
+					w, ok := tc.want[name]
+					if !ok {
+						t.Fatalf("no expected schema for %s", name)
+					}
+					if d := diff.Diff(w, out); d != "" {
+						t.Errorf("%s: %v", name, d)
+					}
+				}
+			})
+		}
+	})
+
 	t.Run("nested", func(t *testing.T) {
 		prog := NewProgram(false)
 		ts, _, _, err := findType("./testdata/src/a/a.go", "a", "nested")
