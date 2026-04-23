@@ -330,12 +330,8 @@ start:
 				typ = &ast.Ident{Name: resolvedName}
 			}
 		}
-		if p.Type == "enum" && len(p.Enum) == 0 {
-			if variations, err := getEnumVariations(ref.File, pkg, typ.Name); len(variations) > 0 {
-				p.Enum = variations
-			} else if err != nil {
-				return nil, err
-			}
+		if err := fillEnumVariations(&p, ref.File, pkg, typ.Name); err != nil {
+			return nil, err
 		}
 		if mappedType == "" {
 			// Only check for canonicalType if this isn't mapped.
@@ -396,6 +392,12 @@ start:
 			return nil, fmt.Errorf("cannot get canonical type: %v", err)
 		}
 		if canon != nil {
+			// Resolve enum variations before goto start: after re-entry the
+			// type name becomes the canonical primitive (e.g. "string") and
+			// getEnumVariations would look for the wrong type.
+			if err := fillEnumVariations(&p, ref.File, pkg, name.Name); err != nil {
+				return nil, err
+			}
 			sw = canon
 			goto start
 		}
@@ -642,6 +644,20 @@ func fillGenericsSchema(
 		p.Properties[fieldName] = schema
 	}
 
+	return nil
+}
+
+// fillEnumVariations populates p.Enum if p.Type is "enum" and no values have
+// been set yet. It is a no-op otherwise.
+func fillEnumVariations(p *Schema, currentFile, pkgPath, typeName string) error {
+	if p.Type != "enum" || len(p.Enum) != 0 {
+		return nil
+	}
+	variations, err := getEnumVariations(currentFile, pkgPath, typeName)
+	if err != nil {
+		return err
+	}
+	p.Enum = variations
 	return nil
 }
 
