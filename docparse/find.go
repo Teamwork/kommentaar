@@ -473,6 +473,20 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 	}
 
+	// Ensure the lookup key is unique when two packages share the same base name
+	// (e.g. task/reminder and time/reminder both produce "reminder.Request").
+	if existing, ok := prog.References[ref.Lookup]; ok && existing.Package != ref.Package {
+		for i := 2; ; i++ {
+			candidate := fmt.Sprintf("%s%d", ref.Lookup, i)
+			if ex, ok := prog.References[candidate]; !ok {
+				ref.Lookup = candidate
+				break
+			} else if ex.Package == ref.Package {
+				ref.Lookup = candidate
+				break
+			}
+		}
+	}
 	prog.References[ref.Lookup] = ref
 	var (
 		nested       []string
