@@ -1,0 +1,64 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+tags:
+  - name: bar
+  - name: create
+  - name: foo
+paths:
+  /bar:
+    post:
+      operationId: POST_bar
+      tags:
+        - create
+        - bar
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: shared.Request2
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/shared.Request2'
+      responses:
+        200:
+          description: 200 OK (no data)
+  /foo:
+    post:
+      operationId: POST_foo
+      tags:
+        - create
+        - foo
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: shared.Request
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/shared.Request'
+      responses:
+        200:
+          description: 200 OK (no data)
+definitions:
+  shared.Request:
+    title: Request
+    type: object
+    properties:
+      id:
+        type: integer
+  shared.Request2:
+    title: Request
+    type: object
+    properties:
+      name:
+        type: string

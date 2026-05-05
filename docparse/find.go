@@ -473,6 +473,20 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 	}
 
+	// Ensure the lookup key is unique when two packages share the same base name
+	// (e.g. task/reminder and time/reminder both produce "reminder.Request").
+	if existing, ok := prog.References[ref.Lookup]; ok && existing.Package != ref.Package {
+		for i := 2; ; i++ {
+			candidate := fmt.Sprintf("%s%d", ref.Lookup, i)
+			if ex, ok := prog.References[candidate]; !ok {
+				ref.Lookup = candidate
+				break
+			} else if ex.Package == ref.Package {
+				ref.Lookup = candidate
+				break
+			}
+		}
+	}
 	prog.References[ref.Lookup] = ref
 	var (
 		nested       []string
@@ -541,70 +555,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	ref.Schema = schema
 
-	changed := false
-
-	for _, p := range ref.Schema.Properties {
-		// Check if any fields are whitelisted, if not continue onto next property
-		if len(p.FieldWhitelist) == 0 {
-			continue
-		}
-
-		changed = true
-
-		// Get the package so we can lookup the correct reference
-		split := strings.Split(p.Reference, ".")
-		lookupStruct := strings.Join(split[:len(split)-1], ".")
-		if lookupStruct != "" {
-			lookupStruct += "."
-		}
-
-		for i, f := range ref.Fields {
-			if lookupStruct+f.Name != p.Reference {
-				continue
-			}
-
-			// Find the referenced struct
-			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
-			if err != nil {
-				return nil, fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
-			}
-
-			fields := []*ast.Field{}
-			for _, field := range reference.Fields {
-				if sliceutil.Contains(p.FieldWhitelist, strings.ToLower(field.Name)) {
-					fields = append(fields, field.KindField)
-				}
-			}
-
-			// Construct the parameter using the given fields
-			ref.Fields[i] = Param{
-				Name: f.Name,
-				KindField: &ast.Field{
-					Doc: &ast.CommentGroup{
-						List: []*ast.Comment{{Slash: 0, Text: reference.Schema.Description}},
-					},
-					Names: f.KindField.Names,
-					Type: &ast.StructType{
-						Struct: 0,
-						Fields: &ast.FieldList{
-							Opening: 0,
-							List:    fields,
-						},
-					},
-					Tag:     f.KindField.Tag,
-					Comment: f.KindField.Comment,
-				},
-			}
-		}
-	}
-
-	// If the fields have been changed, regenerate the schema with the new fields
-	if changed {
-		schema, err = structToSchema(prog, name, tagName, ref)
-		if err != nil {
-			return nil, fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
-		}
-		ref.Schema = schema
+	if err := applyFieldWhitelists(prog, context, filePath, name, tagName, &ref); err != nil {
+		return nil, err
 	}
 
 	// Merge for embedded structs without a tag.
@@ -642,6 +594,60 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	prog.References[ref.Lookup] = ref
 
 	return &ref, nil
+}
+
+func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string, ref *Reference) error {
+	changed := false
+	for _, p := range ref.Schema.Properties {
+		if len(p.FieldWhitelist) == 0 {
+			continue
+		}
+		changed = true
+		split := strings.Split(p.Reference, ".")
+		lookupStruct := strings.Join(split[:len(split)-1], ".")
+		if lookupStruct != "" {
+			lookupStruct += "."
+		}
+		for i, f := range ref.Fields {
+			if lookupStruct+f.Name != p.Reference {
+				continue
+			}
+			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
+			if err != nil {
+				return fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
+			}
+			fields := []*ast.Field{}
+			for _, field := range reference.Fields {
+				if sliceutil.Contains(p.FieldWhitelist, strings.ToLower(field.Name)) {
+					fields = append(fields, field.KindField)
+				}
+			}
+			ref.Fields[i] = Param{
+				Name: f.Name,
+				KindField: &ast.Field{
+					Doc: &ast.CommentGroup{
+						List: []*ast.Comment{{Slash: 0, Text: reference.Schema.Description}},
+					},
+					Names: f.KindField.Names,
+					Type: &ast.StructType{
+						Fields: &ast.FieldList{
+							List: fields,
+						},
+					},
+					Tag:     f.KindField.Tag,
+					Comment: f.KindField.Comment,
+				},
+			}
+		}
+	}
+	if changed {
+		schema, err := structToSchema(prog, name, tagName, *ref)
+		if err != nil {
+			return fmt.Errorf("%v can not be converted to JSON schema: %v", name, err)
+		}
+		ref.Schema = schema
+	}
+	return nil
 }
 
 func findNested(prog *Program, context string, isEmbed bool, f *ast.Field, filePath, pkg string) (string, error) {
