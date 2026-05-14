@@ -1,0 +1,79 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+tags:
+  - name: a
+  - name: currency
+  - name: get
+paths:
+  /currencies/{id}.json:
+    get:
+      operationId: GET_currencies_{id}.json
+      tags:
+        - get
+        - a
+        - currency
+      produces:
+        - application/json
+      parameters:
+        - name: Code
+          in: query
+          type: string
+        - name: id
+          in: path
+          type: integer
+          required: true
+      responses:
+        200:
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/infer-required.CurrencyResponse'
+definitions:
+  infer-required.Currency:
+    title: Currency
+    description: Currency exercises every inference branch in one struct.
+    type: object
+    required:
+      - id
+      - name
+      - code
+      - legacyRequired
+    properties:
+      code:
+        description: Code is required by default.
+        type: string
+      decimalPoints:
+        description: DecimalPoints is a pointer.
+        type: integer
+      description:
+        description: Description has omitempty, so it is not required.
+        type: string
+      id:
+        description: ID is required by default (non-pointer, no omitempty).
+        type: integer
+      legacyRequired:
+        description: LegacyRequired exercises the explicit doc tag on a pointer field.
+        type: string
+      name:
+        description: Name is required by default.
+        type: string
+      notes:
+        description: Notes is explicitly marked optional via doc tag.
+        type: string
+      symbol:
+        description: Symbol is a pointer, so it is not inferred as required.
+        type: string
+  infer-required.CurrencyResponse:
+    title: CurrencyResponse
+    description: CurrencyResponse wraps a currency.
+    type: object
+    required:
+      - currency
+    properties:
+      currency:
+        $ref: '#/definitions/infer-required.Currency'

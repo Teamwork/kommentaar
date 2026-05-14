@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/build"
+	"go/parser"
+	"go/token"
 	"testing"
 
 	"github.com/teamwork/test/diff"
@@ -209,4 +211,38 @@ func TestFieldToProperty(t *testing.T) {
 			_ = out
 		}
 	})
+}
+
+func TestIsInferredRequired(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{"non-pointer no tag", `struct{ F string }`, true},
+		{"non-pointer json tag", "struct{ F string `json:\"f\"` }", true},
+		{"pointer", `struct{ F *string }`, false},
+		{"omitempty", "struct{ F string `json:\"f,omitempty\"` }", false},
+		{"omitempty with whitespace", "struct{ F string `json:\"f, omitempty\"` }", false},
+		{"other tag option not omitempty", "struct{ F string `json:\"f,string\"` }", true},
+		{"explicit optional doc", "struct{\n// {optional}\nF string\n}", false},
+		{"explicit required on pointer doc", "struct{\n// {required}\nF *string\n}", false},
+		{"embedded", `struct{ string }`, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fset := token.NewFileSet()
+			src := "package p\ntype T " + tc.src
+			file, err := parser.ParseFile(fset, "in.go", src, parser.ParseComments)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			st := file.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec).Type.(*ast.StructType)
+			got := isInferredRequired(st.Fields.List[0], "json")
+			if got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

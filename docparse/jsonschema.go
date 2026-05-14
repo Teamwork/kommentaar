@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -77,6 +78,11 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 
 		if !sliceutil.Contains([]string{"path", "query", "form"}, ref.Context) {
 			fixRequired(schema, prop)
+
+			if prog.Config.InferRequired && isInferredRequired(p.KindField, tagName) &&
+				!sliceutil.Contains(schema.Required, name) {
+				schema.Required = append(schema.Required, name)
+			}
 		}
 
 		if prop == nil {
@@ -89,6 +95,39 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 	}
 
 	return schema, nil
+}
+
+// isInferredRequired reports whether a struct field should be auto-marked as
+// required when Config.InferRequired is enabled. A field is considered
+// required unless it is a pointer, has `omitempty` in its struct tag, or
+// has an explicit `{optional}` doc tag. Embedded fields (no field name)
+// are never inferred — embedding is a structural concern, not a contract.
+func isInferredRequired(f *ast.Field, tagName string) bool {
+	if f == nil || len(f.Names) == 0 {
+		return false
+	}
+	if _, ok := f.Type.(*ast.StarExpr); ok {
+		return false
+	}
+	if f.Tag != nil {
+		tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
+		for _, opt := range strings.Split(tag, ",")[1:] {
+			if strings.TrimSpace(opt) == "omitempty" {
+				return false
+			}
+		}
+	}
+
+	var doc string
+	if f.Doc != nil {
+		doc = f.Doc.Text()
+	} else if f.Comment != nil {
+		doc = f.Comment.Text()
+	}
+	if hasTag(doc, paramOptional) {
+		return false
+	}
+	return true
 }
 
 // The required tags are added to the property itself, rather than to the
