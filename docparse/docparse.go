@@ -51,6 +51,13 @@ type Config struct {
 	StructTag         string
 	MapTypes          map[string]string
 	MapFormats        map[string]string
+
+	// InferRequired marks response/body struct fields as required when the
+	// Go type implies presence: non-pointer fields without `omitempty` in
+	// the struct tag and without an explicit `{optional}` doc tag. Path,
+	// query, and form parameters are unaffected (they have their own
+	// required handling).
+	InferRequired bool
 }
 
 // DefaultResponse references.
