@@ -565,12 +565,13 @@ func TestGetReference(t *testing.T) {
 	}
 }
 
-// Regression: an embedded qualified pointer type tagged `json:"-"` (e.g.
-// `*mail.Address `json:"-"``) previously caused a nil-pointer panic because
-// the first field-walk pass tried to resolve the embed before checking the
-// JSON tag. The fix is to honor `json:"-"` in that pass too. We also
-// verify the embed is absent from the resulting Reference.Fields and the
-// referenced external type is not pulled into prog.References.
+// Regression: an embedded qualified pointer type tagged json:"-" (for
+// example *mail.Address with a json:"-" tag) previously caused a
+// nil-pointer panic because the first field-walk pass tried to resolve
+// the embed before checking the tag. The fix is to honor json:"-" in
+// that pass too. We also verify the embed is absent from the resulting
+// Reference.Fields and the referenced external type is not pulled into
+// prog.References.
 func TestGetReference_EmbedJSONDash(t *testing.T) {
 	prog := NewProgram(false)
 	prog.Config.StructTag = "json"
