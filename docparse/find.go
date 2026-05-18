@@ -438,6 +438,15 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 				continue
 			}
 
+			// Skip embedded fields explicitly excluded from the schema
+			// (e.g. `json:"-"`). The nested-walk loop below applies the
+			// same skip; doing it here too avoids resolving a type we
+			// will not emit, which matters for embeds whose underlying
+			// type would otherwise pull in a large external graph.
+			if goutil.TagName(f, tagName) == "-" {
+				continue
+			}
+
 			switch t := f.Type.(type) {
 			case *ast.Ident:
 				err = resolveType(prog, context, false, t, "", pkg)
