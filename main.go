@@ -1,6 +1,7 @@
 package main // import "github.com/teamwork/kommentaar"
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -43,6 +44,7 @@ func start() (bool, error) {
 	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
 	html                 HTML documentation
 `)
+	outFile := flag.String("out", "", "write output to this file instead of stdout")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "", "write memory profile to `file`")
 
@@ -88,9 +90,22 @@ func start() (bool, error) {
 		prog.Config.Packages = []string{"."}
 	}
 
-	err := docparse.FindComments(stdout, prog)
+	w := stdout
+	var buf *bytes.Buffer
+	if *outFile != "" {
+		buf = &bytes.Buffer{}
+		w = buf
+	}
+
+	err := docparse.FindComments(w, prog)
 	if err != nil {
 		return false, err
+	}
+
+	if *outFile != "" {
+		if err := os.WriteFile(*outFile, buf.Bytes(), 0666); err != nil {
+			return false, fmt.Errorf("writing output file: %w", err)
+		}
 	}
 
 	if *memprofile != "" {

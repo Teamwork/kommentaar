@@ -40,4 +40,4 @@ export GOPATH=/go
 export GO111MODULE=off
 
 cd /go/src/$MODULE_PATH
-/go/bin/kommentaar -config $config -output $output $exec_path > /output/swagger.$output_ext
+/go/bin/kommentaar -config $config -output $output -out /output/swagger.$output_ext $exec_path
