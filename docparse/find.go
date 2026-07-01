@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/teamwork/utils/v2/goutil"
 	"github.com/teamwork/utils/v2/sliceutil"
@@ -21,6 +22,16 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// parsedFile holds the result of parsing a single source file.
+type parsedFile struct {
+	fset     *token.FileSet
+	astFile  *ast.File
+	relPath  string
+	pkgPath  string
+	fullPath string
+	err      error
+}
+
 // FindComments finds all comments in the given paths or packages.
 func FindComments(w io.Writer, prog *Program) error {
 	pkgs, err := goutil.Expand(prog.Config.Packages, packages.NeedName|packages.NeedFiles)
@@ -28,49 +39,86 @@ func FindComments(w io.Writer, prog *Program) error {
 		return err
 	}
 
-	allErr := []error{}
-
+	type fileJob struct {
+		pkgName  string
+		pkgPath  string
+		fullPath string
+	}
+	var jobs []fileJob
 	for _, pkg := range pkgs {
-		// Ignore test package.
 		if strings.HasSuffix(pkg.Name, "_test") {
 			continue
 		}
-
 		for _, fullPath := range pkg.GoFiles {
-			// Print as just <pkgname>/<file> in errors instead of full path.
-			relPath := pkg.PkgPath + "/" + filepath.Base(fullPath)
+			jobs = append(jobs, fileJob{
+				pkgName:  pkg.Name,
+				pkgPath:  pkg.PkgPath,
+				fullPath: fullPath,
+			})
+		}
+	}
+
+	parsed := make([]parsedFile, len(jobs))
+	var wg sync.WaitGroup
+	wg.Add(len(jobs))
+	for i, job := range jobs {
+		go func() {
+			defer wg.Done()
+			relPath := job.pkgPath + "/" + filepath.Base(job.fullPath)
 			fset := token.NewFileSet()
-			f, err := parser.ParseFile(fset, fullPath, nil, parser.ParseComments)
+			f, parseErr := parser.ParseFile(fset, job.fullPath, nil, parser.ParseComments)
+			parsed[i] = parsedFile{
+				fset:     fset,
+				astFile:  f,
+				relPath:  relPath,
+				pkgPath:  job.pkgPath,
+				fullPath: job.fullPath,
+				err:      parseErr,
+			}
+		}()
+	}
+	wg.Wait()
+
+	// Only cache files without errors; ParseFile can return a partial AST with an error.
+	for i := range parsed {
+		if parsed[i].astFile != nil && parsed[i].err == nil {
+			astFileCache.Store(parsed[i].fullPath, parsed[i].astFile)
+		}
+	}
+
+	preloadPackages(parsed)
+
+	allErr := []error{}
+	for _, pf := range parsed {
+		if pf.err != nil {
+			allErr = append(allErr, pf.err)
+			continue
+		}
+
+		for _, c := range pf.astFile.Comments {
+			e, relLine, err := parseComment(prog, c.Text(), pf.pkgPath, pf.fullPath)
 			if err != nil {
-				allErr = append(allErr, err)
+				p := pf.fset.Position(c.Pos())
+				allErr = append(allErr, fmt.Errorf("%v:%v %v",
+					pf.relPath, p.Line+relLine, err))
 				continue
 			}
-
-			for _, c := range f.Comments {
-				e, relLine, err := parseComment(prog, c.Text(), pkg.PkgPath, fullPath)
-				if err != nil {
-					p := fset.Position(c.Pos())
-					allErr = append(allErr, fmt.Errorf("%v:%v %v",
-						relPath, p.Line+relLine, err))
-					continue
-				}
-				if e == nil || e[0] == nil {
-					continue
-				}
-				e[0].Pos = fset.Position(c.Pos())
-				e[0].End = fset.Position(c.End())
-
-				// Copy info from main endpoint to aliases.
-				for i, a := range e[1:] {
-					s := *e[0]
-					e[i+1] = &s
-					e[i+1].Path = a.Path
-					e[i+1].Method = a.Method
-					e[i+1].Tags = a.Tags
-				}
-
-				prog.Endpoints = append(prog.Endpoints, e...)
+			if e == nil || e[0] == nil {
+				continue
 			}
+			e[0].Pos = pf.fset.Position(c.Pos())
+			e[0].End = pf.fset.Position(c.End())
+
+			// Copy info from main endpoint to aliases.
+			for i, a := range e[1:] {
+				s := *e[0]
+				e[i+1] = &s
+				e[i+1].Path = a.Path
+				e[i+1].Method = a.Method
+				e[i+1].Tags = a.Tags
+			}
+
+			prog.Endpoints = append(prog.Endpoints, e...)
 		}
 	}
 
@@ -97,6 +145,55 @@ func FindComments(w io.Writer, prog *Program) error {
 	return prog.Config.Output(w, prog)
 }
 
+// preloadPackages resolves all imported packages in one packages.Load call and
+// pre-populates resolvedPkgCache and declsCache before endpoint processing.
+func preloadPackages(parsed []parsedFile) {
+	seen := make(map[string]bool)
+	var importPaths []string
+	for _, pf := range parsed {
+		if pf.astFile == nil {
+			continue
+		}
+		for _, imp := range pf.astFile.Imports {
+			p := strings.Trim(imp.Path.Value, `"`)
+			if !seen[p] && p != "C" {
+				seen[p] = true
+				importPaths = append(importPaths, p)
+			}
+		}
+	}
+	if len(importPaths) == 0 {
+		return
+	}
+
+	pkgs, err := packages.Load(
+		&packages.Config{Mode: packages.NeedName | packages.NeedFiles},
+		importPaths...,
+	)
+	if err != nil {
+		return
+	}
+
+	for _, pkg := range pkgs {
+		if pkg.PkgPath == "" || len(pkg.GoFiles) == 0 {
+			continue
+		}
+		dir := filepath.Dir(pkg.GoFiles[0])
+		var baseNames []string
+		for _, f := range pkg.GoFiles {
+			baseNames = append(baseNames, filepath.Base(f))
+		}
+		bp := &build.Package{
+			Dir:        dir,
+			GoFiles:    baseNames,
+			Name:       pkg.Name,
+			ImportPath: pkg.PkgPath,
+		}
+		resolvedPkgCache.Store(pkg.PkgPath, pkgResult{pkg: bp})
+		getDecls(bp, pkg.PkgPath) //nolint:errcheck
+	}
+}
+
 type declCache struct {
 	ts   *ast.TypeSpec
 	vs   *ast.ValueSpec
@@ -104,6 +201,8 @@ type declCache struct {
 }
 
 var declsCache = make(map[string][]declCache)
+
+var astFileCache sync.Map // key: string, value: *ast.File
 
 // findType attempts to find a type.
 //
@@ -219,20 +318,31 @@ func findValue(currentFile, pkgPath, name string) (
 		name, resolvedPath)
 }
 
-// resolvePackageWithFallback tries to resolve a package with vendor-aware
-// lookup first (mode 0). If that fails — which can happen in Go 1.25+ when the
-// package is in a custom GOPATH but not in vendor — it retries with
-// build.IgnoreVendor. The fallback error is returned so callers see the
-// canonical "cannot find package" message format.
+type pkgResult struct {
+	pkg *build.Package
+	err error
+}
+
+var resolvedPkgCache sync.Map // key: string, value: pkgResult
+
+// resolvePackageWithFallback resolves a package with vendor-aware lookup,
+// falling back to build.IgnoreVendor, and caches both success and failure.
 func resolvePackageWithFallback(pkgPath string) (*build.Package, error) {
+	if v, ok := resolvedPkgCache.Load(pkgPath); ok {
+		r := v.(pkgResult)
+		return r.pkg, r.err
+	}
 	pkg, err := goutil.ResolvePackage(pkgPath, 0)
 	if err != nil {
 		if pkg2, err2 := goutil.ResolvePackage(pkgPath, build.IgnoreVendor); err2 == nil {
+			resolvedPkgCache.Store(pkgPath, pkgResult{pkg: pkg2})
 			return pkg2, nil
 		} else {
+			resolvedPkgCache.Store(pkgPath, pkgResult{err: err2})
 			return nil, err2
 		}
 	}
+	resolvedPkgCache.Store(pkgPath, pkgResult{pkg: pkg})
 	return pkg, nil
 }
 
@@ -265,49 +375,67 @@ func getDecls(pkg *build.Package, pkgPath string) ([]declCache, error) {
 	}
 
 	dbg("getDecls: parsing dir %#v: %#v", pkg.Dir, pkg.GoFiles)
-	fset := token.NewFileSet()
-	pkgs, err := goutil.ParseFiles(fset, pkg.Dir, pkg.GoFiles, parser.ParseComments)
-	if err != nil {
-		return nil, fmt.Errorf("parse error: %v", err)
+
+	type fileResult struct {
+		path    string
+		astFile *ast.File
+		err     error
 	}
+	results := make([]fileResult, len(pkg.GoFiles))
+	var wg sync.WaitGroup
+	for i, name := range pkg.GoFiles {
+		fullPath := filepath.Join(pkg.Dir, name)
+		if v, ok := astFileCache.Load(fullPath); ok {
+			results[i] = fileResult{path: fullPath, astFile: v.(*ast.File)}
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fset := token.NewFileSet()
+			f, parseErr := parser.ParseFile(fset, fullPath, nil, parser.ParseComments)
+			if f != nil && parseErr == nil {
+				astFileCache.Store(fullPath, f)
+			}
+			results[i] = fileResult{path: fullPath, astFile: f, err: parseErr}
+		}()
+	}
+	wg.Wait()
 
-	for _, p := range pkgs {
-		for path, f := range p.Files {
-			for _, d := range f.Decls {
-				// Only need to cache *ast.GenDecl with what we're interested in.
-				if gd, ok := d.(*ast.GenDecl); ok {
-					for _, s := range gd.Specs {
-						if ts, ok := s.(*ast.TypeSpec); ok {
-							// For:
-							//     // Commment!
-							//     type Foo struct{}
-							//
-							// The "Comment!" is stored on on the
-							// GenDecl.Doc, but for:
-							//     type (
-							//         // Comment!
-							//         Foo struct{}
-							//     )
-							//
-							// it's on the TypeSpec.Doc. Makes no sense to
-							// me either, but this makes it more consistent,
-							// and easier to access since we only care about
-							// the TypeSpec.
-							if ts.Doc == nil && gd.Doc != nil {
-								ts.Doc = gd.Doc
-							}
-
-							decls = append(decls, declCache{
-								ts: ts, file: path,
-							})
+	for _, r := range results {
+		if r.err != nil {
+			return nil, fmt.Errorf("parse error: %v", r.err)
+		}
+		if r.astFile == nil {
+			continue
+		}
+		for _, d := range r.astFile.Decls {
+			// Only need to cache *ast.GenDecl with what we're interested in.
+			if gd, ok := d.(*ast.GenDecl); ok {
+				for _, s := range gd.Specs {
+					if ts, ok := s.(*ast.TypeSpec); ok {
+						// For:
+						//     // Comment!
+						//     type Foo struct{}
+						//
+						// The "Comment!" is stored on the GenDecl.Doc, but for:
+						//     type (
+						//         // Comment!
+						//         Foo struct{}
+						//     )
+						//
+						// it's on the TypeSpec.Doc. Makes no sense to me either,
+						// but this makes it more consistent and easier to access
+						// since we only care about the TypeSpec.
+						if ts.Doc == nil && gd.Doc != nil {
+							ts.Doc = gd.Doc
 						}
+						decls = append(decls, declCache{ts: ts, file: r.path})
+					}
 
-						// Constants or variables, used for printing.
-						if vs, ok := s.(*ast.ValueSpec); ok {
-							decls = append(decls, declCache{
-								vs: vs, file: path,
-							})
-						}
+					// Constants or variables, used for printing.
+					if vs, ok := s.(*ast.ValueSpec); ok {
+						decls = append(decls, declCache{vs: vs, file: r.path})
 					}
 				}
 			}
