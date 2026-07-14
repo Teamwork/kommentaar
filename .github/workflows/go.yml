@@ -28,6 +28,7 @@ jobs:
     - uses: actions/setup-go@v6
       with:
         go-version-file: gopath/src/github.com/teamwork/kommentaar/go.mod
+        cache-dependency-path: gopath/src/github.com/teamwork/kommentaar/go.sum
 
     - name: Test & coverage
       env:
