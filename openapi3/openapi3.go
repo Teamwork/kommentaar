@@ -487,12 +487,15 @@ func setResponses(prog *docparse.Program, e *docparse.Endpoint, op *Operation, r
 			r.Description = statusText(code)
 		}
 
-		if schema != nil {
+		switch {
+		case schema != nil:
 			ct := resp.ContentType
 			if ct == "" {
 				ct = prog.Config.DefaultResponseCt
 			}
 			r.Content = map[string]MediaType{ct: {Schema: schema}}
+		case resp.ContentType != "" && resp.ContentType != prog.Config.DefaultResponseCt:
+			r.Content = map[string]MediaType{resp.ContentType: {}}
 		}
 
 		op.Responses[strconv.Itoa(code)] = r

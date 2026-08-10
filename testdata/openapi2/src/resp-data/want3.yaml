@@ -9,5 +9,7 @@ paths:
       responses:
         "200":
           description: 200 OK (text/plain data)
+          content:
+            text/plain: {}
         "400":
           description: 400 Bad Request (no data)
