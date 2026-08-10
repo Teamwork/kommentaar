@@ -9,6 +9,7 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/html"
 	"github.com/teamwork/kommentaar/openapi2"
+	"github.com/teamwork/kommentaar/openapi3"
 	"github.com/teamwork/utils/v2/goutil"
 	"zgo.at/sconfig"
 	_ "zgo.at/sconfig/handlers/html/template" // template.HTML handler
@@ -81,6 +82,12 @@ func Output(out, addr string) (func(io.Writer, *docparse.Program) error, error) 
 		outFunc = openapi2.WriteJSON
 	case "openapi2-jsonindent":
 		outFunc = openapi2.WriteJSONIndent
+	case "openapi3-yaml":
+		outFunc = openapi3.WriteYAML
+	case "openapi3-json":
+		outFunc = openapi3.WriteJSON
+	case "openapi3-jsonindent":
+		outFunc = openapi3.WriteJSONIndent
 	case "html":
 		if addr != "" {
 			outFunc = html.ServeHTML(addr)
