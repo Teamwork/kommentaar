@@ -1,0 +1,27 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    get:
+      operationId: GET_path
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wrapped-resp.bikeResp'
+components:
+  schemas:
+    wrapped-resp.bikeResp:
+      title: bikeResp
+      type: object
+      properties:
+        bike:
+          title: bikeResp
+          type: object
+          properties:
+            Colour:
+              type: string

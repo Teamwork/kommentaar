@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/param-schema.a'
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/param-schema.a'
+components:
+  schemas:
+    param-schema.a:
+      title: a
+      type: object
+      properties:
+        B:
+          title: overridden
+          description: overridden field
+          type: object
+          properties:
+            basic:
+              description: Basic comment.
+              type: string
+            other:
+              type: string
+        overridden:
+          title: overridden
+          description: overridden field
+          type: object
+          properties:
+            basic:
+              description: Basic comment.
+              type: string
+            other:
+              type: string

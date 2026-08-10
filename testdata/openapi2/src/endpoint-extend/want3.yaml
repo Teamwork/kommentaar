@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      consumes:
+        - application/xml
+      operationId: POST_path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/endpoint-extend.reqRef'
+        required: true
+      responses:
+        "200":
+          description: 200 OK (no data)
+      x-private: true
+components:
+  schemas:
+    endpoint-extend.reqRef:
+      title: reqRef
+      type: object

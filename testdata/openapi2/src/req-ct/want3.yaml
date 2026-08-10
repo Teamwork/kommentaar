@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/req-ct.reqRef'
+      responses:
+        "200":
+          description: 200 OK (no data)
+components:
+  schemas:
+    req-ct.reqRef:
+      title: reqRef
+      type: object

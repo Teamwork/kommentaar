@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      responses:
+        "200":
+          description: 200 OK (text/plain data)
+        "400":
+          description: 400 Bad Request (no data)

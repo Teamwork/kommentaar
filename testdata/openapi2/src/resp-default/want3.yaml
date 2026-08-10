@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      responses:
+        "418":
+          description: 418 I'm a teapot
+          content:
+            application/teapot:
+              schema:
+                $ref: '#/components/schemas/mail.Address'
+components:
+  schemas:
+    mail.Address:
+      title: Address
+      description: |-
+        Address represents a single mail address.
+        An address such as "Barry Gibbs <bg@example.com>" is represented
+        as Address{Name: "Barry Gibbs", Address: "bg@example.com"}.
+      type: object
+      properties:
+        Address:
+          description: user@domain
+          type: string
+        Name:
+          description: Proper name; may be empty.
+          type: string
