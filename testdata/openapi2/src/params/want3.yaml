@@ -1,0 +1,36 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+tags:
+  - name: tag
+paths:
+  /path/{id}:
+    post:
+      operationId: POST_path_{id}
+      tags:
+        - tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          description: Foo!
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: 200 OK (no data)

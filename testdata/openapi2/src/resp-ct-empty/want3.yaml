@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    get:
+      operationId: GET_path
+      responses:
+        "200":
+          description: 200 OK (no data)
+          content:
+            text/csv: {}
+        "400":
+          description: 400 Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resp-ct-empty.errRef'
+components:
+  schemas:
+    resp-ct-empty.errRef:
+      title: errRef
+      type: object

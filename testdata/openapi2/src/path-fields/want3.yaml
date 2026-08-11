@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+tags:
+  - name: tag
+paths:
+  /path/{companyID}/{id}:
+    post:
+      operationId: POST_path_{companyID}_{id}
+      tags:
+        - tag
+      parameters:
+        - name: companyID
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 200 OK (no data)

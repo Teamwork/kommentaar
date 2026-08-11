@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      parameters:
+        - name: companyID
+          in: query
+          description: Hello there
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/struct-required.req'
+      responses:
+        "200":
+          description: 200 OK (no data)
+components:
+  schemas:
+    struct-required.req:
+      title: req
+      type: object
+      required:
+        - data
+        - createdBy
+      properties:
+        createdBy:
+          type: integer
+        data:
+          type: object
+          required:
+            - meta
+          properties:
+            meta:
+              type: object
+              required:
+                - booly
+              properties:
+                booly:
+                  description: Another level
+                  type: boolean
+                stringy:
+                  type: string

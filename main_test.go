@@ -12,6 +12,7 @@ import (
 	"github.com/teamwork/kommentaar/docparse"
 	"github.com/teamwork/kommentaar/kconfig"
 	"github.com/teamwork/kommentaar/openapi2"
+	"github.com/teamwork/kommentaar/openapi3"
 	"github.com/teamwork/test"
 	"github.com/teamwork/test/diff"
 )
@@ -102,6 +103,63 @@ func TestOpenAPI2(t *testing.T) {
 				if d != "" {
 					t.Fatalf("wrong JSON output\n%v", d)
 				}
+			}
+		})
+	}
+}
+
+func TestOpenAPI3(t *testing.T) {
+	tests, err := os.ReadDir("./testdata/openapi2/src")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name(), func(t *testing.T) {
+			path := "./testdata/openapi2/src/" + tt.Name()
+			golden := path + "/want3.yaml"
+
+			want, err := os.ReadFile(golden)
+			if os.IsNotExist(err) {
+				t.Skipf("no %s", golden)
+			}
+			if err != nil {
+				t.Fatalf("could not read golden: %v", err)
+			}
+			want = append(bytes.TrimSpace(want), '\n')
+
+			wd, _ := os.Getwd()
+			build.Default.GOPATH = filepath.Join(wd, "/testdata/openapi2")
+
+			prog := docparse.NewProgram(false)
+			prog.Config.Title = "x"
+			prog.Config.Version = "x"
+			prog.Config.Packages = []string{path}
+			prog.Config.StructTag = "json"
+
+			testConfig := path + "/test.conf"
+			if _, err := os.Stat(testConfig); err == nil {
+				if err := kconfig.Load(prog, testConfig); err != nil {
+					t.Fatalf("test.conf: %v", err)
+				}
+			}
+			prog.Config.Output = openapi3.WriteYAML
+
+			outBuf := bytes.NewBuffer(nil)
+			if err := docparse.FindComments(outBuf, prog); err != nil {
+				t.Fatalf("FindComments: %v", err)
+			}
+			out := strings.TrimSpace(outBuf.String()) + "\n"
+
+			if os.Getenv("UPDATE_GOLDEN") != "" {
+				if err := os.WriteFile(golden, []byte(out), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+
+			if d := diff.TextDiff(string(want), out); d != "" {
+				t.Fatalf("incorrect output\n%s\ndiff\n%v", out, d)
 			}
 		})
 	}

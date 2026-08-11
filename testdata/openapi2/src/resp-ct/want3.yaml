@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/resp-ct.respRef'
+components:
+  schemas:
+    resp-ct.respRef:
+      title: respRef
+      type: object

@@ -1,0 +1,26 @@
+swagger: "2.0"
+info:
+  title: x
+  version: x
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /path:
+    get:
+      operationId: GET_path
+      produces:
+        - application/json
+        - text/csv
+      responses:
+        200:
+          description: 200 OK (no data)
+        400:
+          description: 400 Bad Request
+          schema:
+            $ref: '#/definitions/resp-ct-empty.errRef'
+definitions:
+  resp-ct-empty.errRef:
+    title: errRef
+    type: object

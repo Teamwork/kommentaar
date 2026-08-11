@@ -42,6 +42,9 @@ func start() (bool, error) {
 	openapi2-yaml        OpenAPI/Swagger 2.0 as YAML
 	openapi2-json        OpenAPI/Swagger 2.0 as JSON
 	openapi2-jsonindent  OpenAPI/Swagger 2.0 as JSON indented
+	openapi3-yaml        OpenAPI 3.0 as YAML
+	openapi3-json        OpenAPI 3.0 as JSON
+	openapi3-jsonindent  OpenAPI 3.0 as JSON indented
 	html                 HTML documentation
 `)
 	outFile := flag.String("out", "", "write output to this file instead of stdout")
