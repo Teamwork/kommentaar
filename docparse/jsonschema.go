@@ -28,6 +28,12 @@ type Schema struct {
 	Minimum     int      `json:"minimum,omitempty" yaml:"minimum,omitempty"`
 	Maximum     int      `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 	Readonly    *bool    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
+	// Nullable says the field may be sent as JSON null, which for a pointer
+	// field is a state of its own rather than an absent value. This is the
+	// OpenAPI 3 spelling; the openapi2 package moves it to XNullable, which
+	// is how Swagger 2.0 spells the same thing.
+	Nullable  *bool `json:"nullable,omitempty" yaml:"nullable,omitempty"`
+	XNullable *bool `json:"x-nullable,omitempty" yaml:"x-nullable,omitempty"`
 
 	FieldWhitelist []string `json:"field-whitelist,omitempty" yaml:"field-whitelist,omitempty"`
 
@@ -148,6 +154,7 @@ const (
 	paramOptional  = "optional"
 	paramOmitEmpty = "omitempty"
 	paramReadOnly  = "readonly"
+	paramNullable  = "nullable"
 	paramOmitDoc   = "omitdoc"
 	paramEnum      = "enum"
 )
@@ -169,6 +176,9 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 		case paramReadOnly:
 			t := true
 			p.Readonly = &t
+		case paramNullable:
+			t := true
+			p.Nullable = &t
 		case paramEnum:
 			// For this type of enum, we figure out the variations based on the type.
 			p.Type = "enum"
