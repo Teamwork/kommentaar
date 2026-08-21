@@ -284,16 +284,34 @@ Supported parameters:
 - `schema: path`    – use a JSON schema file (as JSON as YAML) to describe this
                       parameter, ignoring the Kommentaar directives for it. The
                       path is relative to the file in which it's found.
-- `oneof: t1 t2 ..`  – parameter is exactly one of these types. Use for a field
-                      that is genuinely a union, such as a Go `any` holding a
-                      string for one variant and a number for another. Each type
-                      is a JSON schema type name (`string`, `number`, `integer`,
-                      `boolean`, `object`, `null`), and a `[]` prefix makes an
-                      array of that type. At least two are required.
-- `anyof: t1 t2 ..`  – as `oneof`, but the value may match more than one of the
-                      types.
+- `oneof: t1 t2 ..`  – the value matches **exactly one** of these types. Use for
+                      a field that is genuinely a union, such as a Go `any`
+                      holding a string for one variant and a number for another.
+                      Each type is a JSON schema type name (`string`, `number`,
+                      `integer`, `boolean`, `object`, `null`), and a `[]` prefix
+                      makes an array of that type. At least two are required.
+- `anyof: t1 t2 ..`  – the value matches **at least one** of these types.
 - `field-whitelist: field_one field_two` - whitelist certain fields to be included in the struct's parameters
 - Any [format from JSON schema][json-schema-format].
+
+### Choosing between `oneof` and `anyof`
+
+These are the JSON Schema keywords of the same name, and they differ only when
+two of the listed types can both match the same value. For types that cannot
+overlap they behave identically, so **reach for `oneof` by default**: `oneof:
+string boolean` and `anyof: string boolean` accept exactly the same values,
+and `oneof` states the stronger fact.
+
+The overlap worth knowing about is `number` and `integer`. `42` is a valid
+`number` *and* a valid `integer`, so under `oneof` it matches two alternatives
+and fails validation, while under `anyof` it passes. If a field holds both whole
+and fractional numbers, list `number` by itself — it already admits whole
+numbers — rather than listing both and switching to `anyof`.
+
+Overlapping `object` alternatives behave the same way: if one object shape
+validates against another, `oneof` will reject a value matching both.
+
+### OpenAPI 2 output
 
 `oneof` and `anyof` reach the OpenAPI 3 output as `oneOf` and `anyOf`. Swagger
 2.0 has no keyword for a choice between shapes, so the OpenAPI 2 output records
