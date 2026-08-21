@@ -1,6 +1,7 @@
 package docparse
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/build"
@@ -245,4 +246,94 @@ func TestIsInferredRequired(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseCompositionTypes(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		want    []*Schema
+		wantErr bool
+	}{
+		{"scalars", "string number", []*Schema{{Type: "string"}, {Type: "number"}}, false},
+		{
+			"array alternative",
+			"string []string",
+			[]*Schema{{Type: "string"}, {Type: "array", Items: &Schema{Type: "string"}}},
+			false,
+		},
+		{
+			"object and boolean",
+			"object boolean",
+			[]*Schema{{Type: "object"}, {Type: "boolean"}},
+			false,
+		},
+		{
+			"extra whitespace and newlines",
+			"string\n  number",
+			[]*Schema{{Type: "string"}, {Type: "number"}},
+			false,
+		},
+		{"unknown type", "string bogus", nil, true},
+		{"unknown array type", "string []bogus", nil, true},
+		{"single type is not a union", "string", nil, true},
+		{"empty", "", nil, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseCompositionTypes(tc.in)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected an error, got %v", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d := diff.Diff(tc.want, got); d != "" {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestSetTagsComposition(t *testing.T) {
+	t.Run("oneof reaches the schema and marshals", func(t *testing.T) {
+		var p Schema
+		if err := setTags("value", "in.go", &p, []string{"oneof: string number []string"}); err != nil {
+			t.Fatalf("setTags: %v", err)
+		}
+		if len(p.OneOf) != 3 {
+			t.Fatalf("got %d alternatives, want 3", len(p.OneOf))
+		}
+
+		j, err := json.Marshal(p)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		want := `{"oneOf":[{"type":"string"},{"type":"number"},` +
+			`{"type":"array","items":{"type":"string"}}]}`
+		if string(j) != want {
+			t.Errorf("got %s, want %s", j, want)
+		}
+	})
+
+	t.Run("anyof reaches the schema", func(t *testing.T) {
+		var p Schema
+		if err := setTags("value", "in.go", &p, []string{"anyof: string boolean"}); err != nil {
+			t.Fatalf("setTags: %v", err)
+		}
+		if len(p.AnyOf) != 2 {
+			t.Fatalf("got %d alternatives, want 2", len(p.AnyOf))
+		}
+	})
+
+	t.Run("a bad type list is an error, not a silent pass", func(t *testing.T) {
+		var p Schema
+		if err := setTags("value", "in.go", &p, []string{"oneof: string bogus"}); err == nil {
+			t.Error("expected an error for an unknown type")
+		}
+	})
 }
