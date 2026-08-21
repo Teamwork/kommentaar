@@ -246,3 +246,27 @@ func TestIsInferredRequired(t *testing.T) {
 		})
 	}
 }
+
+func TestSetTagsNullable(t *testing.T) {
+	// A pointer field opts into the nullable keyword with a doc tag, so only
+	// the fields that mean it get annotated.
+	var p Schema
+	if err := setTags("middleName", "in.go", &p, []string{paramNullable}); err != nil {
+		t.Fatalf("setTags: %v", err)
+	}
+	if p.Nullable == nil || !*p.Nullable {
+		t.Errorf("Nullable = %v, want true", p.Nullable)
+	}
+	if p.XNullable != nil {
+		t.Error("docparse holds the OpenAPI 3 spelling; openapi2 moves it")
+	}
+
+	// Without the tag nothing is emitted, so existing specs do not change.
+	var untagged Schema
+	if err := setTags("lastName", "in.go", &untagged, []string{paramReadOnly}); err != nil {
+		t.Fatalf("setTags: %v", err)
+	}
+	if untagged.Nullable != nil {
+		t.Errorf("Nullable = %v, want nil", untagged.Nullable)
+	}
+}

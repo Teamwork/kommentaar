@@ -458,6 +458,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 			return fmt.Errorf("schema is nil for %q", k)
 		}
 		prefixPropertyReferences(v.Schema.Properties, ref)
+		swaggerNullable(v.Schema)
 		out.Definitions[k] = *v.Schema
 	}
 	// Remove unreferenced definitions.
@@ -540,5 +541,22 @@ func prefixSchemaReferences(s *docparse.Schema, getRef func(string) string) {
 	prefixSchemaReferences(s.AdditionalProperties, getRef)
 	if s.Properties != nil {
 		prefixPropertyReferences(s.Properties, getRef)
+	}
+}
+
+// swaggerNullable rewrites the OpenAPI 3 "nullable" keyword to the "x-nullable"
+// vendor extension Swagger 2.0 uses for the same thing, throughout a schema.
+func swaggerNullable(s *docparse.Schema) {
+	if s == nil {
+		return
+	}
+	if s.Nullable != nil {
+		s.XNullable = s.Nullable
+		s.Nullable = nil
+	}
+	swaggerNullable(s.Items)
+	swaggerNullable(s.AdditionalProperties)
+	for _, p := range s.Properties {
+		swaggerNullable(p)
 	}
 }
