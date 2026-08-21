@@ -276,6 +276,10 @@ Supported parameters:
 - `readonly`        – parameter cannot be set by the user from the request body
                       or query/form parameters. Attempting to set it will be or
                       result in an error.
+- `nullable`        – parameter may be JSON null, which is a value of its own
+                      rather than an absent field. Emitted as `nullable` in
+                      OpenAPI 3 and as the `x-nullable` extension in Swagger
+                      2.0.
 - `default: v1`     – default value.
 - `enum: v1 v2 ..`  – parameter must be one one of the values.
 - `range: n-n`      – parameter must be within this range; either number can be
