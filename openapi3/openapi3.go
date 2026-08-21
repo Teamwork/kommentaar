@@ -621,6 +621,12 @@ func prefixSchemaReferences(s *docparse.Schema, getRef func(string) string) {
 	}
 	prefixSchemaReferences(s.Items, getRef)
 	prefixSchemaReferences(s.AdditionalProperties, getRef)
+	for _, alt := range s.OneOf {
+		prefixSchemaReferences(alt, getRef)
+	}
+	for _, alt := range s.AnyOf {
+		prefixSchemaReferences(alt, getRef)
+	}
 	if s.Properties != nil {
 		prefixPropertyReferences(s.Properties, getRef)
 	}

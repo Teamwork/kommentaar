@@ -49,6 +49,16 @@ type Schema struct {
 	// bool value, we use the schema definition
 	AdditionalProperties *Schema `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 
+	// Alternative shapes a value may take, for a field that is genuinely a union:
+	// a Go `any` holding a string for one variant and a number for another.
+	// Set by {oneof: ...} and {anyof: ...}.
+	//
+	// These reach the OpenAPI 3 output as `oneOf`/`anyOf`. Swagger 2.0 has no
+	// keyword for alternatives, so the OpenAPI 2 output degrades them to prose in
+	// `description` and leaves whatever `type` the field already had.
+	OneOf []*Schema `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	AnyOf []*Schema `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
+
 	OmitDoc      bool   `json:"-" yaml:"-"` // {omitdoc}
 	CustomSchema string `json:"-" yaml:"-"` // {schema: path}
 }
@@ -213,6 +223,20 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 						p.Enum = append(p.Enum, e)
 					}
 				}
+
+			case strings.HasPrefix(t, "oneof: "):
+				alts, err := parseCompositionTypes(t[len("oneof: "):])
+				if err != nil {
+					return fmt.Errorf("oneof for %#v: %v", name, err)
+				}
+				p.OneOf = alts
+
+			case strings.HasPrefix(t, "anyof: "):
+				alts, err := parseCompositionTypes(t[len("anyof: "):])
+				if err != nil {
+					return fmt.Errorf("anyof for %#v: %v", name, err)
+				}
+				p.AnyOf = alts
 
 			case strings.HasPrefix(t, "default: "):
 				p.Default = strings.TrimSpace(t[8:])
@@ -988,6 +1012,32 @@ arrayStart:
 		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
 	}
 	return err
+}
+
+// parseCompositionTypes reads the space-separated type list of a {oneof: ...} or
+// {anyof: ...} tag into one schema per alternative. A `[]` prefix makes an array
+// of that type, so "string number []string" gives a string, a number, and an
+// array of strings.
+func parseCompositionTypes(list string) ([]*Schema, error) {
+	fields := strings.Fields(strings.ReplaceAll(list, "\n", " "))
+	if len(fields) < 2 {
+		return nil, fmt.Errorf("need at least two types, got %d", len(fields))
+	}
+
+	alts := make([]*Schema, 0, len(fields))
+	for _, f := range fields {
+		item := strings.TrimPrefix(f, "[]")
+		if !isPrimitive(item) && item != "object" {
+			return nil, fmt.Errorf("unknown type %q", f)
+		}
+
+		alt := &Schema{Type: item}
+		if strings.HasPrefix(f, "[]") {
+			alt = &Schema{Type: "array", Items: alt}
+		}
+		alts = append(alts, alt)
+	}
+	return alts, nil
 }
 
 func isPrimitive(n string) bool {

@@ -529,7 +529,8 @@ func prefixPropertyReferences(properties map[string]*docparse.Schema, getRef fun
 
 // prefixSchemaReferences rewrites all `$ref` strings inside a schema (including
 // nested items, additionalProperties, and properties) to their fully-qualified
-// `#/definitions/...` form.
+// `#/definitions/...` form. It also degrades any {oneof: ...}/{anyof: ...}
+// alternatives, which Swagger 2.0 cannot express.
 func prefixSchemaReferences(s *docparse.Schema, getRef func(string) string) {
 	if s == nil {
 		return
@@ -537,11 +538,54 @@ func prefixSchemaReferences(s *docparse.Schema, getRef func(string) string) {
 	if s.Reference != "" {
 		s.Reference = getRef(s.Reference)
 	}
+	degradeComposition(s)
 	prefixSchemaReferences(s.Items, getRef)
 	prefixSchemaReferences(s.AdditionalProperties, getRef)
 	if s.Properties != nil {
 		prefixPropertyReferences(s.Properties, getRef)
 	}
+}
+
+// degradeComposition removes `oneOf`/`anyOf` and records the alternatives in
+// `description` instead. Swagger 2.0 has only `allOf`, which means "all of these
+// at once" and so cannot express a choice between shapes. Emitting it would
+// assert something untrue, and emitting `oneOf` would produce a file that is not
+// valid Swagger 2.0, so the alternatives survive as prose for a human reader
+// while `type` keeps whatever the field already declared.
+func degradeComposition(s *docparse.Schema) {
+	if len(s.OneOf) > 0 {
+		s.Description = appendSentence(s.Description, describeAlternatives("One of", s.OneOf))
+		s.OneOf = nil
+	}
+	if len(s.AnyOf) > 0 {
+		s.Description = appendSentence(s.Description, describeAlternatives("Any of", s.AnyOf))
+		s.AnyOf = nil
+	}
+}
+
+func describeAlternatives(label string, alts []*docparse.Schema) string {
+	names := make([]string, 0, len(alts))
+	for _, alt := range alts {
+		switch {
+		case alt.Reference != "":
+			names = append(names, alt.Reference)
+		case alt.Type == "array" && alt.Items != nil:
+			names = append(names, alt.Items.Type+"[]")
+		default:
+			names = append(names, alt.Type)
+		}
+	}
+	return label + ": " + strings.Join(names, ", ") + "."
+}
+
+func appendSentence(existing, add string) string {
+	if existing == "" {
+		return add
+	}
+	if strings.HasSuffix(existing, ".") {
+		return existing + " " + add
+	}
+	return existing + ". " + add
 }
 
 // swaggerNullable rewrites the OpenAPI 3 "nullable" keyword to the "x-nullable"
