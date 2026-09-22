@@ -863,9 +863,15 @@ func resolveMap(
 		return nil
 	}
 	p.AdditionalProperties = &Schema{Reference: lref}
-	if _, err := GetReference(prog, ref.Context, false, lookup, ref.File); err != nil {
+	vref, err := GetReference(prog, ref.Context, false, lookup, ref.File)
+	if err != nil {
 		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+		return nil
 	}
+
+	// GetReference gives the definition a different name when two packages
+	// share a base name, so take the name that it stored.
+	p.AdditionalProperties.Reference = vref.Lookup
 	return nil
 }
 

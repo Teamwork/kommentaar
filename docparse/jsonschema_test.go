@@ -447,3 +447,42 @@ func referenceNames(prog *Program) []string {
 	sort.Strings(names)
 	return names
 }
+
+// TestResolveMapPackageCollision makes sure that two types of the same name
+// from two packages that share a base name get one reference each. Both
+// resolve through the same Program, which is where GetReference renames the
+// second definition.
+func TestResolveMapPackageCollision(t *testing.T) {
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "mapsCollide")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	prog := NewProgram(false)
+	refs := make(map[string]string)
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		out := &Schema{}
+		err := resolveMap(prog, Reference{
+			Package: "a",
+			File:    "./testdata/src/a/a.go",
+			Context: "req",
+		}, "a", out, f.Type.(*ast.MapType), nil)
+		if err != nil {
+			t.Fatalf("%v: %v", name, err)
+		}
+		assertReferencesDefined(t, prog, out)
+		refs[name] = out.AdditionalProperties.Reference
+	}
+
+	if refs["first"] == refs["second"] {
+		t.Errorf("both fields give the same reference %q, so one of them points at the wrong schema",
+			refs["first"])
+	}
+}

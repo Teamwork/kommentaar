@@ -6,6 +6,7 @@ import (
 	"b"
 
 	aliased "c"
+	other "d/c"
 )
 
 // GET /
@@ -108,4 +109,11 @@ type maps struct {
 	aliasPkg map[string]aliased.Nested
 	// aliasPkgSlice holds the same type in a slice.
 	aliasPkgSlice map[string][]aliased.Nested
+}
+
+// mapsCollide holds two types of the same name from two packages that share a
+// base name.
+type mapsCollide struct {
+	first  map[string]aliased.Nested
+	second map[string]other.Nested
 }
