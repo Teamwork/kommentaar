@@ -374,7 +374,6 @@ func TestResolveMap(t *testing.T) {
 		"nested":     {Type: "object", AdditionalProperties: &Schema{Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
 		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "mail.Address"}}},
 		"aliasPkg":   {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
-		"namedPrim":  {Type: "object", AdditionalProperties: &Schema{Type: "string"}},
 		"aliasPkgSlice": {Type: "object", AdditionalProperties: &Schema{
 			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 	}

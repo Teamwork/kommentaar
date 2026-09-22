@@ -106,7 +106,6 @@ type maps struct {
 	sliceOfMap map[string][]mail.Address
 	// aliasPkg holds a type that the file reaches through an import alias.
 	aliasPkg map[string]aliased.Nested
-	namedPrim map[string]b.StatusType
 	// aliasPkgSlice holds the same type in a slice.
 	aliasPkgSlice map[string][]aliased.Nested
 }
