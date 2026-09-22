@@ -7,6 +7,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"sort"
 	"testing"
 
 	"github.com/teamwork/test/diff"
@@ -359,4 +360,87 @@ func TestSetTagsNullable(t *testing.T) {
 	if untagged.Nullable != nil {
 		t.Errorf("Nullable = %v, want nil", untagged.Nullable)
 	}
+}
+
+func TestResolveMap(t *testing.T) {
+	want := map[string]*Schema{
+		"prim":       {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"primP":      {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"anyVal":     {Type: "object"},
+		"strct":      {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"strctP":     {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"pkg":        {Type: "object", AdditionalProperties: &Schema{Reference: "mail.Address"}},
+		"slice":      {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"nested":     {Type: "object", AdditionalProperties: &Schema{Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
+		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "mail.Address"}}},
+	}
+
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "maps")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		t.Run(name, func(t *testing.T) {
+			typ, ok := f.Type.(*ast.MapType)
+			if !ok {
+				t.Fatalf("%v is not a map but a %T", name, f.Type)
+			}
+
+			w, ok := want[name]
+			if !ok {
+				t.Fatalf("no test case for %v", name)
+			}
+
+			prog := NewProgram(false)
+			out := &Schema{}
+			ref := Reference{
+				Package: "a",
+				File:    "./testdata/src/a/a.go",
+				Context: "req",
+			}
+			if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+				t.Fatal(err)
+			}
+
+			if d := diff.Diff(w, out); d != "" {
+				t.Errorf("%v", d)
+			}
+			assertReferencesDefined(t, prog, out)
+		})
+	}
+}
+
+// assertReferencesDefined reports every $ref in s that has no definition in
+// prog.References. A reference that nothing defines gives an unusable
+// document, which is what cmd/lint-openapi-refs looks for in consumer repos.
+func assertReferencesDefined(t *testing.T, prog *Program, s *Schema) {
+	t.Helper()
+	if s == nil {
+		return
+	}
+	if s.Reference != "" {
+		if _, ok := prog.References[s.Reference]; !ok {
+			t.Errorf("no definition for reference %q; defined: %v",
+				s.Reference, referenceNames(prog))
+		}
+	}
+	assertReferencesDefined(t, prog, s.AdditionalProperties)
+	assertReferencesDefined(t, prog, s.Items)
+}
+
+func referenceNames(prog *Program) []string {
+	names := make([]string, 0, len(prog.References))
+	for name := range prog.References {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

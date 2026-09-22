@@ -89,3 +89,17 @@ type withExternalEnum struct {
 	// {enum}
 	statuses []b.StatusType
 }
+
+// maps exercises resolveMap against primitive, pointer, struct, slice and
+// nested map value types.
+type maps struct {
+	prim       map[string]int
+	primP      map[string]*int
+	anyVal     map[string]any
+	strct      map[string]bar
+	strctP     map[string]*bar
+	pkg        map[string]mail.Address
+	slice      map[string][]bar
+	nested     map[string]map[string]bar
+	sliceOfMap map[string][]mail.Address
+}
