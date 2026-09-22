@@ -92,8 +92,8 @@ type withExternalEnum struct {
 	statuses []b.StatusType
 }
 
-// maps exercises resolveMap against primitive, pointer, struct, slice and
-// nested map value types.
+// maps exercises resolveMap against primitive, pointer, struct, slice,
+// nested map and import alias value types.
 type maps struct {
 	prim       map[string]int
 	primP      map[string]*int
@@ -104,6 +104,9 @@ type maps struct {
 	slice      map[string][]bar
 	nested     map[string]map[string]bar
 	sliceOfMap map[string][]mail.Address
-	// aliased holds a type that the file reaches through an import alias.
+	// aliasPkg holds a type that the file reaches through an import alias.
 	aliasPkg map[string]aliased.Nested
+	namedPrim map[string]b.StatusType
+	// aliasPkgSlice holds the same type in a slice.
+	aliasPkgSlice map[string][]aliased.Nested
 }

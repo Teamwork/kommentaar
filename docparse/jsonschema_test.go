@@ -374,6 +374,9 @@ func TestResolveMap(t *testing.T) {
 		"nested":     {Type: "object", AdditionalProperties: &Schema{Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
 		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "mail.Address"}}},
 		"aliasPkg":   {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
+		"namedPrim":  {Type: "object", AdditionalProperties: &Schema{Type: "string"}},
+		"aliasPkgSlice": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 	}
 
 	build.Default.GOPATH = "./testdata"
@@ -421,7 +424,7 @@ func TestResolveMap(t *testing.T) {
 
 // assertReferencesDefined reports every $ref in s that has no definition in
 // prog.References. A reference that nothing defines gives an unusable
-// document, which is what cmd/lint-openapi-refs looks for in consumer repos.
+// document.
 func assertReferencesDefined(t *testing.T, prog *Program, s *Schema) {
 	t.Helper()
 	if s == nil {
