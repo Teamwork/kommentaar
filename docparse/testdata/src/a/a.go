@@ -4,6 +4,8 @@ import (
 	"net/mail"
 
 	"b"
+
+	aliased "c"
 )
 
 // GET /
@@ -102,4 +104,6 @@ type maps struct {
 	slice      map[string][]bar
 	nested     map[string]map[string]bar
 	sliceOfMap map[string][]mail.Address
+	// aliased holds a type that the file reaches through an import alias.
+	aliasPkg map[string]aliased.Nested
 }

@@ -373,6 +373,7 @@ func TestResolveMap(t *testing.T) {
 		"slice":      {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "a.bar"}}},
 		"nested":     {Type: "object", AdditionalProperties: &Schema{Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
 		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "mail.Address"}}},
+		"aliasPkg":   {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
 	}
 
 	build.Default.GOPATH = "./testdata"

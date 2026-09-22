@@ -794,20 +794,20 @@ func findTypeIdent(typ ast.Expr, curPkg string) (*ast.Ident, string, error) {
 	return se.Sel, pkgSel.Name, nil
 }
 
-func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
-	// Check if the type resolves to a Go primitive.
-	lookup := pkg + "." + name
-	ts, _, _, err := findType(file, pkg, name)
+// lookupTypeAndRef finds the type and gives the JSON Schema type, the
+// reference name and the fully qualified lookup for it.
+//
+// pkg can be an import alias, which is not the package name. The names come
+// from the import path that findType resolves, because GetReference keeps the
+// definition under the package name. An alias in the reference points at a
+// definition that does not exist.
+func lookupTypeAndRef(file, pkg, name string) (typ, sRef, lookup string, err error) {
+	ts, _, importPath, err := findType(file, pkg, name)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	t := JSONSchemaType(ts.Name.Name)
 
-	sRef := lookup
-	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		sRef = pkg[i+1:] + "." + name
-	}
-	return t, sRef, nil
+	return JSONSchemaType(ts.Name.Name), filepath.Base(importPath) + "." + name, importPath + "." + name, nil
 }
 
 // resolveMap fills p with an `object` schema describing a Go map. Where we can
@@ -857,13 +857,13 @@ func resolveMap(
 		return nil
 	}
 
-	_, lref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+	_, lref, lookup, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
 	if err != nil {
 		dbg("ERR, Could not find additionalProperties: %s", err.Error())
 		return nil
 	}
 	p.AdditionalProperties = &Schema{Reference: lref}
-	if _, err := GetReference(prog, ref.Context, false, lref, ref.File); err != nil {
+	if _, err := GetReference(prog, ref.Context, false, lookup, ref.File); err != nil {
 		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
 	}
 	return nil
