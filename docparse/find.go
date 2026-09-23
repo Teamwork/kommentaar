@@ -626,7 +626,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	prog.References[ref.Lookup] = ref
 	var (
-		nested       []string
+		nested       []nestedEmbed
 		nestedTagged []*ast.Field
 	)
 
@@ -666,7 +666,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 		if isEmbed {
 			if f.Tag == nil {
-				nested = append(nested, nestLookup)
+				_, isPtr := f.Type.(*ast.StarExpr)
+				nested = append(nested, nestedEmbed{lookup: nestLookup, isPtr: isPtr})
 			} else if len(f.Names) == 0 {
 				nestedTagged = append(nestedTagged, f)
 			}
@@ -698,10 +699,19 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 	// Merge for embedded structs without a tag.
 	for _, n := range nested {
-		ref.Fields = append(ref.Fields, prog.References[n].Fields...)
+		embedded := prog.References[n.lookup]
+		ref.Fields = append(ref.Fields, embedded.Fields...)
 
-		if prog.References[n].Schema != nil {
-			for k, v := range prog.References[n].Schema.Properties {
+		if embedded.Schema != nil {
+			// encoding/json omits all fields of a nil embedded pointer.
+			if !n.isPtr {
+				for _, k := range embedded.Schema.Required {
+					if _, ok := ref.Schema.Properties[k]; !ok && !sliceutil.Contains(ref.Schema.Required, k) {
+						ref.Schema.Required = append(ref.Schema.Required, k)
+					}
+				}
+			}
+			for k, v := range embedded.Schema.Properties {
 				if _, ok := ref.Schema.Properties[k]; !ok {
 					ref.Schema.Properties[k] = v
 				}
@@ -785,6 +795,12 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 		ref.Schema = schema
 	}
 	return nil
+}
+
+// nestedEmbed is an untagged embedded struct whose fields merge into the parent.
+type nestedEmbed struct {
+	lookup string
+	isPtr  bool
 }
 
 func findNested(prog *Program, context string, isEmbed bool, f *ast.Field, filePath, pkg string) (string, error) {
