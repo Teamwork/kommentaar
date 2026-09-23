@@ -364,16 +364,18 @@ func TestSetTagsNullable(t *testing.T) {
 
 func TestResolveMap(t *testing.T) {
 	want := map[string]*Schema{
-		"prim":       {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
-		"primP":      {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
-		"anyVal":     {Type: "object"},
-		"strct":      {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
-		"strctP":     {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
-		"pkg":        {Type: "object", AdditionalProperties: &Schema{Reference: "mail.Address"}},
-		"slice":      {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "a.bar"}}},
-		"nested":     {Type: "object", AdditionalProperties: &Schema{Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
-		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "mail.Address"}}},
-		"aliasPkg":   {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
+		"prim":   {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"primP":  {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"anyVal": {Type: "object"},
+		"strct":  {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"strctP": {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"pkg":    {Type: "object", AdditionalProperties: &Schema{Reference: "mail.Address"}},
+		"slice":  {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"nested": {Type: "object", AdditionalProperties: &Schema{
+			Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
+		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "mail.Address"}}},
+		"aliasPkg": {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
 		"aliasPkgSlice": {Type: "object", AdditionalProperties: &Schema{
 			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 	}
