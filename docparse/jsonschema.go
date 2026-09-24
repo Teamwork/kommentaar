@@ -791,22 +791,6 @@ func findTypeIdent(typ ast.Expr, curPkg string) (*ast.Ident, string, error) {
 	return se.Sel, pkgSel.Name, nil
 }
 
-func lookupTypeAndRef(file, pkg, name string) (string, string, error) {
-	// Check if the type resolves to a Go primitive.
-	lookup := pkg + "." + name
-	ts, _, _, err := findType(file, pkg, name)
-	if err != nil {
-		return "", "", err
-	}
-	t := JSONSchemaType(ts.Name.Name)
-
-	sRef := lookup
-	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		sRef = pkg[i+1:] + "." + name
-	}
-	return t, sRef, nil
-}
-
 // resolveMap fills p with an `object` schema describing a Go map. Where we can
 // identify the value type it's attached as `additionalProperties`; otherwise p
 // is left as an open object (what Swagger 2 gives us in the absence of better
@@ -854,15 +838,36 @@ func resolveMap(
 		return nil
 	}
 
-	_, lref, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+	ts, _, importPath, err := findType(ref.File, vpkg, vtyp.Name)
 	if err != nil {
 		dbg("ERR, Could not find additionalProperties: %s", err.Error())
 		return nil
 	}
-	p.AdditionalProperties = &Schema{Reference: lref}
-	if _, err := GetReference(prog, ref.Context, false, lref, ref.File); err != nil {
-		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+
+	if arr, ok := ts.Type.(*ast.ArrayType); ok {
+		if !strings.HasSuffix(importPath, vpkg) { // import alias
+			vpkg = importPath
+		}
+		items := &Schema{Type: "array"}
+		if err := resolveArray(prog, ref, vpkg, items, arr.Elt, false, generics); err != nil {
+			return fmt.Errorf("resolveMap resolveArray: %v", err)
+		}
+		p.AdditionalProperties = items
+		return nil
 	}
+
+	// The key comes from the package, not an import alias. GetReference does
+	// not find a stored type by its full lookup, so check the key first.
+	lookup, stored := referenceLookup(prog, importPath, vtyp.Name)
+	if !stored {
+		vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
+		if err != nil {
+			dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+			return nil
+		}
+		lookup = vref.Lookup
+	}
+	p.AdditionalProperties = &Schema{Reference: lookup}
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"sort"
 	"testing"
 
 	"github.com/teamwork/test/diff"
@@ -358,5 +359,194 @@ func TestSetTagsNullable(t *testing.T) {
 	}
 	if untagged.Nullable != nil {
 		t.Errorf("Nullable = %v, want nil", untagged.Nullable)
+	}
+}
+
+func TestResolveMap(t *testing.T) {
+	want := map[string]*Schema{
+		"prim":   {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"primP":  {Type: "object", AdditionalProperties: &Schema{Type: "integer"}},
+		"anyVal": {Type: "object"},
+		"strct":  {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"strctP": {Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}},
+		"pkg":    {Type: "object", AdditionalProperties: &Schema{Reference: "mail.Address"}},
+		"slice":  {Type: "object", AdditionalProperties: &Schema{Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"nested": {Type: "object", AdditionalProperties: &Schema{
+			Type: "object", AdditionalProperties: &Schema{Reference: "a.bar"}}},
+		"sliceOfMap": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "mail.Address"}}},
+		"aliasPkg": {Type: "object", AdditionalProperties: &Schema{Reference: "c.Nested"}},
+		"aliasPkgSlice": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
+		"namedSlice": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"aliasNamedSlice": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
+		"dotted": {Type: "object", AdditionalProperties: &Schema{Reference: "m.Item"}},
+		"dottedSlice": {Type: "object", AdditionalProperties: &Schema{
+			Type: "array", Items: &Schema{Reference: "m.Item"}}},
+		"selfRef": {Type: "object", AdditionalProperties: &Schema{Reference: "c.Tree"}},
+	}
+
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "maps")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		t.Run(name, func(t *testing.T) {
+			typ, ok := f.Type.(*ast.MapType)
+			if !ok {
+				t.Fatalf("%v is not a map but a %T", name, f.Type)
+			}
+
+			w, ok := want[name]
+			if !ok {
+				t.Fatalf("no test case for %v", name)
+			}
+
+			prog := NewProgram(false)
+			out := &Schema{}
+			ref := Reference{
+				Package: "a",
+				File:    "./testdata/src/a/a.go",
+				Context: "req",
+			}
+			if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+				t.Fatal(err)
+			}
+
+			if d := diff.Diff(w, out); d != "" {
+				t.Errorf("%v", d)
+			}
+			assertReferencesDefined(t, prog, out)
+		})
+	}
+}
+
+// TestResolveMapStoredReference makes sure that a second map of a stored type
+// takes the stored definition. The type is on a dotted import path, which
+// GetReference does not find in prog.References by its full lookup.
+func TestResolveMapStoredReference(t *testing.T) {
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "maps")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	var typ *ast.MapType
+	for _, f := range st.Fields.List {
+		if f.Names[0].Name == "dotted" {
+			typ, _ = f.Type.(*ast.MapType)
+		}
+	}
+	if typ == nil {
+		t.Fatal("no dotted map field")
+	}
+
+	prog := NewProgram(false)
+	for _, ctx := range []string{"req", "resp"} {
+		out := &Schema{}
+		ref := Reference{Package: "a", File: "./testdata/src/a/a.go", Context: ctx}
+		if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+			t.Fatalf("%v: %v", ctx, err)
+		}
+		assertReferencesDefined(t, prog, out)
+	}
+
+	if got := prog.References["m.Item"].Context; got != "req" {
+		t.Errorf("m.Item context = %q, want %q", got, "req")
+	}
+}
+
+// assertReferencesDefined reports every $ref in s that has no definition in
+// prog.References. A reference that nothing defines gives an unusable
+// document.
+func assertReferencesDefined(t *testing.T, prog *Program, s *Schema) {
+	t.Helper()
+	if s == nil {
+		return
+	}
+	if s.Reference != "" {
+		if _, ok := prog.References[s.Reference]; !ok {
+			t.Errorf("no definition for reference %q; defined: %v",
+				s.Reference, referenceNames(prog))
+		}
+	}
+	assertReferencesDefined(t, prog, s.AdditionalProperties)
+	assertReferencesDefined(t, prog, s.Items)
+}
+
+func referenceNames(prog *Program) []string {
+	names := make([]string, 0, len(prog.References))
+	for name := range prog.References {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// TestResolveMapPackageCollision makes sure that two types of the same name
+// from two packages that share a base name get one reference each. Both
+// resolve through the same Program, which is where GetReference renames the
+// second definition.
+func TestResolveMapPackageCollision(t *testing.T) {
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "mapsCollide")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	want := map[string]struct{ ref, pkg string }{
+		"first":  {"c.Nested", "c"},
+		"second": {"c.Nested2", "d/c"},
+	}
+
+	prog := NewProgram(false)
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		typ, ok := f.Type.(*ast.MapType)
+		if !ok {
+			t.Fatalf("%v is not a map but a %T", name, f.Type)
+		}
+
+		out := &Schema{}
+		err := resolveMap(prog, Reference{
+			Package: "a",
+			File:    "./testdata/src/a/a.go",
+			Context: "req",
+		}, "a", out, typ, nil)
+		if err != nil {
+			t.Fatalf("%v: %v", name, err)
+		}
+		assertReferencesDefined(t, prog, out)
+		if out.AdditionalProperties == nil {
+			t.Fatalf("%v: no additionalProperties", name)
+		}
+
+		got := out.AdditionalProperties.Reference
+		if got != want[name].ref {
+			t.Errorf("%v: reference = %q, want %q", name, got, want[name].ref)
+		}
+		if pkg := prog.References[got].Package; pkg != want[name].pkg {
+			t.Errorf("%v: %q is from package %q, want %q", name, got, pkg, want[name].pkg)
+		}
 	}
 }

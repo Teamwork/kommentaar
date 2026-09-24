@@ -527,7 +527,6 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	ref := Reference{
 		Name:    name,
 		Package: pkg,
-		Lookup:  filepath.Base(pkg) + "." + name,
 		File:    foundPath,
 		Context: context,
 		IsEmbed: isEmbed,
@@ -610,20 +609,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		}
 	}
 
-	// Ensure the lookup key is unique when two packages share the same base name
-	// (e.g. task/reminder and time/reminder both produce "reminder.Request").
-	if existing, ok := prog.References[ref.Lookup]; ok && existing.Package != ref.Package {
-		for i := 2; ; i++ {
-			candidate := fmt.Sprintf("%s%d", ref.Lookup, i)
-			if ex, ok := prog.References[candidate]; !ok {
-				ref.Lookup = candidate
-				break
-			} else if ex.Package == ref.Package {
-				ref.Lookup = candidate
-				break
-			}
-		}
-	}
+	ref.Lookup, _ = referenceLookup(prog, pkg, name)
 	prog.References[ref.Lookup] = ref
 	var (
 		nested       []nestedEmbed
@@ -721,6 +707,25 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	prog.References[ref.Lookup] = ref
 
 	return &ref, nil
+}
+
+// referenceLookup gives the prog.References key for the type name in the
+// package at importPath, and reports whether that key holds it already. Two
+// packages that share a base name get "reminder.Request" and
+// "reminder.Request2".
+func referenceLookup(prog *Program, importPath, name string) (lookup string, stored bool) {
+	base := path.Base(importPath) + "." + name
+	lookup = base
+	for i := 2; ; i++ {
+		ref, ok := prog.References[lookup]
+		if !ok {
+			return lookup, false
+		}
+		if ref.Package == importPath {
+			return lookup, true
+		}
+		lookup = fmt.Sprintf("%s%d", base, i)
+	}
 }
 
 func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string, ref *Reference) error {
