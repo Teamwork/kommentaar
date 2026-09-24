@@ -494,9 +494,6 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	ts, foundPath, resolvedPkg, err := findType(filePath, pkg, name)
 	if err != nil {
 		if ref, ok := prog.References[lookup]; ok {
-			if ref.IsEmbed {
-				prog.References[lookup] = ref
-			}
 			return &ref, nil
 		}
 		return nil, err
@@ -508,11 +505,6 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	// package differently, or two packages can share a base name.
 	if key, stored := referenceLookup(prog, pkg, name); stored {
 		ref := prog.References[key]
-		// Update context: some structs are embedded but also referenced
-		// directly.
-		if ref.IsEmbed {
-			prog.References[key] = ref
-		}
 		return &ref, nil
 	}
 
