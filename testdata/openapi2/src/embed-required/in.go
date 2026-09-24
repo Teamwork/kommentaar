@@ -50,6 +50,28 @@ type Hidden struct {
 	Secret string `json:"secret"`
 }
 
+// Outer is embedded by pointer and embeds Inner by value.
+type Outer struct {
+	Inner
+}
+
+// Inner is embedded by Outer.
+type Inner struct {
+	Z string `json:"z"` // {required}
+	W string `json:"w"`
+}
+
+// Wrap is embedded by value and embeds Opt by pointer.
+type Wrap struct {
+	*Opt
+}
+
+// Opt is embedded by Wrap.
+type Opt struct {
+	V string `json:"v"`
+	U string `json:"u"` // {required}
+}
+
 // resp docs.
 type resp struct {
 	Base
@@ -60,6 +82,8 @@ type resp struct {
 	Tagged
 	Untagged
 	Hidden
+	*Outer
+	Wrap
 
 	Shadowed *string `json:"shadowed"`
 	Own      string  `json:"own"`

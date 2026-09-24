@@ -29,6 +29,8 @@ definitions:
       - kind
       - x
       - Bar
+      - z
+      - u
     properties:
       Bar:
         type: string
@@ -50,5 +52,13 @@ definitions:
         type: string
       shadowed:
         type: string
+      u:
+        type: string
+      v:
+        type: string
+      w:
+        type: string
       x:
+        type: string
+      z:
         type: string
