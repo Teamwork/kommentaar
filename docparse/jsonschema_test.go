@@ -587,10 +587,20 @@ func TestFieldToPropertyPackageCollision(t *testing.T) {
 		t.Fatal("not a struct?!")
 	}
 
+	want := map[string]struct {
+		ref, pkg string
+		fields   []string
+	}{
+		"first":       {"report.Nested", "repa/report", []string{"Str"}},
+		"firstP":      {"report.Nested", "repa/report", []string{"Str"}},
+		"firstSlice":  {"report.Nested", "repa/report", []string{"Str"}},
+		"second":      {"report.Nested2", "repb/report", []string{"Num"}},
+		"secondP":     {"report.Nested2", "repb/report", []string{"Num"}},
+		"secondSlice": {"report.Nested2", "repb/report", []string{"Num"}},
+	}
+
 	prog := NewProgram(false)
 	ref := Reference{Package: "a", File: "./testdata/src/a/a.go", Context: "req"}
-
-	refs := map[string]string{}
 	for _, f := range st.Fields.List {
 		name := f.Names[0].Name
 		out, err := fieldToSchema(prog, name, "json", ref, f, nil)
@@ -599,58 +609,20 @@ func TestFieldToPropertyPackageCollision(t *testing.T) {
 		}
 		assertReferencesDefined(t, prog, out)
 
-		switch name {
-		case "first", "firstP", "second", "secondP":
-			if out.Reference == "" {
-				t.Fatalf("%v: no reference", name)
-			}
-			refs[name] = out.Reference
-		case "firstSlice", "secondSlice":
-			if out.Items == nil || out.Items.Reference == "" {
-				t.Fatalf("%v: no item reference", name)
-			}
-			refs[name] = out.Items.Reference
+		got := out.Reference
+		if out.Items != nil {
+			got = out.Items.Reference
 		}
-	}
-
-	if refs["first"] != refs["firstP"] {
-		t.Errorf("first = %q, firstP = %q, want equal", refs["first"], refs["firstP"])
-	}
-	if refs["second"] != refs["secondP"] {
-		t.Errorf("second = %q, secondP = %q, want equal", refs["second"], refs["secondP"])
-	}
-	if refs["firstSlice"] != refs["first"] {
-		t.Errorf("firstSlice = %q, want %q", refs["firstSlice"], refs["first"])
-	}
-	if refs["secondSlice"] != refs["second"] {
-		t.Errorf("secondSlice = %q, want %q", refs["secondSlice"], refs["second"])
-	}
-	if refs["first"] == refs["second"] {
-		t.Fatalf("first and second both resolved to %q, want different keys", refs["first"])
-	}
-
-	firstDef, ok := prog.References[refs["first"]]
-	if !ok {
-		t.Fatalf("no definition for %q", refs["first"])
-	}
-	if firstDef.Package != "repa/report" {
-		t.Errorf("first package = %q, want %q", firstDef.Package, "repa/report")
-	}
-	secondDef, ok := prog.References[refs["second"]]
-	if !ok {
-		t.Fatalf("no definition for %q", refs["second"])
-	}
-	if secondDef.Package != "repb/report" {
-		t.Errorf("second package = %q, want %q", secondDef.Package, "repb/report")
-	}
-
-	wantFirstFields := []string{"Str"}
-	wantSecondFields := []string{"Num"}
-	if got := fieldNames(firstDef.Fields); !reflect.DeepEqual(got, wantFirstFields) {
-		t.Errorf("first fields = %v, want %v", got, wantFirstFields)
-	}
-	if got := fieldNames(secondDef.Fields); !reflect.DeepEqual(got, wantSecondFields) {
-		t.Errorf("second fields = %v, want %v", got, wantSecondFields)
+		if got != want[name].ref {
+			t.Errorf("%v: reference = %q, want %q", name, got, want[name].ref)
+		}
+		stored := prog.References[got]
+		if stored.Package != want[name].pkg {
+			t.Errorf("%v: %q is from package %q, want %q", name, got, stored.Package, want[name].pkg)
+		}
+		if fields := fieldNames(stored.Fields); !reflect.DeepEqual(fields, want[name].fields) {
+			t.Errorf("%v: %q fields = %v, want %v", name, got, fields, want[name].fields)
+		}
 	}
 }
 
@@ -673,13 +645,11 @@ func TestGetReferenceEmbedPackageCollision(t *testing.T) {
 		t.Fatalf("collideEmbedSecond: %v", err)
 	}
 
-	wantFirst := []string{"Str"}
-	wantSecond := []string{"Num"}
-	if got := fieldNames(first.Fields); !reflect.DeepEqual(got, wantFirst) {
-		t.Errorf("collideEmbedFirst fields = %v, want %v", got, wantFirst)
+	if got, want := fieldNames(first.Fields), []string{"Str"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("collideEmbedFirst fields = %v, want %v", got, want)
 	}
-	if got := fieldNames(second.Fields); !reflect.DeepEqual(got, wantSecond) {
-		t.Errorf("collideEmbedSecond fields = %v, want %v", got, wantSecond)
+	if got, want := fieldNames(second.Fields), []string{"Num"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("collideEmbedSecond fields = %v, want %v", got, want)
 	}
 
 	nested1, ok := prog.References["report.Nested"]

@@ -672,13 +672,11 @@ func TestGetReferencePackageCollision(t *testing.T) {
 		t.Errorf("first and second both resolved to %q, want different keys", first.Lookup)
 	}
 
-	wantFirst := []string{"Str"}
-	wantSecond := []string{"Num"}
-	if got := fieldNames(first.Fields); !reflect.DeepEqual(got, wantFirst) {
-		t.Errorf("first fields = %v, want %v", got, wantFirst)
+	if got, want := fieldNames(first.Fields), []string{"Str"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("first fields = %v, want %v", got, want)
 	}
-	if got := fieldNames(second.Fields); !reflect.DeepEqual(got, wantSecond) {
-		t.Errorf("second fields = %v, want %v", got, wantSecond)
+	if got, want := fieldNames(second.Fields), []string{"Num"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("second fields = %v, want %v", got, want)
 	}
 
 	if stored, ok := prog.References[first.Lookup]; !ok || stored.Package != "repa/report" {
