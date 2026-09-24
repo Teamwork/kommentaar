@@ -756,7 +756,8 @@ func TestParseCommentPathStoredKey(t *testing.T) {
 	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
 		t.Fatal(err)
 	}
-	out, _, err := parseComment(prog, "GET /x/{Num}\n\nPath: report.Nested\nResponse: {empty}\n", ".", "./testdata/src/h/h.go")
+	comment := "GET /x/{Num}\n\nPath: report.Nested\nResponse: {empty}\n"
+	out, _, err := parseComment(prog, comment, ".", "./testdata/src/h/h.go")
 	if err != nil {
 		t.Fatal(err)
 	}
