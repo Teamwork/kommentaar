@@ -255,11 +255,7 @@ func parseComment(prog *Program, comment, _, filePath string) ([]*Endpoint, int,
 				e.Request.Path, err = parseRefValue(prog, "path", h[2], filePath)
 
 				if err == nil {
-					pathRef, err := GetReference(prog, "query", false, e.Request.Path.Reference, filePath)
-					if err != nil {
-						return nil, i, err
-					}
-
+					pathRef := prog.References[e.Request.Path.Reference]
 					pp := PathParams(e.Path)
 					for _, p := range pathRef.Fields {
 						name := goutil.TagName(p.KindField, "path") // TODO: hardcoded path

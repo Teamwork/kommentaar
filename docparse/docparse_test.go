@@ -746,3 +746,23 @@ func TestGetReferenceStoredKeyName(t *testing.T) {
 		t.Errorf("Nested2 fields = %v, want %v", got, want)
 	}
 }
+
+// TestParseCommentPathStoredKey makes sure a Path reference gets the stored
+// type, and not a type that has the same name as the stored key.
+func TestParseCommentPathStoredKey(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := parseComment(prog, "GET /x/{Num}\n\nPath: report.Nested\nResponse: {empty}\n", ".", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := out[0].Request.Path.Reference; got != "report.Nested2" {
+		t.Errorf("Path.Reference = %q, want %q", got, "report.Nested2")
+	}
+}

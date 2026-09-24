@@ -691,7 +691,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	ref.Schema = schema
 
-	if err := applyFieldWhitelists(prog, context, filePath, name, tagName, &ref); err != nil {
+	if err := applyFieldWhitelists(prog, name, tagName, &ref); err != nil {
 		return nil, err
 	}
 
@@ -740,7 +740,7 @@ func referenceLookup(prog *Program, importPath, name string) (lookup string, sto
 	}
 }
 
-func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string, ref *Reference) error {
+func applyFieldWhitelists(prog *Program, name, tagName string, ref *Reference) error {
 	changed := false
 	for _, p := range ref.Schema.Properties {
 		if len(p.FieldWhitelist) == 0 {
@@ -756,9 +756,9 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 			if lookupStruct+f.Name != p.Reference {
 				continue
 			}
-			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
-			if err != nil {
-				return fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
+			reference, ok := prog.References[p.Reference]
+			if !ok {
+				return fmt.Errorf("could not get referenced struct %s", p.Reference)
 			}
 			fields := []*ast.Field{}
 			for _, field := range reference.Fields {
