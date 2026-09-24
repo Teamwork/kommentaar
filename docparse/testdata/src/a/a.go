@@ -116,6 +116,7 @@ type maps struct {
 	aliasNamedSlice map[string]aliased.Nesteds
 	dotted          map[string]m.Item
 	dottedSlice     map[string]m.Items
+	selfRef         map[string]other.Tree
 }
 
 // mapsCollide holds two types of the same name from two packages that share a

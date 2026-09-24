@@ -385,6 +385,7 @@ func TestResolveMap(t *testing.T) {
 		"dotted": {Type: "object", AdditionalProperties: &Schema{Reference: "m.Item"}},
 		"dottedSlice": {Type: "object", AdditionalProperties: &Schema{
 			Type: "array", Items: &Schema{Reference: "m.Item"}}},
+		"selfRef": {Type: "object", AdditionalProperties: &Schema{Reference: "c.Tree"}},
 	}
 
 	build.Default.GOPATH = "./testdata"
