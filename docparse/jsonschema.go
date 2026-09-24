@@ -841,9 +841,21 @@ func resolveMap(
 		return nil
 	}
 
-	_, _, importPath, err := findType(ref.File, vpkg, vtyp.Name)
+	ts, _, importPath, err := findType(ref.File, vpkg, vtyp.Name)
 	if err != nil {
 		dbg("ERR, Could not find additionalProperties: %s", err.Error())
+		return nil
+	}
+
+	if arr, ok := ts.Type.(*ast.ArrayType); ok {
+		if !strings.HasSuffix(importPath, vpkg) { // import alias
+			vpkg = importPath
+		}
+		items := &Schema{Type: "array"}
+		if err := resolveArray(prog, ref, vpkg, items, arr.Elt, false, generics); err != nil {
+			return fmt.Errorf("resolveMap resolveArray: %v", err)
+		}
+		p.AdditionalProperties = items
 		return nil
 	}
 

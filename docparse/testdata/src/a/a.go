@@ -4,6 +4,7 @@ import (
 	"net/mail"
 
 	"b"
+	"example.com/m"
 
 	aliased "c"
 	other "d/c"
@@ -93,8 +94,10 @@ type withExternalEnum struct {
 	statuses []b.StatusType
 }
 
-// maps exercises resolveMap against primitive, pointer, struct, slice,
-// nested map and import alias value types.
+type bars []bar
+
+// maps exercises resolveMap against primitive, pointer, struct, slice, named
+// slice, nested map, import alias and dotted import path value types.
 type maps struct {
 	prim       map[string]int
 	primP      map[string]*int
@@ -108,7 +111,11 @@ type maps struct {
 	// aliasPkg holds a type that the file reaches through an import alias.
 	aliasPkg map[string]aliased.Nested
 	// aliasPkgSlice holds the same type in a slice.
-	aliasPkgSlice map[string][]aliased.Nested
+	aliasPkgSlice   map[string][]aliased.Nested
+	namedSlice      map[string]bars
+	aliasNamedSlice map[string]aliased.Nesteds
+	dotted          map[string]m.Item
+	dottedSlice     map[string]m.Items
 }
 
 // mapsCollide holds two types of the same name from two packages that share a
