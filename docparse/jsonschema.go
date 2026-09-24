@@ -580,17 +580,13 @@ start:
 		}
 	}
 
-	// The key comes from the package, not an import alias. GetReference does
-	// not find a stored type by its full lookup, so check the key first.
-	key, stored := referenceLookup(prog, importPath, name.Name)
-	if !stored {
-		if _, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File); err != nil {
-			return nil, err
-		}
+	nref, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File)
+	if err != nil {
+		return nil, err
 	}
 
 	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
-	p.Reference = key
+	p.Reference = nref.Lookup
 
 	return &p, nil
 }
@@ -869,18 +865,12 @@ func resolveMap(
 		return nil
 	}
 
-	// The key comes from the package, not an import alias. GetReference does
-	// not find a stored type by its full lookup, so check the key first.
-	lookup, stored := referenceLookup(prog, importPath, vtyp.Name)
-	if !stored {
-		vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
-		if err != nil {
-			dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
-			return nil
-		}
-		lookup = vref.Lookup
+	vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
+	if err != nil {
+		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+		return nil
 	}
-	p.AdditionalProperties = &Schema{Reference: lookup}
+	p.AdditionalProperties = &Schema{Reference: vref.Lookup}
 	return nil
 }
 
@@ -1030,15 +1020,11 @@ arrayStart:
 		}
 	}
 
-	// The key comes from the package, not an import alias. GetReference does
-	// not find a stored type by its full lookup, so check the key first.
-	key, stored := referenceLookup(prog, importPath, name.Name)
-	if !stored {
-		if _, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File); err != nil {
-			return err
-		}
+	eref, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File)
+	if err != nil {
+		return err
 	}
-	p.Items = &Schema{Reference: key}
+	p.Items = &Schema{Reference: eref.Lookup}
 	return nil
 }
 
