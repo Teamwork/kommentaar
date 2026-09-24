@@ -714,8 +714,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 // referenceLookup gives the prog.References key for the type name in the
 // package at importPath, and reports whether that key holds it already. Two
-// packages that share a base name get "reminder.Request" and
-// "reminder.Request2".
+// packages that share a base name get "report.Nested" and
+// "report.Nested2".
 func referenceLookup(prog *Program, importPath, name string) (lookup string, stored bool) {
 	base := path.Base(importPath) + "." + name
 	lookup = base
