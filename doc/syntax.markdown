@@ -143,6 +143,15 @@ Embedded structs are merged in to the parent struct, unless they have the
 applicable struct tag (as configured with `struct-tag`), in which case they're
 added as reference in the output.
 
+The required keys of a merged struct are also required in the parent, with the
+same rules that `encoding/json` uses to select a field:
+
+- A parent field with the same key shadows the key of the embedded struct.
+- If more than one embedded struct has the key at the same depth, the key is
+  not required, unless exactly one of those fields sets the key with a tag.
+- An embedded pointer can be nil, so only its keys with an explicit
+  `{required}` are required in the parent.
+
 References are looked up in the customary locations (vendor, GOPATH). Invalid
 references are an error.
 
