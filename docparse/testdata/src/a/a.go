@@ -8,6 +8,9 @@ import (
 
 	aliased "c"
 	other "d/c"
+
+	repa "repa/report"
+	repb "repb/report"
 )
 
 // GET /
@@ -124,4 +127,26 @@ type maps struct {
 type mapsCollide struct {
 	first  map[string]aliased.Nested
 	second map[string]other.Nested
+}
+
+// collide references two types of the same name from two packages that
+// share a base name, as a plain field, a pointer field and a slice element.
+type collide struct {
+	first       repa.Nested
+	firstP      *repa.Nested
+	firstSlice  []repa.Nested
+	second      repb.Nested
+	secondP     *repb.Nested
+	secondSlice []repb.Nested
+}
+
+// collideEmbedFirst embeds package repa/report's Nested type.
+type collideEmbedFirst struct {
+	repa.Nested
+}
+
+// collideEmbedSecond embeds the repb/report package's Nested type, which has
+// the same package name as repa/report.
+type collideEmbedSecond struct {
+	repb.Nested
 }
