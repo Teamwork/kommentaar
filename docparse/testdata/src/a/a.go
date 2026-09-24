@@ -145,13 +145,13 @@ type collide struct {
 	secondSlice []repb.Nested
 }
 
-// collideEmbedFirst embeds package repa/report's Nested type.
+// collideEmbedFirst embeds the Nested type of package repa/report.
 type collideEmbedFirst struct {
 	repa.Nested
 }
 
-// collideEmbedSecond embeds the repb/report package's Nested type, which has
-// the same package name as repa/report.
+// collideEmbedSecond embeds the Nested type of package repb/report. That
+// package has the same name as package repa/report.
 type collideEmbedSecond struct {
 	repb.Nested
 }

@@ -642,11 +642,11 @@ func TestParseResponse(t *testing.T) {
 }
 
 // TestGetReferencePackageCollision makes sure GetReference does not return
-// another package's definition when two files each name the same base
-// package. Package repa/report and package repb/report both declare a type
-// Nested and both have the package name "report", and testdata/src/g and
-// testdata/src/h each import one of them unaliased, so both files ask
-// GetReference for the same string: "report.Nested".
+// the definition of another package when two packages have the same base
+// name. Packages repa/report and repb/report both have the name "report", and
+// both declare a type Nested. testdata/src/g imports one of them and
+// testdata/src/h imports the other, both with no alias. So both files send
+// the same lookup to GetReference: "report.Nested".
 func TestGetReferencePackageCollision(t *testing.T) {
 	orig := build.Default.GOPATH
 	build.Default.GOPATH = "./testdata"
@@ -688,8 +688,8 @@ func TestGetReferencePackageCollision(t *testing.T) {
 		t.Errorf("prog.References[%q] = %+v, want Package %q", second.Lookup, stored, "repb/report")
 	}
 
-	// A second call with the same raw lookup as the first must still hit the
-	// first package, not fall through to the second.
+	// A second call with the lookup of the first call must give the type of
+	// the first package again.
 	again, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go")
 	if err != nil {
 		t.Fatalf("again: %v", err)

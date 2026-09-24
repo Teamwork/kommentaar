@@ -916,8 +916,7 @@ arrayStart:
 		}
 
 		// Rest is assumed to be a custom type, and references with $ref after
-		// the switch. pkg can be a short alias, so resolve it the same way
-		// the selector case below does.
+		// the switch. Resolve pkg the same way as the selector case below.
 		p.Items.Type = ""
 		name = typ
 		if ts, _, resolved, err := findType(ref.File, pkg, typ.Name); err == nil {
@@ -995,7 +994,8 @@ arrayStart:
 		return nil
 	}
 
-	// A named slice element such as bars in []bars is an array of arrays.
+	// A named slice element, such as bars in []bars, gives an array of
+	// arrays.
 	if elem != nil {
 		if arr, ok := elem.Type.(*ast.ArrayType); ok {
 			items := &Schema{Type: "array"}

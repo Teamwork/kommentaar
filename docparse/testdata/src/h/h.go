@@ -2,9 +2,9 @@ package h
 
 import "repb/report"
 
-// ref holds a field of the repb/report package's Nested type. Its package
-// name is also "report" (see testdata/src/g), so a lookup that names
-// "report.Nested" collides between the two files.
+// ref holds a field of the Nested type of package repb/report. Package
+// repa/report has the same name and also declares a type Nested (see
+// testdata/src/g). So the lookup "report.Nested" can give two types.
 type ref struct {
 	field report.Nested
 }

@@ -488,9 +488,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	name, pkg := ParseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
-	// Find type. lookup can already be a canonical key from an earlier
-	// GetReference call, where pkg is a base name that does not resolve on
-	// its own. Fall back to the exact cache lookup in that case.
+	// Find type. When pkg does not resolve from filePath, use the stored
+	// reference with the key lookup, if there is one.
 	ts, foundPath, resolvedPkg, err := findType(filePath, pkg, name)
 	if err != nil {
 		if ref, ok := prog.References[lookup]; ok {
@@ -500,9 +499,9 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	pkg = resolvedPkg
 
-	// Already parsed this one, don't need to do it again. Key by the
-	// resolved import path, not by lookup: two files can name the same
-	// package differently, or two packages can share a base name.
+	// Use the stored reference if there is one. The key comes from the
+	// import path and not from lookup. Two files can give one package
+	// different names, and two packages can have the same base name.
 	if key, stored := referenceLookup(prog, pkg, name); stored {
 		ref := prog.References[key]
 		return &ref, nil
@@ -1018,9 +1017,8 @@ start:
 		return lookup, nil
 	}
 
-	// Resolve pkg to the full import path, so the key names the package
-	// that declares the type, not a name another package can share. Fall
-	// back to the base-name lookup when pkg does not resolve on its own.
+	// Make the key from the import path of the package that declares the
+	// type. When pkg does not resolve, use the base name key.
 	if _, _, importPath, err := findType(filePath, pkg, name.Name); err == nil {
 		key, stored := referenceLookup(prog, importPath, name.Name)
 		if !stored {
