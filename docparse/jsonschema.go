@@ -794,22 +794,6 @@ func findTypeIdent(typ ast.Expr, curPkg string) (*ast.Ident, string, error) {
 	return se.Sel, pkgSel.Name, nil
 }
 
-// lookupTypeAndRef finds the type and gives the reference name and the fully
-// qualified lookup for it.
-//
-// pkg can be an import alias, which is not the package name. The names come
-// from the import path that findType resolves, because GetReference keeps the
-// definition under the package name. An alias in the reference points at a
-// definition that does not exist.
-func lookupTypeAndRef(file, pkg, name string) (sRef, lookup string, err error) {
-	_, _, importPath, err := findType(file, pkg, name)
-	if err != nil {
-		return "", "", err
-	}
-
-	return filepath.Base(importPath) + "." + name, importPath + "." + name, nil
-}
-
 // resolveMap fills p with an `object` schema describing a Go map. Where we can
 // identify the value type it's attached as `additionalProperties`; otherwise p
 // is left as an open object (what Swagger 2 gives us in the absence of better
@@ -857,21 +841,20 @@ func resolveMap(
 		return nil
 	}
 
-	lref, lookup, err := lookupTypeAndRef(ref.File, vpkg, vtyp.Name)
+	_, _, importPath, err := findType(ref.File, vpkg, vtyp.Name)
 	if err != nil {
 		dbg("ERR, Could not find additionalProperties: %s", err.Error())
 		return nil
 	}
-	p.AdditionalProperties = &Schema{Reference: lref}
-	vref, err := GetReference(prog, ref.Context, false, lookup, ref.File)
+
+	// Take the name from GetReference: it names the definition after the
+	// package, not an import alias, and numbers it on a base name clash.
+	vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
 	if err != nil {
 		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
 		return nil
 	}
-
-	// GetReference gives the definition a different name when two packages
-	// share a base name, so take the name that it stored.
-	p.AdditionalProperties.Reference = vref.Lookup
+	p.AdditionalProperties = &Schema{Reference: vref.Lookup}
 	return nil
 }
 
