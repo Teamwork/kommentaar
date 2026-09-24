@@ -488,20 +488,32 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	name, pkg := ParseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
-	// Already parsed this one, don't need to do it again.
-	if ref, ok := prog.References[lookup]; ok {
+	// Find type. lookup can already be a canonical key from an earlier
+	// GetReference call, where pkg is a base name that does not resolve on
+	// its own. Fall back to the exact cache lookup in that case.
+	ts, foundPath, resolvedPkg, err := findType(filePath, pkg, name)
+	if err != nil {
+		if ref, ok := prog.References[lookup]; ok {
+			if ref.IsEmbed {
+				prog.References[lookup] = ref
+			}
+			return &ref, nil
+		}
+		return nil, err
+	}
+	pkg = resolvedPkg
+
+	// Already parsed this one, don't need to do it again. Key by the
+	// resolved import path, not by lookup: two files can name the same
+	// package differently, or two packages can share a base name.
+	if key, stored := referenceLookup(prog, pkg, name); stored {
+		ref := prog.References[key]
 		// Update context: some structs are embedded but also referenced
 		// directly.
 		if ref.IsEmbed {
-			prog.References[lookup] = ref
+			prog.References[key] = ref
 		}
 		return &ref, nil
-	}
-
-	// Find type.
-	ts, foundPath, pkg, err := findType(filePath, pkg, name)
-	if err != nil {
-		return nil, err
 	}
 
 	var st *ast.StructType
@@ -1013,6 +1025,20 @@ start:
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}
+
+	// Resolve pkg to the full import path, so the key names the package
+	// that declares the type, not a name another package can share. Fall
+	// back to the base-name lookup when pkg does not resolve on its own.
+	if _, _, importPath, err := findType(filePath, pkg, name.Name); err == nil {
+		key, stored := referenceLookup(prog, importPath, name.Name)
+		if !stored {
+			if err := resolveType(prog, context, isEmbed, name, filePath, pkg); err != nil {
+				return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
+			}
+		}
+		return key, nil
+	}
+
 	if _, ok := prog.References[lookup]; !ok {
 		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
 		if err != nil {
