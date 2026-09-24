@@ -715,3 +715,34 @@ func TestGetReferenceDottedSlice(t *testing.T) {
 		t.Errorf("out = %+v, want the slice of m.Item in example.com/m", out)
 	}
 }
+
+// TestGetReferenceStoredKeyName makes sure a type does not get the stored
+// reference of another type in its package whose key has its name.
+func TestGetReferenceStoredKeyName(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	nested, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nested.Lookup != "report.Nested2" {
+		t.Fatalf("Nested Lookup = %q, want %q", nested.Lookup, "report.Nested2")
+	}
+
+	nested2, err := GetReference(prog, "req", false, "report.Nested2", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nested2.Name != "Nested2" || nested2.Lookup == nested.Lookup {
+		t.Errorf("Nested2 = %+v, want its own reference", nested2)
+	}
+	if got, want := fieldNames(nested2.Fields), []string{"Other"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Nested2 fields = %v, want %v", got, want)
+	}
+}

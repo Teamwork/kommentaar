@@ -733,7 +733,7 @@ func referenceLookup(prog *Program, importPath, name string) (lookup string, sto
 		if !ok {
 			return lookup, false
 		}
-		if ref.Package == importPath {
+		if ref.Package == importPath && ref.Name == name {
 			return lookup, true
 		}
 		lookup = fmt.Sprintf("%s%d", base, i)
