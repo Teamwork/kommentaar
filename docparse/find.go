@@ -697,6 +697,16 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		return nil, err
 	}
 
+	// encoding/json omits a key that more than one embed promotes.
+	promoted := map[string]int{}
+	for _, n := range nested {
+		if s := prog.References[n.lookup].Schema; s != nil {
+			for k := range s.Properties {
+				promoted[k]++
+			}
+		}
+	}
+
 	// Merge for embedded structs without a tag.
 	for _, n := range nested {
 		embedded := prog.References[n.lookup]
@@ -706,7 +716,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 			// encoding/json omits all fields of a nil embedded pointer.
 			if !n.isPtr {
 				for _, k := range embedded.Schema.Required {
-					if _, ok := ref.Schema.Properties[k]; !ok && !sliceutil.Contains(ref.Schema.Required, k) {
+					if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
+						!sliceutil.Contains(ref.Schema.Required, k) {
 						ref.Schema.Required = append(ref.Schema.Required, k)
 					}
 				}

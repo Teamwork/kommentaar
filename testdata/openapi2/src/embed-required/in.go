@@ -6,6 +6,12 @@ type Base struct {
 	Name     string  `json:"name"`
 	Note     *string `json:"note"`
 	Shadowed string  `json:"shadowed"`
+	Dup      string  `json:"dup"`
+}
+
+// Clash is embedded by value and shares a key with Base.
+type Clash struct {
+	Dup string `json:"dup"`
 }
 
 // Extra is embedded by pointer.
@@ -16,6 +22,7 @@ type Extra struct {
 // resp docs.
 type resp struct {
 	Base
+	Clash
 	*Extra
 
 	Shadowed *string `json:"shadowed"`

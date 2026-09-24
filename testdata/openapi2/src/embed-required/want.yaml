@@ -29,6 +29,8 @@ definitions:
     properties:
       code:
         type: string
+      dup:
+        type: string
       id:
         type: integer
       name:
