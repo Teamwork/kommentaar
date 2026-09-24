@@ -765,6 +765,27 @@ func TestParseCommentPathStoredKey(t *testing.T) {
 	}
 }
 
+// TestGetReferenceStoredFallback makes sure GetReference gives the stored
+// reference when the package of lookup does not resolve from filePath.
+func TestGetReferenceStoredFallback(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	// a.go imports repa/report as repa, so "report" does not resolve.
+	out, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Package != "repa/report" {
+		t.Errorf("Package = %q, want %q", out.Package, "repa/report")
+	}
+}
+
 // TestGetReferenceFieldWhitelist makes sure a {field-whitelist} field keeps
 // only the fields in the list.
 func TestGetReferenceFieldWhitelist(t *testing.T) {

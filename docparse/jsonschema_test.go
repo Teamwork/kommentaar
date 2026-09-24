@@ -11,6 +11,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/teamwork/test"
 	"github.com/teamwork/test/diff"
 )
 
@@ -98,26 +99,30 @@ func TestFieldToProperty(t *testing.T) {
 				name: "short selector key",
 				mapTypes: map[string]string{
 					"mail.Address": "string",
+					"a.ignored":    "string",
 					"a.bar":        "string",
 				},
 				want: map[string]*Schema{
-					"b":        {Type: "string"},
-					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
-					"pkg":      {Type: "string"},
-					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+					"b":            {Type: "string"},
+					"bSlice":       {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":          {Type: "string"},
+					"pkgSlice":     {Type: "array", Items: &Schema{Type: "string"}},
+					"ignoredSlice": {Type: "array", Items: &Schema{Type: "string"}},
 				},
 			},
 			{
 				name: "fully-qualified key",
 				mapTypes: map[string]string{
 					"net/mail.Address": "string",
+					"a.ignored":        "string",
 					"a.bar":            "string",
 				},
 				want: map[string]*Schema{
-					"b":        {Type: "string"},
-					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
-					"pkg":      {Type: "string"},
-					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+					"b":            {Type: "string"},
+					"bSlice":       {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":          {Type: "string"},
+					"pkgSlice":     {Type: "array", Items: &Schema{Type: "string"}},
+					"ignoredSlice": {Type: "array", Items: &Schema{Type: "string"}},
 				},
 			},
 		}
@@ -665,5 +670,56 @@ func TestGetReferenceEmbedPackageCollision(t *testing.T) {
 	}
 	if nested2.Context != "resp" {
 		t.Errorf("report.Nested2 context = %q, want %q", nested2.Context, "resp")
+	}
+}
+
+// TestInvalidNestedReference makes sure an error from GetReference for a
+// field type gets to the caller. A map value is the exception: resolveMap
+// gives an open object.
+func TestInvalidNestedReference(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+
+	t.Run("findNested", func(t *testing.T) {
+		prog := NewProgram(false)
+		prog.Config.StructTag = "json"
+		_, err := GetReference(prog, "req", false, "a.hasBadNested", "./testdata/src/a/a.go")
+		if !test.ErrorContains(err, "not exported") {
+			t.Errorf("err = %v, want %q", err, "not exported")
+		}
+	})
+
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "invalidRefs")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	wantErr := map[string]string{
+		"bad":    "not exported",
+		"bads":   "not exported",
+		"badMap": "",
+	}
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		t.Run(name, func(t *testing.T) {
+			prog := NewProgram(false)
+			prog.Config.StructTag = "json"
+			out, err := fieldToSchema(prog, name, "json", Reference{
+				Package: "a",
+				File:    "./testdata/src/a/a.go",
+				Context: "req",
+			}, f, nil)
+			if !test.ErrorContains(err, wantErr[name]) {
+				t.Fatalf("err = %v, want %q", err, wantErr[name])
+			}
+			if err == nil && out.AdditionalProperties != nil {
+				t.Errorf("additionalProperties = %+v, want nil", out.AdditionalProperties)
+			}
+		})
 	}
 }

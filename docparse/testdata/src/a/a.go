@@ -63,10 +63,11 @@ type nested struct {
 // mapped exercises map-types resolution against both bare-ident and
 // selector references, in both single-field and slice-element form.
 type mapped struct {
-	b        bar
-	bSlice   []bar
-	pkg      mail.Address
-	pkgSlice []mail.Address
+	b            bar
+	bSlice       []bar
+	pkg          mail.Address
+	pkgSlice     []mail.Address
+	ignoredSlice []ignored
 }
 
 type customStrs []customStr
