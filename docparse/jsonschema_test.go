@@ -36,6 +36,13 @@ func TestFieldToProperty(t *testing.T) {
 		"pkgSliceP": {Type: "array", Items: &Schema{Reference: "mail.Address"}},
 		"cSlice":    {Type: "array", Items: &Schema{Type: "string"}},
 		"deeper":    {Reference: "a.refAnother"},
+		"dotted":    {Type: "array", Items: &Schema{Reference: "m.Item"}},
+		"dottedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "m.Item"}}},
+		"namedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"aliasNamedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 		"docs": {Type: "string", Description: "This has some documentation!",
 			Required: []string{"docs"},
 			Enum:     []string{"one", "two", "three", "four", "five", "six", "seven"},
@@ -64,6 +71,7 @@ func TestFieldToProperty(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			assertReferencesDefined(t, prog, out)
 
 			for _, name := range f.Names {
 				t.Run(name.Name, func(t *testing.T) {

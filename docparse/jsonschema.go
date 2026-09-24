@@ -899,6 +899,7 @@ func resolveArray(
 	// importPath, when set, is the fully-qualified import path of the element
 	// type; used to retry map-types lookups with the full-path key.
 	var importPath string
+	var elem *ast.TypeSpec
 
 arrayStart:
 	switch typ := asw.(type) {
@@ -942,8 +943,8 @@ arrayStart:
 		// the selector case below does.
 		p.Items.Type = ""
 		name = typ
-		if _, _, resolved, err := findType(ref.File, pkg, typ.Name); err == nil {
-			importPath = resolved
+		if ts, _, resolved, err := findType(ref.File, pkg, typ.Name); err == nil {
+			elem, importPath = ts, resolved
 		} else {
 			importPath = pkg
 		}
@@ -961,11 +962,11 @@ arrayStart:
 		name = typ.Sel
 
 		// handle import aliases
-		_, _, resolved, err := findType(ref.File, pkg, name.Name)
+		ts, _, resolved, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return fmt.Errorf("resolveArray: findType: %v", err)
 		}
-		importPath = resolved
+		elem, importPath = ts, resolved
 		if !strings.HasSuffix(resolved, pkg) {
 			pkg = resolved
 		}
@@ -1015,6 +1016,18 @@ arrayStart:
 			}
 		}
 		return nil
+	}
+
+	// A named slice element such as bars in []bars is an array of arrays.
+	if elem != nil {
+		if arr, ok := elem.Type.(*ast.ArrayType); ok {
+			items := &Schema{Type: "array"}
+			if p.Items != nil {
+				items.Enum = p.Items.Enum
+			}
+			p.Items = items
+			return resolveArray(prog, ref, pkg, items, arr.Elt, isEnum, generics)
+		}
 	}
 
 	// The key comes from the package, not an import alias. GetReference does

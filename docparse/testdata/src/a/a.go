@@ -44,6 +44,11 @@ type foo struct {
 	cSlice    []customStr
 	deeper    refAnother
 
+	dotted          m.Items
+	dottedSlice     []m.Items
+	namedSlice      []bars
+	aliasNamedSlice []aliased.Nesteds
+
 	// This has some documentation! {required}
 	// {enum: one two three
 	//	four five six seven}
