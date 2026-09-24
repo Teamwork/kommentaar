@@ -7,9 +7,11 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/teamwork/test"
 	"github.com/teamwork/test/diff"
 )
 
@@ -35,6 +37,13 @@ func TestFieldToProperty(t *testing.T) {
 		"pkgSliceP": {Type: "array", Items: &Schema{Reference: "mail.Address"}},
 		"cSlice":    {Type: "array", Items: &Schema{Type: "string"}},
 		"deeper":    {Reference: "a.refAnother"},
+		"dotted":    {Type: "array", Items: &Schema{Reference: "m.Item"}},
+		"dottedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "m.Item"}}},
+		"namedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "a.bar"}}},
+		"aliasNamedSlice": {Type: "array", Items: &Schema{
+			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 		"docs": {Type: "string", Description: "This has some documentation!",
 			Required: []string{"docs"},
 			Enum:     []string{"one", "two", "three", "four", "five", "six", "seven"},
@@ -63,6 +72,7 @@ func TestFieldToProperty(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			assertReferencesDefined(t, prog, out)
 
 			for _, name := range f.Names {
 				t.Run(name.Name, func(t *testing.T) {
@@ -89,26 +99,30 @@ func TestFieldToProperty(t *testing.T) {
 				name: "short selector key",
 				mapTypes: map[string]string{
 					"mail.Address": "string",
+					"a.ignored":    "string",
 					"a.bar":        "string",
 				},
 				want: map[string]*Schema{
-					"b":        {Type: "string"},
-					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
-					"pkg":      {Type: "string"},
-					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+					"b":            {Type: "string"},
+					"bSlice":       {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":          {Type: "string"},
+					"pkgSlice":     {Type: "array", Items: &Schema{Type: "string"}},
+					"ignoredSlice": {Type: "array", Items: &Schema{Type: "string"}},
 				},
 			},
 			{
 				name: "fully-qualified key",
 				mapTypes: map[string]string{
 					"net/mail.Address": "string",
+					"a.ignored":        "string",
 					"a.bar":            "string",
 				},
 				want: map[string]*Schema{
-					"b":        {Type: "string"},
-					"bSlice":   {Type: "array", Items: &Schema{Type: "string"}},
-					"pkg":      {Type: "string"},
-					"pkgSlice": {Type: "array", Items: &Schema{Type: "string"}},
+					"b":            {Type: "string"},
+					"bSlice":       {Type: "array", Items: &Schema{Type: "string"}},
+					"pkg":          {Type: "string"},
+					"pkgSlice":     {Type: "array", Items: &Schema{Type: "string"}},
+					"ignoredSlice": {Type: "array", Items: &Schema{Type: "string"}},
 				},
 			},
 		}
@@ -204,6 +218,7 @@ func TestFieldToProperty(t *testing.T) {
 			out, err := fieldToSchema(prog, f.Names[0].Name, "json", Reference{
 				Package: "a",
 				File:    "./testdata/src/a/a.go",
+				Context: "req",
 			}, f, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -489,6 +504,15 @@ func assertReferencesDefined(t *testing.T, prog *Program, s *Schema) {
 	assertReferencesDefined(t, prog, s.Items)
 }
 
+func fieldNames(fields []Param) []string {
+	names := make([]string, 0, len(fields))
+	for _, f := range fields {
+		names = append(names, f.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func referenceNames(prog *Program) []string {
 	names := make([]string, 0, len(prog.References))
 	for name := range prog.References {
@@ -548,5 +572,163 @@ func TestResolveMapPackageCollision(t *testing.T) {
 		if pkg := prog.References[got].Package; pkg != want[name].pkg {
 			t.Errorf("%v: %q is from package %q, want %q", name, got, pkg, want[name].pkg)
 		}
+	}
+}
+
+// TestFieldToPropertyPackageCollision makes sure a plain field, a pointer
+// field and a slice element each get their own $ref when their type's base
+// name collides with a type from another package.
+func TestFieldToPropertyPackageCollision(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "collide")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	want := map[string]struct {
+		ref, pkg string
+		fields   []string
+	}{
+		"first":       {"report.Nested", "repa/report", []string{"Str"}},
+		"firstP":      {"report.Nested", "repa/report", []string{"Str"}},
+		"firstSlice":  {"report.Nested", "repa/report", []string{"Str"}},
+		"second":      {"report.Nested2", "repb/report", []string{"Num"}},
+		"secondP":     {"report.Nested2", "repb/report", []string{"Num"}},
+		"secondSlice": {"report.Nested2", "repb/report", []string{"Num"}},
+	}
+
+	prog := NewProgram(false)
+	ref := Reference{Package: "a", File: "./testdata/src/a/a.go", Context: "req"}
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		out, err := fieldToSchema(prog, name, "json", ref, f, nil)
+		if err != nil {
+			t.Fatalf("%v: %v", name, err)
+		}
+		assertReferencesDefined(t, prog, out)
+
+		got := out.Reference
+		if out.Items != nil {
+			got = out.Items.Reference
+		}
+		if got != want[name].ref {
+			t.Errorf("%v: reference = %q, want %q", name, got, want[name].ref)
+		}
+		stored := prog.References[got]
+		if stored.Package != want[name].pkg {
+			t.Errorf("%v: %q is from package %q, want %q", name, got, stored.Package, want[name].pkg)
+		}
+		if fields := fieldNames(stored.Fields); !reflect.DeepEqual(fields, want[name].fields) {
+			t.Errorf("%v: %q fields = %v, want %v", name, got, fields, want[name].fields)
+		}
+	}
+}
+
+// TestGetReferenceEmbedPackageCollision makes sure an embedded struct merges
+// the fields of the type that its own package declares, not a type from
+// another package that shares its base name.
+func TestGetReferenceEmbedPackageCollision(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+	prog.Config.StructTag = "json"
+
+	first, err := GetReference(prog, "req", false, "a.collideEmbedFirst", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatalf("collideEmbedFirst: %v", err)
+	}
+	second, err := GetReference(prog, "resp", false, "a.collideEmbedSecond", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatalf("collideEmbedSecond: %v", err)
+	}
+
+	if got, want := fieldNames(first.Fields), []string{"Str"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("collideEmbedFirst fields = %v, want %v", got, want)
+	}
+	if got, want := fieldNames(second.Fields), []string{"Num"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("collideEmbedSecond fields = %v, want %v", got, want)
+	}
+
+	nested1, ok := prog.References["report.Nested"]
+	if !ok || nested1.Package != "repa/report" {
+		t.Errorf("report.Nested = %+v, want Package %q", nested1, "repa/report")
+	}
+	if nested1.Context != "req" {
+		t.Errorf("report.Nested context = %q, want %q", nested1.Context, "req")
+	}
+	nested2, ok := prog.References["report.Nested2"]
+	if !ok || nested2.Package != "repb/report" {
+		t.Errorf("report.Nested2 = %+v, want Package %q", nested2, "repb/report")
+	}
+	if nested2.Context != "resp" {
+		t.Errorf("report.Nested2 context = %q, want %q", nested2.Context, "resp")
+	}
+}
+
+// TestInvalidNestedReference makes sure an error from GetReference for a
+// field type gets to the caller. A map value is the exception: resolveMap
+// gives an open object.
+func TestInvalidNestedReference(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+
+	t.Run("findNested", func(t *testing.T) {
+		prog := NewProgram(false)
+		prog.Config.StructTag = "json"
+		_, err := GetReference(prog, "req", false, "a.hasBadNested", "./testdata/src/a/a.go")
+		if !test.ErrorContains(err, "not exported") {
+			t.Errorf("err = %v, want %q", err, "not exported")
+		}
+	})
+
+	t.Run("unresolved", func(t *testing.T) {
+		prog := NewProgram(false)
+		prog.Config.StructTag = "json"
+		_, err := GetReference(prog, "req", false, "a.unresolved", "./testdata/src/a/a.go")
+		if !test.ErrorContains(err, "nopkg.Type: could not resolve package") {
+			t.Errorf("err = %v, want %q", err, "nopkg.Type: could not resolve package")
+		}
+	})
+
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "invalidRefs")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	wantErr := map[string]string{
+		"bad":    "not exported",
+		"bads":   "not exported",
+		"badMap": "",
+	}
+	for _, f := range st.Fields.List {
+		name := f.Names[0].Name
+		t.Run(name, func(t *testing.T) {
+			prog := NewProgram(false)
+			prog.Config.StructTag = "json"
+			out, err := fieldToSchema(prog, name, "json", Reference{
+				Package: "a",
+				File:    "./testdata/src/a/a.go",
+				Context: "req",
+			}, f, nil)
+			if !test.ErrorContains(err, wantErr[name]) {
+				t.Fatalf("err = %v, want %q", err, wantErr[name])
+			}
+			if err == nil && out.AdditionalProperties != nil {
+				t.Errorf("additionalProperties = %+v, want nil", out.AdditionalProperties)
+			}
+		})
 	}
 }

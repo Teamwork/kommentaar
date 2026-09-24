@@ -488,20 +488,23 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	name, pkg := ParseLookup(lookup, filePath)
 	dbg("getReference: pkg: %#v -> name: %#v", pkg, name)
 
-	// Already parsed this one, don't need to do it again.
-	if ref, ok := prog.References[lookup]; ok {
-		// Update context: some structs are embedded but also referenced
-		// directly.
-		if ref.IsEmbed {
-			prog.References[lookup] = ref
-		}
-		return &ref, nil
-	}
-
-	// Find type.
-	ts, foundPath, pkg, err := findType(filePath, pkg, name)
+	// Find type. When pkg does not resolve from filePath, use the stored
+	// reference with the key lookup, if there is one.
+	ts, foundPath, resolvedPkg, err := findType(filePath, pkg, name)
 	if err != nil {
+		if ref, ok := prog.References[lookup]; ok {
+			return &ref, nil
+		}
 		return nil, err
+	}
+	pkg = resolvedPkg
+
+	// Use the stored reference if there is one. The key comes from the
+	// import path and not from lookup. Two files can give one package
+	// different names, and two packages can have the same base name.
+	if key, stored := referenceLookup(prog, pkg, name); stored {
+		ref := prog.References[key]
+		return &ref, nil
 	}
 
 	var st *ast.StructType
@@ -512,7 +515,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		// dummy StructType, we'll just be using the doc from the interface.
 		st = &ast.StructType{Fields: &ast.FieldList{}}
 	case *ast.ArrayType:
-		arLookup := fmt.Sprintf("[]%v.%v", strings.Split(lookup, ".")[0], exprToString(typ.Elt))
+		arLookup := fmt.Sprintf("[]%v.%v", pkg, exprToString(typ.Elt))
 		if wrapper != "" {
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
@@ -679,7 +682,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 	}
 	ref.Schema = schema
 
-	if err := applyFieldWhitelists(prog, context, filePath, name, tagName, &ref); err != nil {
+	if err := applyFieldWhitelists(prog, name, tagName, &ref); err != nil {
 		return nil, err
 	}
 
@@ -711,8 +714,8 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 
 // referenceLookup gives the prog.References key for the type name in the
 // package at importPath, and reports whether that key holds it already. Two
-// packages that share a base name get "reminder.Request" and
-// "reminder.Request2".
+// packages that share a base name get "report.Nested" and
+// "report.Nested2".
 func referenceLookup(prog *Program, importPath, name string) (lookup string, stored bool) {
 	base := path.Base(importPath) + "." + name
 	lookup = base
@@ -721,14 +724,14 @@ func referenceLookup(prog *Program, importPath, name string) (lookup string, sto
 		if !ok {
 			return lookup, false
 		}
-		if ref.Package == importPath {
+		if ref.Package == importPath && ref.Name == name {
 			return lookup, true
 		}
 		lookup = fmt.Sprintf("%s%d", base, i)
 	}
 }
 
-func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string, ref *Reference) error {
+func applyFieldWhitelists(prog *Program, name, tagName string, ref *Reference) error {
 	changed := false
 	for _, p := range ref.Schema.Properties {
 		if len(p.FieldWhitelist) == 0 {
@@ -744,9 +747,9 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 			if lookupStruct+f.Name != p.Reference {
 				continue
 			}
-			reference, err := GetReference(prog, context, false, lookupStruct+f.Name, filePath)
-			if err != nil {
-				return fmt.Errorf("could not get referenced struct %s", lookupStruct+f.Name)
+			reference, ok := prog.References[p.Reference]
+			if !ok {
+				return fmt.Errorf("could not get referenced struct %s", p.Reference)
 			}
 			fields := []*ast.Field{}
 			for _, field := range reference.Fields {
@@ -758,7 +761,7 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 				Name: f.Name,
 				KindField: &ast.Field{
 					Doc: &ast.CommentGroup{
-						List: []*ast.Comment{{Slash: 0, Text: reference.Schema.Description}},
+						List: []*ast.Comment{{Slash: 0, Text: "//" + reference.Schema.Description}},
 					},
 					Names: f.KindField.Names,
 					Type: &ast.StructType{
@@ -1013,13 +1016,20 @@ start:
 	if x, _ := MapType(prog, lookup); x != "" {
 		return lookup, nil
 	}
-	if _, ok := prog.References[lookup]; !ok {
-		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
-		if err != nil {
+
+	// Make the key from the import path of the package that declares the
+	// type.
+	_, _, importPath, err := findType(filePath, pkg, name.Name)
+	if err != nil {
+		return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
+	}
+	key, stored := referenceLookup(prog, importPath, name.Name)
+	if !stored {
+		if err := resolveType(prog, context, isEmbed, name, filePath, pkg); err != nil {
 			return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
 		}
 	}
-	return lookup, nil
+	return key, nil
 }
 
 // Add the type declaration to references.

@@ -8,6 +8,9 @@ import (
 
 	aliased "c"
 	other "d/c"
+
+	repa "repa/report"
+	repb "repb/report"
 )
 
 // GET /
@@ -41,6 +44,11 @@ type foo struct {
 	cSlice    []customStr
 	deeper    refAnother
 
+	dotted          m.Items
+	dottedSlice     []m.Items
+	namedSlice      []bars
+	aliasNamedSlice []aliased.Nesteds
+
 	// This has some documentation! {required}
 	// {enum: one two three
 	//	four five six seven}
@@ -55,10 +63,11 @@ type nested struct {
 // mapped exercises map-types resolution against both bare-ident and
 // selector references, in both single-field and slice-element form.
 type mapped struct {
-	b        bar
-	bSlice   []bar
-	pkg      mail.Address
-	pkgSlice []mail.Address
+	b            bar
+	bSlice       []bar
+	pkg          mail.Address
+	pkgSlice     []mail.Address
+	ignoredSlice []ignored
 }
 
 type customStrs []customStr
@@ -124,4 +133,26 @@ type maps struct {
 type mapsCollide struct {
 	first  map[string]aliased.Nested
 	second map[string]other.Nested
+}
+
+// collide references two types of the same name from two packages that
+// share a base name, as a plain field, a pointer field and a slice element.
+type collide struct {
+	first       repa.Nested
+	firstP      *repa.Nested
+	firstSlice  []repa.Nested
+	second      repb.Nested
+	secondP     *repb.Nested
+	secondSlice []repb.Nested
+}
+
+// collideEmbedFirst embeds the Nested type of package repa/report.
+type collideEmbedFirst struct {
+	repa.Nested
+}
+
+// collideEmbedSecond embeds the Nested type of package repb/report. That
+// package has the same name as package repa/report.
+type collideEmbedSecond struct {
+	repb.Nested
 }

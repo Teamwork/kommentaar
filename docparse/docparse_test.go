@@ -2,6 +2,7 @@ package docparse
 
 import (
 	"fmt"
+	"go/build"
 	"reflect"
 	"testing"
 
@@ -637,5 +638,176 @@ func TestParseResponse(t *testing.T) {
 				t.Error(d)
 			}
 		})
+	}
+}
+
+// TestGetReferencePackageCollision makes sure GetReference does not return
+// the definition of another package when two packages have the same base
+// name. Packages repa/report and repb/report both have the name "report", and
+// both declare a type Nested. testdata/src/g imports one of them and
+// testdata/src/h imports the other, both with no alias. So both files send
+// the same lookup to GetReference: "report.Nested".
+func TestGetReferencePackageCollision(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	first, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go")
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second, err := GetReference(prog, "resp", false, "report.Nested", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+
+	if first.Package != "repa/report" {
+		t.Errorf("first.Package = %q, want %q", first.Package, "repa/report")
+	}
+	if second.Package != "repb/report" {
+		t.Errorf("second.Package = %q, want %q", second.Package, "repb/report")
+	}
+	if first.Lookup == second.Lookup {
+		t.Errorf("first and second both resolved to %q, want different keys", first.Lookup)
+	}
+
+	if got, want := fieldNames(first.Fields), []string{"Str"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("first fields = %v, want %v", got, want)
+	}
+	if got, want := fieldNames(second.Fields), []string{"Num"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("second fields = %v, want %v", got, want)
+	}
+
+	if stored, ok := prog.References[first.Lookup]; !ok || stored.Package != "repa/report" {
+		t.Errorf("prog.References[%q] = %+v, want Package %q", first.Lookup, stored, "repa/report")
+	}
+	if stored, ok := prog.References[second.Lookup]; !ok || stored.Package != "repb/report" {
+		t.Errorf("prog.References[%q] = %+v, want Package %q", second.Lookup, stored, "repb/report")
+	}
+
+	// A second call with the lookup of the first call must give the type of
+	// the first package again.
+	again, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go")
+	if err != nil {
+		t.Fatalf("again: %v", err)
+	}
+	if again.Lookup != first.Lookup || again.Package != "repa/report" {
+		t.Errorf("again = %+v, want the same as first", again)
+	}
+}
+
+// TestGetReferenceDottedSlice makes sure GetReference resolves a named slice
+// type in a package whose import path has a dot.
+func TestGetReferenceDottedSlice(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	out, err := GetReference(prog, "req", false, "example.com/m.Items", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Lookup != "m.Item" || out.Package != "example.com/m" || !out.IsSlice {
+		t.Errorf("out = %+v, want the slice of m.Item in example.com/m", out)
+	}
+}
+
+// TestGetReferenceStoredKeyName makes sure a type does not get the stored
+// reference of another type in its package whose key has its name.
+func TestGetReferenceStoredKeyName(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	nested, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nested.Lookup != "report.Nested2" {
+		t.Fatalf("Nested Lookup = %q, want %q", nested.Lookup, "report.Nested2")
+	}
+
+	nested2, err := GetReference(prog, "req", false, "report.Nested2", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nested2.Name != "Nested2" || nested2.Lookup == nested.Lookup {
+		t.Errorf("Nested2 = %+v, want its own reference", nested2)
+	}
+	if got, want := fieldNames(nested2.Fields), []string{"Other"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Nested2 fields = %v, want %v", got, want)
+	}
+}
+
+// TestParseCommentPathStoredKey makes sure a Path reference gets the stored
+// type, and not a type that has the same name as the stored key.
+func TestParseCommentPathStoredKey(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := parseComment(prog, "GET /x/{Num}\n\nPath: report.Nested\nResponse: {empty}\n", ".", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := out[0].Request.Path.Reference; got != "report.Nested2" {
+		t.Errorf("Path.Reference = %q, want %q", got, "report.Nested2")
+	}
+}
+
+// TestGetReferenceStoredFallback makes sure GetReference gives the stored
+// reference when the package of lookup does not resolve from filePath.
+func TestGetReferenceStoredFallback(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	if _, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go"); err != nil {
+		t.Fatal(err)
+	}
+	// a.go imports repa/report as repa, so "report" does not resolve.
+	out, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Package != "repa/report" {
+		t.Errorf("Package = %q, want %q", out.Package, "repa/report")
+	}
+}
+
+// TestGetReferenceFieldWhitelist makes sure a {field-whitelist} field keeps
+// only the fields in the list.
+func TestGetReferenceFieldWhitelist(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+	prog.Config.StructTag = "json"
+
+	out, err := GetReference(prog, "req", false, "a.Whitelist", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair, ok := out.Schema.Properties["pair"]
+	if !ok {
+		t.Fatalf("no pair property: %+v", out.Schema.Properties)
+	}
+	var got []string
+	for k := range pair.Properties {
+		got = append(got, k)
+	}
+	if want := []string{"one"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("pair properties = %v, want %v", got, want)
 	}
 }

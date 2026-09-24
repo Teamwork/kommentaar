@@ -355,11 +355,6 @@ start:
 			}
 			pkg = pkgSel.Name
 			name = typ.Sel
-
-			lookup := pkg + "." + name.Name
-			if _, err := GetReference(prog, ref.Context, false, lookup, ref.File); err != nil {
-				return nil, fmt.Errorf("GetReference: %v", err)
-			}
 		case *ast.Ident:
 			name = typ
 		}
@@ -572,12 +567,13 @@ start:
 		}
 	}
 
-	if i := strings.LastIndex(lookup, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
+	nref, err := GetReference(prog, ref.Context, false, lookup, ref.File)
+	if err != nil {
+		return nil, err
 	}
 
 	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
-	p.Reference = lookup
+	p.Reference = nref.Lookup
 
 	return &p, nil
 }
@@ -856,18 +852,12 @@ func resolveMap(
 		return nil
 	}
 
-	// The key comes from the package, not an import alias. GetReference does
-	// not find a stored type by its full lookup, so check the key first.
-	lookup, stored := referenceLookup(prog, importPath, vtyp.Name)
-	if !stored {
-		vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
-		if err != nil {
-			dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
-			return nil
-		}
-		lookup = vref.Lookup
+	vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
+	if err != nil {
+		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+		return nil
 	}
-	p.AdditionalProperties = &Schema{Reference: lookup}
+	p.AdditionalProperties = &Schema{Reference: vref.Lookup}
 	return nil
 }
 
@@ -886,6 +876,7 @@ func resolveArray(
 	// importPath, when set, is the fully-qualified import path of the element
 	// type; used to retry map-types lookups with the full-path key.
 	var importPath string
+	var elem *ast.TypeSpec
 
 arrayStart:
 	switch typ := asw.(type) {
@@ -925,12 +916,14 @@ arrayStart:
 		}
 
 		// Rest is assumed to be a custom type, and references with $ref after
-		// the switch.
+		// the switch. Resolve pkg the same way as the selector case below.
 		p.Items.Type = ""
 		name = typ
-		// Bare ident: the element is declared in ref.Package, so the
-		// full-path key equals ref.Package.typ.Name.
-		importPath = ref.Package
+		if ts, _, resolved, err := findType(ref.File, pkg, typ.Name); err == nil {
+			elem, importPath = ts, resolved
+		} else {
+			importPath = pkg
+		}
 
 	// "pkg.foo"
 	case *ast.SelectorExpr:
@@ -945,11 +938,11 @@ arrayStart:
 		name = typ.Sel
 
 		// handle import aliases
-		_, _, resolved, err := findType(ref.File, pkg, name.Name)
+		ts, _, resolved, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return fmt.Errorf("resolveArray: findType: %v", err)
 		}
-		importPath = resolved
+		elem, importPath = ts, resolved
 		if !strings.HasSuffix(resolved, pkg) {
 			pkg = resolved
 		}
@@ -1001,19 +994,25 @@ arrayStart:
 		return nil
 	}
 
-	sRef := lookup
-	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		sRef = pkg[i+1:] + "." + name.Name
+	// A named slice element, such as bars in []bars, gives an array of
+	// arrays.
+	if elem != nil {
+		if arr, ok := elem.Type.(*ast.ArrayType); ok {
+			items := &Schema{Type: "array"}
+			if p.Items != nil {
+				items.Enum = p.Items.Enum
+			}
+			p.Items = items
+			return resolveArray(prog, ref, pkg, items, arr.Elt, isEnum, generics)
+		}
 	}
-	p.Items = &Schema{Reference: sRef}
 
-	// Add to prog.References if not there already
-	rName, rPkg := ParseLookup(lookup, ref.File)
-
-	if _, ok := prog.References[filepath.Base(rPkg)+"."+rName]; !ok {
-		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
+	eref, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File)
+	if err != nil {
+		return err
 	}
-	return err
+	p.Items = &Schema{Reference: eref.Lookup}
+	return nil
 }
 
 // parseCompositionTypes reads the space-separated type list of a {oneof: ...} or
