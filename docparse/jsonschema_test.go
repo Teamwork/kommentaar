@@ -466,25 +466,39 @@ func TestResolveMapPackageCollision(t *testing.T) {
 		t.Fatal("not a struct?!")
 	}
 
+	want := map[string]struct{ ref, pkg string }{
+		"first":  {"c.Nested", "c"},
+		"second": {"c.Nested2", "d/c"},
+	}
+
 	prog := NewProgram(false)
-	refs := make(map[string]string)
 	for _, f := range st.Fields.List {
 		name := f.Names[0].Name
+		typ, ok := f.Type.(*ast.MapType)
+		if !ok {
+			t.Fatalf("%v is not a map but a %T", name, f.Type)
+		}
+
 		out := &Schema{}
 		err := resolveMap(prog, Reference{
 			Package: "a",
 			File:    "./testdata/src/a/a.go",
 			Context: "req",
-		}, "a", out, f.Type.(*ast.MapType), nil)
+		}, "a", out, typ, nil)
 		if err != nil {
 			t.Fatalf("%v: %v", name, err)
 		}
 		assertReferencesDefined(t, prog, out)
-		refs[name] = out.AdditionalProperties.Reference
-	}
+		if out.AdditionalProperties == nil {
+			t.Fatalf("%v: no additionalProperties", name)
+		}
 
-	if refs["first"] == refs["second"] {
-		t.Errorf("both fields give the same reference %q, so one of them points at the wrong schema",
-			refs["first"])
+		got := out.AdditionalProperties.Reference
+		if got != want[name].ref {
+			t.Errorf("%v: reference = %q, want %q", name, got, want[name].ref)
+		}
+		if pkg := prog.References[got].Package; pkg != want[name].pkg {
+			t.Errorf("%v: %q is from package %q, want %q", name, got, pkg, want[name].pkg)
+		}
 	}
 }
