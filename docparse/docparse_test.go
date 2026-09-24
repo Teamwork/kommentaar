@@ -764,3 +764,29 @@ func TestParseCommentPathStoredKey(t *testing.T) {
 		t.Errorf("Path.Reference = %q, want %q", got, "report.Nested2")
 	}
 }
+
+// TestGetReferenceFieldWhitelist makes sure a {field-whitelist} field keeps
+// only the fields in the list.
+func TestGetReferenceFieldWhitelist(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+	prog.Config.StructTag = "json"
+
+	out, err := GetReference(prog, "req", false, "a.Whitelist", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair, ok := out.Schema.Properties["pair"]
+	if !ok {
+		t.Fatalf("no pair property: %+v", out.Schema.Properties)
+	}
+	var got []string
+	for k := range pair.Properties {
+		got = append(got, k)
+	}
+	if want := []string{"one"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("pair properties = %v, want %v", got, want)
+	}
+}

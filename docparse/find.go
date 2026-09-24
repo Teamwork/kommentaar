@@ -761,7 +761,7 @@ func applyFieldWhitelists(prog *Program, name, tagName string, ref *Reference) e
 				Name: f.Name,
 				KindField: &ast.Field{
 					Doc: &ast.CommentGroup{
-						List: []*ast.Comment{{Slash: 0, Text: reference.Schema.Description}},
+						List: []*ast.Comment{{Slash: 0, Text: "//" + reference.Schema.Description}},
 					},
 					Names: f.KindField.Names,
 					Type: &ast.StructType{
