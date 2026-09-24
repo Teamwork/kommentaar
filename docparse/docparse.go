@@ -25,6 +25,8 @@ type Program struct {
 	Config     Config
 	Endpoints  []*Endpoint
 	References map[string]Reference
+
+	jsonKeys map[string]map[string]jsonKey // By reference lookup.
 }
 
 // Config for the program.
@@ -77,6 +79,7 @@ func NewProgram(dbg bool) *Program {
 
 	return &Program{
 		References: make(map[string]Reference),
+		jsonKeys:   make(map[string]map[string]jsonKey),
 		Config: Config{
 			DefaultRequestCt:  "application/json",
 			DefaultResponseCt: "application/json",
