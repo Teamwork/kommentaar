@@ -724,7 +724,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 // packages that share a base name get "reminder.Request" and
 // "reminder.Request2".
 func referenceLookup(prog *Program, importPath, name string) (lookup string, stored bool) {
-	base := filepath.Base(importPath) + "." + name
+	base := path.Base(importPath) + "." + name
 	lookup = base
 	for i := 2; ; i++ {
 		ref, ok := prog.References[lookup]
