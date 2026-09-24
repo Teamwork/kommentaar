@@ -1018,24 +1018,18 @@ start:
 	}
 
 	// Make the key from the import path of the package that declares the
-	// type. When pkg does not resolve, use the base name key.
-	if _, _, importPath, err := findType(filePath, pkg, name.Name); err == nil {
-		key, stored := referenceLookup(prog, importPath, name.Name)
-		if !stored {
-			if err := resolveType(prog, context, isEmbed, name, filePath, pkg); err != nil {
-				return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
-			}
-		}
-		return key, nil
+	// type.
+	_, _, importPath, err := findType(filePath, pkg, name.Name)
+	if err != nil {
+		return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
 	}
-
-	if _, ok := prog.References[lookup]; !ok {
-		err := resolveType(prog, context, isEmbed, name, filePath, pkg)
-		if err != nil {
+	key, stored := referenceLookup(prog, importPath, name.Name)
+	if !stored {
+		if err := resolveType(prog, context, isEmbed, name, filePath, pkg); err != nil {
 			return "", fmt.Errorf("%v.%v: %v", pkg, name, err)
 		}
 	}
-	return lookup, nil
+	return key, nil
 }
 
 // Add the type declaration to references.

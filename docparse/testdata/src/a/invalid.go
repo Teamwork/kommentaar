@@ -18,3 +18,8 @@ type invalidRefs struct {
 	bads   []badNested
 	badMap map[string]badNested
 }
+
+// unresolved holds a field of a package that package a does not import.
+type unresolved struct {
+	X nopkg.Type
+}

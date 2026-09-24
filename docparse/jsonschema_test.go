@@ -690,6 +690,15 @@ func TestInvalidNestedReference(t *testing.T) {
 		}
 	})
 
+	t.Run("unresolved", func(t *testing.T) {
+		prog := NewProgram(false)
+		prog.Config.StructTag = "json"
+		_, err := GetReference(prog, "req", false, "a.unresolved", "./testdata/src/a/a.go")
+		if !test.ErrorContains(err, "nopkg.Type: could not resolve package") {
+			t.Errorf("err = %v, want %q", err, "nopkg.Type: could not resolve package")
+		}
+	})
+
 	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "invalidRefs")
 	if err != nil {
 		t.Fatalf("could not parse file: %v", err)
