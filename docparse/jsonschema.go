@@ -859,14 +859,18 @@ func resolveMap(
 		return nil
 	}
 
-	// Take the name from GetReference: it names the definition after the
-	// package, not an import alias, and numbers it on a base name clash.
-	vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
-	if err != nil {
-		dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
-		return nil
+	// The key comes from the package, not an import alias. GetReference does
+	// not find a stored type by its full lookup, so check the key first.
+	lookup, stored := referenceLookup(prog, importPath, vtyp.Name)
+	if !stored {
+		vref, err := GetReference(prog, ref.Context, false, importPath+"."+vtyp.Name, ref.File)
+		if err != nil {
+			dbg("ERR, Could not find additionalProperties Reference: %s", err.Error())
+			return nil
+		}
+		lookup = vref.Lookup
 	}
-	p.AdditionalProperties = &Schema{Reference: vref.Lookup}
+	p.AdditionalProperties = &Schema{Reference: lookup}
 	return nil
 }
 

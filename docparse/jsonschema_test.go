@@ -430,6 +430,46 @@ func TestResolveMap(t *testing.T) {
 	}
 }
 
+// TestResolveMapStoredReference makes sure that a second map of a stored type
+// takes the stored definition. The type is on a dotted import path, which
+// GetReference does not find in prog.References by its full lookup.
+func TestResolveMapStoredReference(t *testing.T) {
+	build.Default.GOPATH = "./testdata"
+	ts, _, _, err := findType("./testdata/src/a/a.go", "a", "maps")
+	if err != nil {
+		t.Fatalf("could not parse file: %v", err)
+	}
+
+	st, ok := ts.Type.(*ast.StructType)
+	if !ok {
+		t.Fatal("not a struct?!")
+	}
+
+	var typ *ast.MapType
+	for _, f := range st.Fields.List {
+		if f.Names[0].Name == "dotted" {
+			typ, _ = f.Type.(*ast.MapType)
+		}
+	}
+	if typ == nil {
+		t.Fatal("no dotted map field")
+	}
+
+	prog := NewProgram(false)
+	for _, ctx := range []string{"req", "resp"} {
+		out := &Schema{}
+		ref := Reference{Package: "a", File: "./testdata/src/a/a.go", Context: ctx}
+		if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+			t.Fatalf("%v: %v", ctx, err)
+		}
+		assertReferencesDefined(t, prog, out)
+	}
+
+	if got := prog.References["m.Item"].Context; got != "req" {
+		t.Errorf("m.Item context = %q, want %q", got, "req")
+	}
+}
+
 // assertReferencesDefined reports every $ref in s that has no definition in
 // prog.References. A reference that nothing defines gives an unusable
 // document.
