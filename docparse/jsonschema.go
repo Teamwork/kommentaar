@@ -134,16 +134,18 @@ func isInferredRequired(f *ast.Field, tagName string) bool {
 		}
 	}
 
-	var doc string
+	return !hasTag(fieldDoc(f), paramOptional)
+}
+
+// fieldDoc returns the doc comment of f, or else its trailing comment.
+func fieldDoc(f *ast.Field) string {
 	if f.Doc != nil {
-		doc = f.Doc.Text()
-	} else if f.Comment != nil {
-		doc = f.Comment.Text()
+		return f.Doc.Text()
 	}
-	if hasTag(doc, paramOptional) {
-		return false
+	if f.Comment != nil {
+		return f.Comment.Text()
 	}
-	return true
+	return ""
 }
 
 // The required tags are added to the property itself, rather than to the
@@ -315,12 +317,7 @@ func fieldToSchema(
 ) (*Schema, error) {
 	var p Schema
 
-	if f.Doc != nil {
-		p.Description = f.Doc.Text()
-	} else if f.Comment != nil {
-		p.Description = f.Comment.Text()
-	}
-	p.Description = strings.TrimSpace(p.Description)
+	p.Description = strings.TrimSpace(fieldDoc(f))
 
 	var tags []string
 	p.Description, tags = parseTags(p.Description)

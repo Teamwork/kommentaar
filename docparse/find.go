@@ -824,13 +824,7 @@ type nestedEmbed struct {
 func explicitRequired(fields []Param, tagName string) []string {
 	var keys []string
 	for _, p := range fields {
-		var doc string
-		if p.KindField.Doc != nil {
-			doc = p.KindField.Doc.Text()
-		} else if p.KindField.Comment != nil {
-			doc = p.KindField.Comment.Text()
-		}
-		if _, tags := parseTags(doc); !sliceutil.Contains(tags, paramRequired) {
+		if _, tags := parseTags(fieldDoc(p.KindField)); !sliceutil.Contains(tags, paramRequired) {
 			continue
 		}
 		k := goutil.TagName(p.KindField, tagName)
