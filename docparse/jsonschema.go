@@ -333,6 +333,9 @@ func fieldToSchema(
 
 	pkg := ref.Package
 	var name *ast.Ident
+	// importPath is the full import path of a non-primitive field's type,
+	// used to key its $ref. A bare ident's type is declared in ref.Package.
+	importPath := pkg
 
 	dbg("fieldToSchema: %v", f.Names)
 
@@ -355,13 +358,17 @@ start:
 			}
 			pkg = pkgSel.Name
 			name = typ.Sel
-
-			lookup := pkg + "." + name.Name
-			if _, err := GetReference(prog, ref.Context, false, lookup, ref.File); err != nil {
-				return nil, fmt.Errorf("GetReference: %v", err)
-			}
 		case *ast.Ident:
 			name = typ
+		}
+		// pkg may be a short alias here; resolve it to the full import path
+		// so the code after this switch keys the $ref by package.
+		if name != nil {
+			if _, _, resolved, err := findType(ref.File, pkg, name.Name); err == nil {
+				importPath = resolved
+			} else {
+				importPath = pkg
+			}
 		}
 
 	// Pointer type; we don't really care about this for now, so just read over
@@ -475,10 +482,11 @@ start:
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, importPath, err := findType(ref.File, pkg, name.Name)
+		ts, _, resolvedPath, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
 		}
+		importPath = resolvedPath
 		if !strings.HasSuffix(importPath, pkg) { // import alias
 			pkg = importPath
 		}
@@ -572,12 +580,17 @@ start:
 		}
 	}
 
-	if i := strings.LastIndex(lookup, "/"); i > -1 {
-		lookup = pkg[i+1:] + "." + name.Name
+	// The key comes from the package, not an import alias. GetReference does
+	// not find a stored type by its full lookup, so check the key first.
+	key, stored := referenceLookup(prog, importPath, name.Name)
+	if !stored {
+		if _, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File); err != nil {
+			return nil, err
+		}
 	}
 
 	p.Description = "" // SwaggerHub will complain if both Description and $ref are set.
-	p.Reference = lookup
+	p.Reference = key
 
 	return &p, nil
 }
@@ -925,12 +938,15 @@ arrayStart:
 		}
 
 		// Rest is assumed to be a custom type, and references with $ref after
-		// the switch.
+		// the switch. pkg can be a short alias, so resolve it the same way
+		// the selector case below does.
 		p.Items.Type = ""
 		name = typ
-		// Bare ident: the element is declared in ref.Package, so the
-		// full-path key equals ref.Package.typ.Name.
-		importPath = ref.Package
+		if _, _, resolved, err := findType(ref.File, pkg, typ.Name); err == nil {
+			importPath = resolved
+		} else {
+			importPath = pkg
+		}
 
 	// "pkg.foo"
 	case *ast.SelectorExpr:
@@ -1001,19 +1017,16 @@ arrayStart:
 		return nil
 	}
 
-	sRef := lookup
-	if i := strings.LastIndex(pkg, "/"); i > -1 {
-		sRef = pkg[i+1:] + "." + name.Name
+	// The key comes from the package, not an import alias. GetReference does
+	// not find a stored type by its full lookup, so check the key first.
+	key, stored := referenceLookup(prog, importPath, name.Name)
+	if !stored {
+		if _, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File); err != nil {
+			return err
+		}
 	}
-	p.Items = &Schema{Reference: sRef}
-
-	// Add to prog.References if not there already
-	rName, rPkg := ParseLookup(lookup, ref.File)
-
-	if _, ok := prog.References[filepath.Base(rPkg)+"."+rName]; !ok {
-		_, err = GetReference(prog, ref.Context, false, lookup, ref.File)
-	}
-	return err
+	p.Items = &Schema{Reference: key}
+	return nil
 }
 
 // parseCompositionTypes reads the space-separated type list of a {oneof: ...} or
