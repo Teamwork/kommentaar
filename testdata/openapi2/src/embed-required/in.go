@@ -20,14 +20,50 @@ type Extra struct {
 	Kind string `json:"kind"` // {required}
 }
 
+// Near has x at depth 1.
+type Near struct {
+	X string `json:"x"`
+}
+
+// Far has x at depth 2, so Near wins.
+type Far struct {
+	Deep
+}
+
+// Deep is embedded by Far.
+type Deep struct {
+	X string `json:"x"`
+}
+
+// Tagged sets Bar with a tag, so it wins over Untagged.
+type Tagged struct {
+	Foo string `json:"Bar"`
+}
+
+// Untagged gets Bar from the field name.
+type Untagged struct {
+	Bar string
+}
+
+// Hidden has a key that an {omitdoc} field of resp shadows.
+type Hidden struct {
+	Secret string `json:"secret"`
+}
+
 // resp docs.
 type resp struct {
 	Base
 	Clash
 	*Extra
+	Near
+	Far
+	Tagged
+	Untagged
+	Hidden
 
 	Shadowed *string `json:"shadowed"`
 	Own      string  `json:"own"`
+	Secret   string  `json:"secret"` // {omitdoc}
 }
 
 // POST /path

@@ -27,7 +27,11 @@ definitions:
       - id
       - name
       - kind
+      - x
+      - Bar
     properties:
+      Bar:
+        type: string
       code:
         type: string
       dup:
@@ -42,5 +46,9 @@ definitions:
         type: string
       own:
         type: string
+      secret:
+        type: string
       shadowed:
+        type: string
+      x:
         type: string

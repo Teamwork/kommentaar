@@ -697,7 +697,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		return nil, err
 	}
 
-	mergeEmbeds(prog, &ref, nested, tagName)
+	mergeEmbeds(prog, &ref, st.Fields.List, nested, tagName)
 
 	if ref.IsSlice {
 		sliceSchema := &Schema{
@@ -779,42 +779,46 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 
 // mergeEmbeds merges the fields, properties and required keys of the untagged
 // embeds into ref.
-func mergeEmbeds(prog *Program, ref *Reference, nested []nestedEmbed, tagName string) {
-	// encoding/json omits a key that more than one embed promotes.
-	promoted := map[string]int{}
+func mergeEmbeds(prog *Program, ref *Reference, fields []*ast.Field, nested []nestedEmbed, tagName string) {
+	keys := structKeys(fields, tagName)
 	for _, n := range nested {
-		if s := prog.References[n.lookup].Schema; s != nil {
-			for k := range s.Properties {
-				promoted[k]++
-			}
+		for name, k := range prog.jsonKeys[n.lookup] {
+			k.depth++
+			addKey(keys, name, k)
 		}
 	}
+	prog.jsonKeys[ref.Lookup] = keys
 
-	// Merge for embedded structs without a tag.
 	for _, n := range nested {
 		embedded := prog.References[n.lookup]
 		ref.Fields = append(ref.Fields, embedded.Fields...)
 
-		if embedded.Schema != nil {
-			// encoding/json omits all fields of a nil embedded pointer, so
-			// only an explicit {required} holds there.
-			var explicit []string
-			if n.isPtr {
-				explicit = explicitRequired(embedded.Fields, tagName)
+		if embedded.Schema == nil {
+			continue
+		}
+
+		// encoding/json does not write the fields of a nil embedded pointer,
+		// so only an explicit {required} applies there.
+		var explicit []string
+		if n.isPtr {
+			explicit = explicitRequired(embedded.Fields, tagName)
+		}
+		for _, name := range embedded.Schema.Required {
+			if n.isPtr && !sliceutil.Contains(explicit, name) {
+				continue
 			}
-			for _, k := range embedded.Schema.Required {
-				if n.isPtr && !sliceutil.Contains(explicit, k) {
-					continue
-				}
-				if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
-					!sliceutil.Contains(ref.Schema.Required, k) {
-					ref.Schema.Required = append(ref.Schema.Required, k)
-				}
+			k, ok := prog.jsonKeys[n.lookup][name]
+			if !ok {
+				continue
 			}
-			for k, v := range embedded.Schema.Properties {
-				if _, ok := ref.Schema.Properties[k]; !ok {
-					ref.Schema.Properties[k] = v
-				}
+			k.depth++
+			if dominant(keys[name], k) {
+				ref.Schema.Required = append(ref.Schema.Required, name)
+			}
+		}
+		for k, v := range embedded.Schema.Properties {
+			if _, ok := ref.Schema.Properties[k]; !ok {
+				ref.Schema.Properties[k] = v
 			}
 		}
 	}
@@ -826,17 +830,80 @@ type nestedEmbed struct {
 	isPtr  bool
 }
 
-// explicitRequired returns the keys of the fields with a {required} doc tag.
+// jsonKey tells where encoding/json finds a key in a struct: the smallest
+// depth of the fields with the key, the number of fields at that depth, and
+// how many of them have a tag.
+type jsonKey struct {
+	depth, fields, tagged int
+}
+
+// addKey adds k to the key name in keys. Only the fields at the smallest depth
+// count.
+func addKey(keys map[string]jsonKey, name string, k jsonKey) {
+	cur, ok := keys[name]
+	switch {
+	case !ok || k.depth < cur.depth:
+		keys[name] = k
+	case k.depth == cur.depth:
+		cur.fields += k.fields
+		cur.tagged += k.tagged
+		keys[name] = cur
+	}
+}
+
+// dominant reports if encoding/json uses the field k of an embed, when all is
+// the same key in the parent.
+func dominant(all, k jsonKey) bool {
+	return k.depth == all.depth && (all.fields == 1 || all.tagged == 1 && k.tagged == 1)
+}
+
+// structKeys returns the keys of the direct fields. It includes the {omitdoc}
+// fields, because encoding/json writes them.
+func structKeys(fields []*ast.Field, tagName string) map[string]jsonKey {
+	keys := map[string]jsonKey{}
+	for _, f := range fields {
+		if len(f.Names) == 0 {
+			if name, tagged := jsonName(f, "", tagName); tagged && name != "-" {
+				addKey(keys, name, jsonKey{fields: 1, tagged: 1})
+			}
+			continue
+		}
+		for _, n := range f.Names {
+			if !n.IsExported() {
+				continue
+			}
+			name, tagged := jsonName(f, n.Name, tagName)
+			if name == "-" {
+				continue
+			}
+			k := jsonKey{fields: 1}
+			if tagged {
+				k.tagged = 1
+			}
+			addKey(keys, name, k)
+		}
+	}
+	return keys
+}
+
+// jsonName returns the key of the field goName, and if the tag sets it.
+func jsonName(f *ast.Field, goName, tagName string) (string, bool) {
+	if f.Tag != nil {
+		tag := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
+		if name, _, _ := strings.Cut(tag, ","); name != "" {
+			return name, true
+		}
+	}
+	return goName, false
+}
+
 func explicitRequired(fields []Param, tagName string) []string {
 	var keys []string
 	for _, p := range fields {
 		if _, tags := parseTags(fieldDoc(p.KindField)); !sliceutil.Contains(tags, paramRequired) {
 			continue
 		}
-		k := goutil.TagName(p.KindField, tagName)
-		if k == "" {
-			k = p.Name
-		}
+		k, _ := jsonName(p.KindField, p.Name, tagName)
 		keys = append(keys, k)
 	}
 	return keys
