@@ -697,44 +697,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		return nil, err
 	}
 
-	// encoding/json omits a key that more than one embed promotes.
-	promoted := map[string]int{}
-	for _, n := range nested {
-		if s := prog.References[n.lookup].Schema; s != nil {
-			for k := range s.Properties {
-				promoted[k]++
-			}
-		}
-	}
-
-	// Merge for embedded structs without a tag.
-	for _, n := range nested {
-		embedded := prog.References[n.lookup]
-		ref.Fields = append(ref.Fields, embedded.Fields...)
-
-		if embedded.Schema != nil {
-			// encoding/json omits all fields of a nil embedded pointer, so
-			// only an explicit {required} holds there.
-			var explicit []string
-			if n.isPtr {
-				explicit = explicitRequired(embedded.Fields, tagName)
-			}
-			for _, k := range embedded.Schema.Required {
-				if n.isPtr && !sliceutil.Contains(explicit, k) {
-					continue
-				}
-				if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
-					!sliceutil.Contains(ref.Schema.Required, k) {
-					ref.Schema.Required = append(ref.Schema.Required, k)
-				}
-			}
-			for k, v := range embedded.Schema.Properties {
-				if _, ok := ref.Schema.Properties[k]; !ok {
-					ref.Schema.Properties[k] = v
-				}
-			}
-		}
-	}
+	mergeEmbeds(prog, &ref, nested, tagName)
 
 	if ref.IsSlice {
 		sliceSchema := &Schema{
@@ -812,6 +775,49 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 		ref.Schema = schema
 	}
 	return nil
+}
+
+// mergeEmbeds merges the fields, properties and required keys of the untagged
+// embeds into ref.
+func mergeEmbeds(prog *Program, ref *Reference, nested []nestedEmbed, tagName string) {
+	// encoding/json omits a key that more than one embed promotes.
+	promoted := map[string]int{}
+	for _, n := range nested {
+		if s := prog.References[n.lookup].Schema; s != nil {
+			for k := range s.Properties {
+				promoted[k]++
+			}
+		}
+	}
+
+	// Merge for embedded structs without a tag.
+	for _, n := range nested {
+		embedded := prog.References[n.lookup]
+		ref.Fields = append(ref.Fields, embedded.Fields...)
+
+		if embedded.Schema != nil {
+			// encoding/json omits all fields of a nil embedded pointer, so
+			// only an explicit {required} holds there.
+			var explicit []string
+			if n.isPtr {
+				explicit = explicitRequired(embedded.Fields, tagName)
+			}
+			for _, k := range embedded.Schema.Required {
+				if n.isPtr && !sliceutil.Contains(explicit, k) {
+					continue
+				}
+				if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
+					!sliceutil.Contains(ref.Schema.Required, k) {
+					ref.Schema.Required = append(ref.Schema.Required, k)
+				}
+			}
+			for k, v := range embedded.Schema.Properties {
+				if _, ok := ref.Schema.Properties[k]; !ok {
+					ref.Schema.Properties[k] = v
+				}
+			}
+		}
+	}
 }
 
 // nestedEmbed is an untagged embedded struct whose fields merge into the parent.
