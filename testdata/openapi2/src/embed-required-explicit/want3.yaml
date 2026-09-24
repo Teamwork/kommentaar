@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/embed-required-explicit.resp'
+components:
+  schemas:
+    embed-required-explicit.resp:
+      title: resp
+      description: resp docs.
+      type: object
+      required:
+        - name
+        - kind
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+        name:
+          type: string
+        own:
+          type: string
