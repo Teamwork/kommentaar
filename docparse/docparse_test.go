@@ -2,6 +2,7 @@ package docparse
 
 import (
 	"fmt"
+	"go/build"
 	"reflect"
 	"testing"
 
@@ -637,5 +638,63 @@ func TestParseResponse(t *testing.T) {
 				t.Error(d)
 			}
 		})
+	}
+}
+
+// TestGetReferencePackageCollision makes sure GetReference does not return
+// another package's definition when two files each name the same base
+// package. Package repa/report and package repb/report both declare a type
+// Nested and both have the package name "report", and testdata/src/g and
+// testdata/src/h each import one of them unaliased, so both files ask
+// GetReference for the same string: "report.Nested".
+func TestGetReferencePackageCollision(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	first, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go")
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second, err := GetReference(prog, "resp", false, "report.Nested", "./testdata/src/h/h.go")
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+
+	if first.Package != "repa/report" {
+		t.Errorf("first.Package = %q, want %q", first.Package, "repa/report")
+	}
+	if second.Package != "repb/report" {
+		t.Errorf("second.Package = %q, want %q", second.Package, "repb/report")
+	}
+	if first.Lookup == second.Lookup {
+		t.Errorf("first and second both resolved to %q, want different keys", first.Lookup)
+	}
+
+	wantFirst := []string{"Str"}
+	wantSecond := []string{"Num"}
+	if got := fieldNames(first.Fields); !reflect.DeepEqual(got, wantFirst) {
+		t.Errorf("first fields = %v, want %v", got, wantFirst)
+	}
+	if got := fieldNames(second.Fields); !reflect.DeepEqual(got, wantSecond) {
+		t.Errorf("second fields = %v, want %v", got, wantSecond)
+	}
+
+	if stored, ok := prog.References[first.Lookup]; !ok || stored.Package != "repa/report" {
+		t.Errorf("prog.References[%q] = %+v, want Package %q", first.Lookup, stored, "repa/report")
+	}
+	if stored, ok := prog.References[second.Lookup]; !ok || stored.Package != "repb/report" {
+		t.Errorf("prog.References[%q] = %+v, want Package %q", second.Lookup, stored, "repb/report")
+	}
+
+	// A second call with the same raw lookup as the first must still hit the
+	// first package, not fall through to the second.
+	again, err := GetReference(prog, "req", false, "report.Nested", "./testdata/src/g/g.go")
+	if err != nil {
+		t.Fatalf("again: %v", err)
+	}
+	if again.Lookup != first.Lookup || again.Package != "repa/report" {
+		t.Errorf("again = %+v, want the same as first", again)
 	}
 }
