@@ -333,9 +333,6 @@ func fieldToSchema(
 
 	pkg := ref.Package
 	var name *ast.Ident
-	// importPath is the full import path of a non-primitive field's type,
-	// used to key its $ref. A bare ident's type is declared in ref.Package.
-	importPath := pkg
 
 	dbg("fieldToSchema: %v", f.Names)
 
@@ -360,15 +357,6 @@ start:
 			name = typ.Sel
 		case *ast.Ident:
 			name = typ
-		}
-		// pkg may be a short alias here; resolve it to the full import path
-		// so the code after this switch keys the $ref by package.
-		if name != nil {
-			if _, _, resolved, err := findType(ref.File, pkg, name.Name); err == nil {
-				importPath = resolved
-			} else {
-				importPath = pkg
-			}
 		}
 
 	// Pointer type; we don't really care about this for now, so just read over
@@ -482,11 +470,10 @@ start:
 		// Deal with array.
 		// TODO: don't do this inline but at the end. Reason it doesn't work not
 		// is because we always use GetReference().
-		ts, _, resolvedPath, err := findType(ref.File, pkg, name.Name)
+		ts, _, importPath, err := findType(ref.File, pkg, name.Name)
 		if err != nil {
 			return nil, err
 		}
-		importPath = resolvedPath
 		if !strings.HasSuffix(importPath, pkg) { // import alias
 			pkg = importPath
 		}
@@ -580,7 +567,7 @@ start:
 		}
 	}
 
-	nref, err := GetReference(prog, ref.Context, false, importPath+"."+name.Name, ref.File)
+	nref, err := GetReference(prog, ref.Context, false, lookup, ref.File)
 	if err != nil {
 		return nil, err
 	}
