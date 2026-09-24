@@ -713,13 +713,19 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		ref.Fields = append(ref.Fields, embedded.Fields...)
 
 		if embedded.Schema != nil {
-			// encoding/json omits all fields of a nil embedded pointer.
-			if !n.isPtr {
-				for _, k := range embedded.Schema.Required {
-					if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
-						!sliceutil.Contains(ref.Schema.Required, k) {
-						ref.Schema.Required = append(ref.Schema.Required, k)
-					}
+			// encoding/json omits all fields of a nil embedded pointer, so
+			// only an explicit {required} holds there.
+			var explicit []string
+			if n.isPtr {
+				explicit = explicitRequired(embedded.Fields, tagName)
+			}
+			for _, k := range embedded.Schema.Required {
+				if n.isPtr && !sliceutil.Contains(explicit, k) {
+					continue
+				}
+				if _, ok := ref.Schema.Properties[k]; !ok && promoted[k] == 1 &&
+					!sliceutil.Contains(ref.Schema.Required, k) {
+					ref.Schema.Required = append(ref.Schema.Required, k)
 				}
 			}
 			for k, v := range embedded.Schema.Properties {
@@ -812,6 +818,28 @@ func applyFieldWhitelists(prog *Program, context, filePath, name, tagName string
 type nestedEmbed struct {
 	lookup string
 	isPtr  bool
+}
+
+// explicitRequired returns the keys of the fields with a {required} doc tag.
+func explicitRequired(fields []Param, tagName string) []string {
+	var keys []string
+	for _, p := range fields {
+		var doc string
+		if p.KindField.Doc != nil {
+			doc = p.KindField.Doc.Text()
+		} else if p.KindField.Comment != nil {
+			doc = p.KindField.Comment.Text()
+		}
+		if _, tags := parseTags(doc); !sliceutil.Contains(tags, paramRequired) {
+			continue
+		}
+		k := goutil.TagName(p.KindField, tagName)
+		if k == "" {
+			k = p.Name
+		}
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func findNested(prog *Program, context string, isEmbed bool, f *ast.Field, filePath, pkg string) (string, error) {

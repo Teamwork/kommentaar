@@ -17,6 +17,7 @@ type Clash struct {
 // Extra is embedded by pointer.
 type Extra struct {
 	Code string `json:"code"`
+	Kind string `json:"kind"` // {required}
 }
 
 // resp docs.
