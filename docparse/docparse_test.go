@@ -698,3 +698,20 @@ func TestGetReferencePackageCollision(t *testing.T) {
 		t.Errorf("again = %+v, want the same as first", again)
 	}
 }
+
+// TestGetReferenceDottedSlice makes sure GetReference resolves a named slice
+// type in a package whose import path has a dot.
+func TestGetReferenceDottedSlice(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+	prog := NewProgram(false)
+
+	out, err := GetReference(prog, "req", false, "example.com/m.Items", "./testdata/src/a/a.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Lookup != "m.Item" || out.Package != "example.com/m" || !out.IsSlice {
+		t.Errorf("out = %+v, want the slice of m.Item in example.com/m", out)
+	}
+}

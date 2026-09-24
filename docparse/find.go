@@ -524,7 +524,7 @@ func GetReference(prog *Program, context string, isEmbed bool, lookup, filePath 
 		// dummy StructType, we'll just be using the doc from the interface.
 		st = &ast.StructType{Fields: &ast.FieldList{}}
 	case *ast.ArrayType:
-		arLookup := fmt.Sprintf("[]%v.%v", strings.Split(lookup, ".")[0], exprToString(typ.Elt))
+		arLookup := fmt.Sprintf("[]%v.%v", pkg, exprToString(typ.Elt))
 		if wrapper != "" {
 			arLookup = fmt.Sprintf("[%v:%v]", wrapper, arLookup)
 		}
