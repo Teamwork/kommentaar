@@ -93,7 +93,18 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 		}
 
 		if !sliceutil.Contains([]string{"path", "query", "form"}, ref.Context) {
-			fixRequired(schema, prop)
+			if prop.CustomSchema != "" {
+				// A custom schema keeps its own required lists; only a
+				// {required} tag on the field applies to the parent.
+				if _, tags := parseTags(fieldDoc(p.KindField)); sliceutil.Contains(tags, paramRequired) {
+					prop.Required = removeTagRequired(prop, name)
+					if !sliceutil.Contains(schema.Required, name) {
+						schema.Required = append(schema.Required, name)
+					}
+				}
+			} else {
+				fixRequired(schema, prop)
+			}
 
 			if prog.Config.InferRequired && isInferredRequired(p.KindField, tagName) &&
 				!sliceutil.Contains(schema.Required, name) {
@@ -159,6 +170,21 @@ func fixRequired(parent *Schema, prop *Schema) {
 	for _, p := range prop.Properties {
 		fixRequired(prop, p)
 	}
+}
+
+// removeTagRequired returns prop.Required without the name that a {required}
+// tag added, unless the custom schema has a property of that name.
+func removeTagRequired(prop *Schema, name string) []string {
+	if _, ok := prop.Properties[name]; ok {
+		return prop.Required
+	}
+	var required []string
+	for _, r := range prop.Required {
+		if r != name {
+			required = append(required, r)
+		}
+	}
+	return required
 }
 
 const (
