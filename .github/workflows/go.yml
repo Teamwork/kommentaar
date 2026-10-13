@@ -36,7 +36,7 @@ jobs:
         GOPATH: ${{ github.workspace }}/gopath
       run: |
         cd $GOPATH/src/github.com/teamwork/kommentaar
-        go test -coverprofile=full_coverage -race ./...
+        go test -coverpkg=./... -coverprofile=full_coverage -race ./...
 
     - name: Upload coverage
       env:
