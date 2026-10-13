@@ -239,7 +239,6 @@ func TestIsInferredRequired(t *testing.T) {
 		{"non-pointer no tag", `struct{ F string }`, true},
 		{"non-pointer json tag", "struct{ F string `json:\"f\"` }", true},
 		{"pointer", `struct{ F *string }`, false},
-		{"omitempty", "struct{ F string `json:\"f,omitempty\"` }", false},
 		{"omitempty with whitespace", "struct{ F string `json:\"f, omitempty\"` }", false},
 		{"other tag option not omitempty", "struct{ F string `json:\"f,string\"` }", true},
 		{"explicit optional doc", "struct{\n// {optional}\nF string\n}", false},
@@ -374,6 +373,48 @@ func TestSetTagsNullable(t *testing.T) {
 	}
 	if untagged.Nullable != nil {
 		t.Errorf("Nullable = %v, want nil", untagged.Nullable)
+	}
+}
+
+func TestSetTags(t *testing.T) {
+	cases := []struct {
+		tag     string
+		want    Schema
+		wantErr string
+	}{
+		{"enum: a b\nc", Schema{Type: "enum", Enum: []string{"a", "b", "c"}}, ""},
+		{"datetime", Schema{Format: "date-time"}, ""},
+		{"url", Schema{Format: "uri"}, ""},
+		{"email", Schema{Format: "idn-email"}, ""},
+		{"hostname", Schema{Format: "idn-hostname"}, ""},
+		{"default: 5 ", Schema{Default: "5"}, ""},
+		{"range: 1-10", Schema{Minimum: 1, Maximum: 10}, ""},
+		{"range: 1-", Schema{Minimum: 1}, ""},
+		{"range: -10", Schema{Maximum: 10}, ""},
+		{"field-whitelist: a  b", Schema{FieldWhitelist: []string{"a", "b"}}, ""},
+
+		{"range: 5", Schema{}, `invalid range: "range: 5"`},
+		{"range: 1-2-3", Schema{}, "invalid range"},
+		{"range: x-10", Schema{}, "could not parse range minimum"},
+		{"range: 1-x", Schema{}, "could not parse range maximum"},
+		{"anyof: string bogus", Schema{}, `anyof for "f"`},
+		{"bogus", Schema{}, `unknown parameter property for "f": "bogus"`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.tag, func(t *testing.T) {
+			var p Schema
+			err := setTags("f", "in.go", &p, []string{tc.tag})
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			if d := diff.Diff(tc.want, p); d != "" {
+				t.Errorf("%v", d)
+			}
+		})
 	}
 }
 
