@@ -634,6 +634,83 @@ func TestFieldToPropertyPackageCollision(t *testing.T) {
 // TestGetReferenceEmbedPackageCollision makes sure an embedded struct merges
 // the fields of the type that its own package declares, not a type from
 // another package that shares its base name.
+func TestFieldToPropertyGenerics(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+
+	box := func(ref string) *Schema {
+		return &Schema{Type: "object", Properties: map[string]*Schema{
+			"data":  {Reference: ref},
+			"items": {Type: "array", Items: &Schema{Reference: ref}},
+			"count": {Type: "integer"},
+		}}
+	}
+
+	cases := []struct {
+		typ, field string
+		mapTypes   map[string]string
+		want       *Schema
+		wantErr    string
+	}{
+		{"generic", "local", nil, box("gen.item"), ""},
+		{"generic", "pointer", nil, box("gen.item"), ""},
+		{"generic", "external", nil, box("mail.Address"), ""},
+		{"generic", "two", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"key":   {Type: "string"},
+			"value": {Type: "integer"},
+		}}, ""},
+
+		{"mappedGeneric", "full", map[string]string{"gen.box[string]": "string"}, &Schema{Type: "string"}, ""},
+		{"mappedGeneric", "external", map[string]string{"gen.box[mail.Address]": "string"}, &Schema{Type: "string"}, ""},
+		{"mappedGeneric", "fallback", map[string]string{"gen.pair": "integer"}, &Schema{Type: "integer"}, ""},
+		{"mappedGeneric", "nested", map[string]string{"gen.box": "number"}, &Schema{Type: "number"}, ""},
+
+		{"invalidGeneric", "argCount", nil, nil, "generic type has 1 template IDs, but 2 arguments were provided"},
+		{"invalidGeneric", "notStruct", nil, nil, "generic type is not a struct"},
+		{"invalidGeneric", "missing", nil, nil, `cannot find generic type: could not find type "unknown"`},
+		{"invalidGeneric", "nested", nil, nil, "cannot find generic type argument"},
+		{"invalidGeneric", "noParams", nil, nil, "plain is not a generic type"},
+		{"invalidGeneric", "badPkg", nil, nil, `cannot resolve package "nope"`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.typ+"/"+tc.field, func(t *testing.T) {
+			ts, _, _, err := findType("./testdata/src/gen/gen.go", "gen", tc.typ)
+			if err != nil {
+				t.Fatalf("could not parse file: %v", err)
+			}
+			var f *ast.Field
+			for _, field := range ts.Type.(*ast.StructType).Fields.List {
+				if field.Names[0].Name == tc.field {
+					f = field
+				}
+			}
+			if f == nil {
+				t.Fatalf("no field %q in %s", tc.field, tc.typ)
+			}
+
+			prog := NewProgram(false)
+			prog.Config.MapTypes = tc.mapTypes
+			out, err := fieldToSchema(prog, tc.field, "json", Reference{
+				Package: "gen",
+				File:    "./testdata/src/gen/gen.go",
+				Context: "req",
+			}, f, nil)
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			assertReferencesDefined(t, prog, out)
+			if d := diff.Diff(tc.want, out); d != "" {
+				t.Errorf("%v", d)
+			}
+		})
+	}
+}
+
 func TestGetReferenceEmbedPackageCollision(t *testing.T) {
 	orig := build.Default.GOPATH
 	build.Default.GOPATH = "./testdata"
