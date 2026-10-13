@@ -31,6 +31,8 @@ definitions:
       Foo:
         description: Foo documents a generic type.
         type: object
+        required:
+          - Field1
         properties:
           Field1:
             description: This is a simple field.

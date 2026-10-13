@@ -31,6 +31,10 @@ paths:
           in: formData
           type: string
           format: date-time
+          required: true
+        - name: filter
+          in: query
+          type: object
       responses:
         200:
           description: 200 OK (no data)

@@ -1,6 +1,8 @@
 title: overridden
 description: overridden field
 type: object
+required:
+  - basic
 properties:
   basic:
     description: Basic comment.

@@ -7,6 +7,8 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
@@ -45,9 +47,12 @@ func TestFieldToProperty(t *testing.T) {
 		"aliasNamedSlice": {Type: "array", Items: &Schema{
 			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 		"docs": {Type: "string", Description: "This has some documentation!",
-			Required: []string{"docs"},
-			Enum:     []string{"one", "two", "three", "four", "five", "six", "seven"},
+			Enum: []string{"one", "two", "three", "four", "five", "six", "seven"},
 		},
+		"anon": {Type: "object", Required: []string{"inner"}, Properties: map[string]*Schema{
+			"inner": {Type: "string"},
+			"other": {Type: "string"},
+		}},
 	}
 
 	build.Default.GOPATH = "./testdata"
@@ -728,6 +733,42 @@ func TestInvalidNestedReference(t *testing.T) {
 			}
 			if err == nil && out.AdditionalProperties != nil {
 				t.Errorf("additionalProperties = %+v, want nil", out.AdditionalProperties)
+			}
+		})
+	}
+}
+
+func TestSetTagsCustomSchema(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"s.yaml":    "type: object\nrequired: [id]\nproperties:\n  id:\n    type: integer\n",
+		"none.yaml": "type: object\nproperties:\n  f:\n    type: integer\n",
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		name         string
+		tags         []string
+		wantRequired []string
+	}{
+		{"yaml", []string{"schema: s.yaml"}, []string{"id"}},
+		{"required before schema", []string{"required", "schema: s.yaml"}, []string{"id"}},
+		{"required after schema", []string{"schema: s.yaml", "required"}, []string{"id"}},
+		{"field name is a schema property", []string{"schema: none.yaml", "required"}, nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var p Schema
+			if err := setTags("f", filepath.Join(dir, "in.go"), &p, tc.tags); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(p.Required, tc.wantRequired) {
+				t.Errorf("required: got %v, want %v", p.Required, tc.wantRequired)
 			}
 		})
 	}

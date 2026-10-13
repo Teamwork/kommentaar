@@ -6,9 +6,12 @@ type pathRef struct {
 type queryRef struct {
 	// Foo!
 	ID string `query:"id"`
+
+	// {schema: filter.yaml}
+	Filter string `query:"filter"`
 }
 type formRef struct {
-	ID string `form:"id"` // {date-time}
+	ID string `form:"id"` // {date-time} {required}
 }
 
 // POST /path/{id} tag

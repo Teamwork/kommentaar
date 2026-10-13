@@ -1,0 +1,6 @@
+type: object
+required:
+  - field
+properties:
+  field:
+    type: string
