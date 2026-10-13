@@ -53,6 +53,11 @@ type foo struct {
 	// {enum: one two three
 	//	four five six seven}
 	docs string
+
+	anon struct {
+		inner string // {required}
+		other string
+	}
 	// m      map[string]int
 }
 

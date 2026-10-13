@@ -7,6 +7,8 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
@@ -47,6 +49,10 @@ func TestFieldToProperty(t *testing.T) {
 		"docs": {Type: "string", Description: "This has some documentation!",
 			Enum: []string{"one", "two", "three", "four", "five", "six", "seven"},
 		},
+		"anon": {Type: "object", Required: []string{"inner"}, Properties: map[string]*Schema{
+			"inner": {Type: "string"},
+			"other": {Type: "string"},
+		}},
 	}
 
 	build.Default.GOPATH = "./testdata"
@@ -727,6 +733,88 @@ func TestInvalidNestedReference(t *testing.T) {
 			}
 			if err == nil && out.AdditionalProperties != nil {
 				t.Errorf("additionalProperties = %+v, want nil", out.AdditionalProperties)
+			}
+		})
+	}
+}
+
+func TestIsTagRequired(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{"doc comment", "struct{\n// {required}\nF string\n}", true},
+		{"trailing comment", "struct{\nF string // Text {required}\n}", true},
+		{"with custom schema", "struct{\n// {schema: f.yaml} {required}\nF string\n}", true},
+		{"no comment", `struct{ F string }`, false},
+		{"optional", "struct{\n// {optional}\nF string\n}", false},
+		{"similar tag", "struct{\n// {requiredx}\nF string\n}", false},
+		{"word in text", "struct{\n// This is required.\nF string\n}", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			src := "package p\ntype T " + tc.src
+			file, err := parser.ParseFile(token.NewFileSet(), "in.go", src, parser.ParseComments)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			st := file.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec).Type.(*ast.StructType)
+			if got := isTagRequired(st.Fields.List[0]); got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetTagsCustomSchema(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"s.yaml":     "type: object\nrequired: [id]\nproperties:\n  id:\n    type: integer\n",
+		"s.json":     `{"type": "object", "required": ["id"], "properties": {"id": {"type": "integer"}}}`,
+		"none.yaml":  "type: object\nproperties:\n  f:\n    type: integer\n",
+		"s.txt":      "type: object\n",
+		"bad.yaml":   "type: object\nrequired: [id\n",
+		"bad.json":   `{"type": "object",`,
+		"wrong.yaml": "type: [object\n",
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		name         string
+		tags         []string
+		wantRequired []string
+		wantErr      string
+	}{
+		{"yaml", []string{"schema: s.yaml"}, []string{"id"}, ""},
+		{"json", []string{"schema: s.json"}, []string{"id"}, ""},
+		{"required before schema", []string{"required", "schema: s.yaml"}, []string{"id"}, ""},
+		{"required after schema", []string{"schema: s.yaml", "required"}, []string{"id"}, ""},
+		{"field name is a schema property", []string{"schema: none.yaml", "required"}, nil, ""},
+		{"missing file", []string{"schema: missing.yaml"}, nil, "could not read file"},
+		{"unknown extension", []string{"schema: s.txt"}, nil, "unknown file type"},
+		{"invalid yaml", []string{"schema: bad.yaml"}, nil, "unmarshal schema"},
+		{"invalid json", []string{"schema: bad.json"}, nil, "unmarshal schema"},
+		{"wrong type", []string{"schema: wrong.yaml"}, nil, "unmarshal schema"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var p Schema
+			err := setTags("f", filepath.Join(dir, "in.go"), &p, tc.tags)
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			if !reflect.DeepEqual(p.Required, tc.wantRequired) {
+				t.Errorf("required: got %v, want %v", p.Required, tc.wantRequired)
 			}
 		})
 	}
