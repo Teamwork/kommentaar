@@ -24,11 +24,16 @@ components:
     param-schema.a:
       title: a
       type: object
+      required:
+        - overridden
+        - B
       properties:
         B:
           title: overridden
           description: overridden field
           type: object
+          required:
+            - basic
           properties:
             basic:
               description: Basic comment.
@@ -39,6 +44,8 @@ components:
           title: overridden
           description: overridden field
           type: object
+          required:
+            - basic
           properties:
             basic:
               description: Basic comment.

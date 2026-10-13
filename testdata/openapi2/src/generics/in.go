@@ -1,7 +1,7 @@
 package generics
 
 type myGeneric[T, N any] struct {
-	// This is a simple field.
+	// This is a simple field. {required}
 	Field1 T
 	// This is a array field.
 	Field2 []T

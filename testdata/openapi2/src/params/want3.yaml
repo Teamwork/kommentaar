@@ -16,6 +16,10 @@ paths:
           required: true
           schema:
             type: string
+        - name: filter
+          in: query
+          schema:
+            type: object
         - name: id
           in: query
           description: Foo!
@@ -27,6 +31,8 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
+              required:
+                - id
               properties:
                 id:
                   type: string
