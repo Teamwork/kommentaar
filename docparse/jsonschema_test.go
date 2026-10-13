@@ -7,6 +7,8 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
@@ -413,6 +415,52 @@ func TestSetTags(t *testing.T) {
 			}
 			if d := diff.Diff(tc.want, p); d != "" {
 				t.Errorf("%v", d)
+			}
+		})
+	}
+}
+
+func TestReadAndUnmarshalSchemaFile(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"s.yaml":     "type: object\nrequired: [id]\n",
+		"s.json":     `{"type": "object", "required": ["id"]}`,
+		"s.txt":      "type: object\n",
+		"bad.yaml":   "type: object\nrequired: [id\n",
+		"bad.json":   `{"type": "object",`,
+		"wrong.yaml": "type: [object\n",
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		file    string
+		wantErr string
+	}{
+		{"s.yaml", ""},
+		{"s.json", ""},
+		{"missing.yaml", "could not read file"},
+		{"s.txt", "unknown file type"},
+		{"bad.yaml", "unmarshal schema"},
+		{"bad.json", "unmarshal schema"},
+		{"wrong.yaml", "unmarshal schema"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.file, func(t *testing.T) {
+			var p Schema
+			err := readAndUnmarshalSchemaFile(filepath.Join(dir, tc.file), &p)
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			if want := (Schema{Type: "object", Required: []string{"id"}}); !reflect.DeepEqual(p, want) {
+				t.Errorf("got %+v, want %+v", p, want)
 			}
 		})
 	}
