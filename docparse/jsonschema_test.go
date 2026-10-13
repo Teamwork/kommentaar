@@ -736,6 +736,12 @@ func TestFieldToPropertyGenerics(t *testing.T) {
 		}}
 	}
 
+	mapOf := func(value *Schema) *Schema {
+		return &Schema{Type: "object", Properties: map[string]*Schema{
+			"values": {Type: "object", AdditionalProperties: value},
+		}}
+	}
+
 	cases := []struct {
 		typ, field string
 		mapTypes   map[string]string
@@ -760,6 +766,10 @@ func TestFieldToPropertyGenerics(t *testing.T) {
 		{"nestedGeneric", "passOnExt", nil, &Schema{Type: "object", Properties: map[string]*Schema{
 			"inner": {Type: "object", Properties: map[string]*Schema{"value": {Reference: "mail.Address"}}},
 		}}, ""},
+
+		{"nestedGeneric", "mapItem", nil, mapOf(&Schema{Reference: "gen.item"}), ""},
+		{"nestedGeneric", "mapExt", nil, mapOf(&Schema{Reference: "mail.Address"}), ""},
+		{"nestedGeneric", "mapString", nil, mapOf(&Schema{Type: "string"}), ""},
 
 		{"mappedGeneric", "full", map[string]string{"gen.box[string]": "string"}, &Schema{Type: "string"}, ""},
 		{"mappedGeneric", "external", map[string]string{"gen.box[mail.Address]": "string"}, &Schema{Type: "string"}, ""},

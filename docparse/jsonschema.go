@@ -826,8 +826,11 @@ func resolveMap(
 		dbg("ERR FOUND MapType: %s", err.Error())
 		return nil
 	}
-	if generics != nil && generics[vtyp.Name] != "" {
-		vtyp.Name = generics[vtyp.Name]
+	if resolved := generics[vtyp.Name]; resolved != "" {
+		if dotIdx := strings.LastIndex(resolved, "."); dotIdx >= 0 {
+			vpkg, resolved = resolved[:dotIdx], resolved[dotIdx+1:]
+		}
+		vtyp = &ast.Ident{Name: resolved}
 	}
 	if isPrimitive(JSONSchemaType(vtyp.Name)) {
 		if vtyp.Name != "any" {

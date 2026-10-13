@@ -59,8 +59,15 @@ type passOn[T any] struct {
 	Inner inner[T] `json:"inner"`
 }
 
+type mapOf[T any] struct {
+	Values map[string]T `json:"values"`
+}
+
 type nestedGeneric struct {
 	shadow    shadow[item]
 	passOn    passOn[item]
 	passOnExt passOn[mail.Address]
+	mapItem   mapOf[item]
+	mapExt    mapOf[mail.Address]
+	mapString mapOf[string]
 }
