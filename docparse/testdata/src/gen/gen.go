@@ -45,3 +45,22 @@ type mappedGeneric struct {
 	fallback pair[string, int]
 	nested   box[pair[string, int]]
 }
+
+type inner[T any] struct {
+	Value T `json:"value"`
+}
+
+type shadow[T any] struct {
+	First inner[string] `json:"first"`
+	Data  T             `json:"data"`
+}
+
+type passOn[T any] struct {
+	Inner inner[T] `json:"inner"`
+}
+
+type nestedGeneric struct {
+	shadow    shadow[item]
+	passOn    passOn[item]
+	passOnExt passOn[mail.Address]
+}

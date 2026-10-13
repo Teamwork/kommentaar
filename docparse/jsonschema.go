@@ -666,19 +666,20 @@ func fillGenericsSchema(
 		}
 	}
 
-	if generics == nil {
-		generics = make(map[string]string)
-	}
 	if len(indices) != len(genericsTemplateIDs) {
 		return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
 			len(genericsTemplateIDs), len(indices))
 	}
+	outer := generics
+	generics = make(map[string]string, len(indices))
 	for i := 0; i < len(indices); i++ {
 		arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
 		if err != nil {
 			return fmt.Errorf("cannot find generic type argument: %v", err)
 		}
-		if argPkg != ref.Package {
+		if resolved := outer[arg.Name]; argPkg == ref.Package && resolved != "" {
+			generics[genericsTemplateIDs[i]] = resolved
+		} else if argPkg != ref.Package {
 			// Cross-package type argument: resolve the import alias to the
 			// full package path so it can be looked up unambiguously later,
 			// regardless of which file provides the resolution context.

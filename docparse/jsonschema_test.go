@@ -750,6 +750,17 @@ func TestFieldToPropertyGenerics(t *testing.T) {
 			"value": {Type: "integer"},
 		}}, ""},
 
+		{"nestedGeneric", "shadow", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"first": {Type: "object", Properties: map[string]*Schema{"value": {Type: "string"}}},
+			"data":  {Reference: "gen.item"},
+		}}, ""},
+		{"nestedGeneric", "passOn", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"inner": {Type: "object", Properties: map[string]*Schema{"value": {Reference: "gen.item"}}},
+		}}, ""},
+		{"nestedGeneric", "passOnExt", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"inner": {Type: "object", Properties: map[string]*Schema{"value": {Reference: "mail.Address"}}},
+		}}, ""},
+
 		{"mappedGeneric", "full", map[string]string{"gen.box[string]": "string"}, &Schema{Type: "string"}, ""},
 		{"mappedGeneric", "external", map[string]string{"gen.box[mail.Address]": "string"}, &Schema{Type: "string"}, ""},
 		{"mappedGeneric", "fallback", map[string]string{"gen.pair": "integer"}, &Schema{Type: "integer"}, ""},
