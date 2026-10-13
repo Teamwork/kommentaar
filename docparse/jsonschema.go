@@ -963,7 +963,7 @@ arrayStart:
 		p.Items = &Schema{}
 		return nil
 
-	case *ast.StructType:
+	case *ast.StructType, *ast.IndexExpr, *ast.IndexListExpr:
 		elemRef := ref
 		elemRef.Package = pkg
 		items, err := fieldToSchema(prog, "", tagName, elemRef, &ast.Field{Type: typ}, generics)

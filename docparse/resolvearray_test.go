@@ -24,6 +24,18 @@ func TestResolveArrayElements(t *testing.T) {
 			Type: "object", AdditionalProperties: &Schema{Reference: "elem.item"}}}},
 		"mapChan": {wantErr: "resolveMap resolveArray: fieldToSchema: unknown array type: *ast.ChanType"},
 
+		"box": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
+			"v": {Reference: "elem.item"},
+		}}}},
+		"pair": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
+			"k": {Type: "string"},
+			"v": {Type: "integer"},
+		}}}},
+		"grid": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
+			"rows": {Type: "array", Items: &Schema{Type: "array", Items: &Schema{Type: "string"}}},
+		}}}},
+		"boxArgs": {wantErr: "generic type has 1 template IDs, but 2 arguments were provided"},
+
 		"iface": {want: &Schema{Type: "array", Items: &Schema{}}},
 
 		"anon": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
