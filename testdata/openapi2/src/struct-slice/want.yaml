@@ -32,6 +32,12 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/struct-slice.customFieldValue'
+  struct-slice.item:
+    title: item
+    type: object
+    properties:
+      name:
+        type: string
   struct-slice.resp:
     title: resp
     type: object
@@ -66,7 +72,7 @@ definitions:
           type: object
           properties:
             v:
-              $ref: '#/definitions/struct-slice.customFieldValue'
+              $ref: '#/definitions/struct-slice.item'
       iface:
         type: array
         items: {}
@@ -75,13 +81,13 @@ definitions:
         items:
           type: object
           additionalProperties:
-            $ref: '#/definitions/struct-slice.customFieldValue'
+            $ref: '#/definitions/struct-slice.item'
       nested:
         type: array
         items:
           type: array
           items:
-            $ref: '#/definitions/struct-slice.customFieldValue'
+            $ref: '#/definitions/struct-slice.item'
       oneMore:
         description: OneMore comment.
         type: array

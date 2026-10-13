@@ -8,13 +8,17 @@ type resp struct {
 	StructRef customFieldValues `json:"structRef"` // structRefComment.
 	Deal      deal              `json:"deal"`
 
-	Nested  [][]customFieldValue          `json:"nested"`
-	MapRef  []map[string]customFieldValue `json:"mapRef"`
-	Iface   []interface{}                 `json:"iface"`
-	Generic []box[customFieldValue]       `json:"generic"`
+	Nested  [][]item          `json:"nested"`
+	MapRef  []map[string]item `json:"mapRef"`
+	Iface   []interface{}     `json:"iface"`
+	Generic []box[item]       `json:"generic"`
 	Anon    []struct {
 		Val string `json:"val"`
 	} `json:"anon"`
+}
+
+type item struct {
+	Name string `json:"name"`
 }
 
 type box[T any] struct {
