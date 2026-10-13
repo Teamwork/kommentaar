@@ -36,6 +36,13 @@ definitions:
     title: resp
     type: object
     properties:
+      anon:
+        type: array
+        items:
+          type: object
+          properties:
+            val:
+              type: string
       another:
         description: Double comment.
         type: array
@@ -53,6 +60,28 @@ definitions:
           type: string
       deal:
         $ref: '#/definitions/struct-slice.deal'
+      generic:
+        type: array
+        items:
+          type: object
+          properties:
+            v:
+              $ref: '#/definitions/struct-slice.customFieldValue'
+      iface:
+        type: array
+        items: {}
+      mapRef:
+        type: array
+        items:
+          type: object
+          additionalProperties:
+            $ref: '#/definitions/struct-slice.customFieldValue'
+      nested:
+        type: array
+        items:
+          type: array
+          items:
+            $ref: '#/definitions/struct-slice.customFieldValue'
       oneMore:
         description: OneMore comment.
         type: array

@@ -7,6 +7,18 @@ type resp struct {
 	OneMore   oneMoreSlice      `json:"oneMore"`   // OneMore comment.
 	StructRef customFieldValues `json:"structRef"` // structRefComment.
 	Deal      deal              `json:"deal"`
+
+	Nested  [][]customFieldValue          `json:"nested"`
+	MapRef  []map[string]customFieldValue `json:"mapRef"`
+	Iface   []interface{}                 `json:"iface"`
+	Generic []box[customFieldValue]       `json:"generic"`
+	Anon    []struct {
+		Val string `json:"val"`
+	} `json:"anon"`
+}
+
+type box[T any] struct {
+	V T `json:"v"`
 }
 
 // mySlice comment.
