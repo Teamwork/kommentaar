@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -296,7 +297,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Description: schema.Description,
 					Type:        queryType,
 					Items:       items,
-					Required:    len(schema.Required) > 0,
+					Required:    slices.Contains(ref.Schema.Required, f.Name),
 					Readonly:    schema.Readonly,
 					Enum:        schema.Enum,
 					Default:     schema.Default,
@@ -342,7 +343,7 @@ func write(outFormat string, w io.Writer, prog *docparse.Program) error {
 					Description: schema.Description,
 					Type:        formType,
 					Items:       schema.Items,
-					Required:    len(schema.Required) > 0,
+					Required:    slices.Contains(ref.Schema.Required, f.Name),
 					Readonly:    schema.Readonly,
 					Enum:        schema.Enum,
 					Default:     schema.Default,

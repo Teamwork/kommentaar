@@ -908,7 +908,7 @@ func jsonName(f *ast.Field, goName, tagName string) (string, bool) {
 func explicitRequired(fields []Param, tagName string) []string {
 	var keys []string
 	for _, p := range fields {
-		if _, tags := parseTags(fieldDoc(p.KindField)); !sliceutil.Contains(tags, paramRequired) {
+		if !isTagRequired(p.KindField) {
 			continue
 		}
 		k, _ := jsonName(p.KindField, p.Name, tagName)
