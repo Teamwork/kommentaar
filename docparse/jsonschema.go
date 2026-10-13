@@ -947,6 +947,12 @@ arrayStart:
 			pkg = resolved
 		}
 
+	case *ast.ArrayType:
+		items := &Schema{Type: "array", Enum: p.Enum}
+		p.Enum = nil
+		p.Items = items
+		return resolveArray(prog, ref, pkg, items, typ.Elt, isEnum, generics)
+
 	case *ast.MapType:
 		p.Items = &Schema{Type: "object"}
 		return nil
