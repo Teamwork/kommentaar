@@ -483,7 +483,7 @@ start:
 		if resolvType, ok := ts.Type.(*ast.ArrayType); ok {
 			isEnum := p.Type == "enum"
 			p.Type = "array"
-			if err = resolveArray(prog, ref, pkg, &p, resolvType.Elt, isEnum, generics); err != nil {
+			if err = resolveArray(prog, tagName, ref, pkg, &p, resolvType.Elt, isEnum, generics); err != nil {
 				return nil, err
 			}
 
@@ -492,7 +492,7 @@ start:
 
 	// Maps
 	case *ast.MapType:
-		if err := resolveMap(prog, ref, pkg, &p, typ, generics); err != nil {
+		if err := resolveMap(prog, tagName, ref, pkg, &p, typ, generics); err != nil {
 			return nil, err
 		}
 		return &p, nil
@@ -502,7 +502,7 @@ start:
 		isEnum := p.Type == "enum"
 		p.Type = "array"
 
-		err := resolveArray(prog, ref, pkg, &p, typ.Elt, isEnum, generics)
+		err := resolveArray(prog, tagName, ref, pkg, &p, typ.Elt, isEnum, generics)
 		if err != nil {
 			return nil, err
 		}
@@ -792,6 +792,7 @@ func findTypeIdent(typ ast.Expr, curPkg string) (*ast.Ident, string, error) {
 // `map[K][]T` doesn't lose its element type.
 func resolveMap(
 	prog *Program,
+	tagName string,
 	ref Reference,
 	pkg string,
 	p *Schema,
@@ -803,14 +804,14 @@ func resolveMap(
 	switch v := dropTypePointers(typ.Value).(type) {
 	case *ast.ArrayType:
 		items := &Schema{Type: "array"}
-		if err := resolveArray(prog, ref, pkg, items, v.Elt, false, generics); err != nil {
+		if err := resolveArray(prog, tagName, ref, pkg, items, v.Elt, false, generics); err != nil {
 			return fmt.Errorf("resolveMap resolveArray: %v", err)
 		}
 		p.AdditionalProperties = items
 		return nil
 	case *ast.MapType:
 		inner := &Schema{}
-		if err := resolveMap(prog, ref, pkg, inner, v, generics); err != nil {
+		if err := resolveMap(prog, tagName, ref, pkg, inner, v, generics); err != nil {
 			return fmt.Errorf("resolveMap nested: %v", err)
 		}
 		p.AdditionalProperties = inner
@@ -843,7 +844,7 @@ func resolveMap(
 			vpkg = importPath
 		}
 		items := &Schema{Type: "array"}
-		if err := resolveArray(prog, ref, vpkg, items, arr.Elt, false, generics); err != nil {
+		if err := resolveArray(prog, tagName, ref, vpkg, items, arr.Elt, false, generics); err != nil {
 			return fmt.Errorf("resolveMap resolveArray: %v", err)
 		}
 		p.AdditionalProperties = items
@@ -861,6 +862,7 @@ func resolveMap(
 
 func resolveArray(
 	prog *Program,
+	tagName string,
 	ref Reference,
 	pkg string,
 	p *Schema,
@@ -945,8 +947,28 @@ arrayStart:
 			pkg = resolved
 		}
 
+	case *ast.ArrayType:
+		items := &Schema{Type: "array", Enum: p.Enum}
+		p.Enum = nil
+		p.Items = items
+		return resolveArray(prog, tagName, ref, pkg, items, typ.Elt, isEnum, generics)
+
 	case *ast.MapType:
-		p.Items = &Schema{Type: "object"}
+		p.Items = &Schema{}
+		return resolveMap(prog, tagName, ref, pkg, p.Items, typ, generics)
+
+	case *ast.InterfaceType:
+		p.Items = &Schema{}
+		return nil
+
+	case *ast.StructType, *ast.IndexExpr, *ast.IndexListExpr:
+		elemRef := ref
+		elemRef.Package = pkg
+		items, err := fieldToSchema(prog, "", tagName, elemRef, &ast.Field{Type: typ}, generics)
+		if err != nil {
+			return err
+		}
+		p.Items = items
 		return nil
 
 	default:
@@ -1001,7 +1023,7 @@ arrayStart:
 				items.Enum = p.Items.Enum
 			}
 			p.Items = items
-			return resolveArray(prog, ref, pkg, items, arr.Elt, isEnum, generics)
+			return resolveArray(prog, tagName, ref, pkg, items, arr.Elt, isEnum, generics)
 		}
 	}
 
