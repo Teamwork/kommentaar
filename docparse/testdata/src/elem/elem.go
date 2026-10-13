@@ -1,5 +1,7 @@
 package elem
 
+import "elem/other"
+
 type item struct {
 	ID int `json:"id"`
 }
@@ -14,6 +16,13 @@ type elems struct {
 	mapChan []map[string][]chan int
 
 	iface []interface{}
+
+	anon []struct {
+		ID   int   `json:"id"`
+		Item *item `json:"item"`
+	}
+	anonChan []struct{ C chan int }
+	anonPkg  other.Rows
 
 	ch []chan int
 }

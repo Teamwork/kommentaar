@@ -26,6 +26,15 @@ func TestResolveArrayElements(t *testing.T) {
 
 		"iface": {want: &Schema{Type: "array", Items: &Schema{}}},
 
+		"anon": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
+			"id":   {Type: "integer"},
+			"item": {Reference: "elem.item"},
+		}}}},
+		"anonPkg": {want: &Schema{Type: "array", Items: &Schema{Type: "object", Properties: map[string]*Schema{
+			"item": {Reference: "other.Item"},
+		}}}},
+		"anonChan": {wantErr: "anon struct: fieldToSchema: unknown type: *ast.ChanType"},
+
 		"ch": {wantErr: "unknown array type: *ast.ChanType"},
 	}
 

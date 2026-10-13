@@ -434,7 +434,7 @@ func TestResolveMap(t *testing.T) {
 				File:    "./testdata/src/a/a.go",
 				Context: "req",
 			}
-			if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+			if err := resolveMap(prog, "json", ref, "a", out, typ, nil); err != nil {
 				t.Fatal(err)
 			}
 
@@ -475,7 +475,7 @@ func TestResolveMapStoredReference(t *testing.T) {
 	for _, ctx := range []string{"req", "resp"} {
 		out := &Schema{}
 		ref := Reference{Package: "a", File: "./testdata/src/a/a.go", Context: ctx}
-		if err := resolveMap(prog, ref, "a", out, typ, nil); err != nil {
+		if err := resolveMap(prog, "json", ref, "a", out, typ, nil); err != nil {
 			t.Fatalf("%v: %v", ctx, err)
 		}
 		assertReferencesDefined(t, prog, out)
@@ -552,7 +552,7 @@ func TestResolveMapPackageCollision(t *testing.T) {
 		}
 
 		out := &Schema{}
-		err := resolveMap(prog, Reference{
+		err := resolveMap(prog, "json", Reference{
 			Package: "a",
 			File:    "./testdata/src/a/a.go",
 			Context: "req",
