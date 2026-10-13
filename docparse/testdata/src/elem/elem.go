@@ -10,5 +10,8 @@ type elems struct {
 	nestedEnum [][]string
 	nestedChan [][]chan int
 
+	mapRef  []map[string]item
+	mapChan []map[string][]chan int
+
 	ch []chan int
 }

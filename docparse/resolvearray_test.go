@@ -20,6 +20,10 @@ func TestResolveArrayElements(t *testing.T) {
 			Type: "array", Items: &Schema{Type: "string", Enum: []string{"x", "y"}}}}},
 		"nestedChan": {wantErr: "unknown array type: *ast.ChanType"},
 
+		"mapRef": {want: &Schema{Type: "array", Items: &Schema{
+			Type: "object", AdditionalProperties: &Schema{Reference: "elem.item"}}}},
+		"mapChan": {wantErr: "resolveMap resolveArray: fieldToSchema: unknown array type: *ast.ChanType"},
+
 		"ch": {wantErr: "unknown array type: *ast.ChanType"},
 	}
 

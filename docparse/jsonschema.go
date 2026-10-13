@@ -954,8 +954,8 @@ arrayStart:
 		return resolveArray(prog, ref, pkg, items, typ.Elt, isEnum, generics)
 
 	case *ast.MapType:
-		p.Items = &Schema{Type: "object"}
-		return nil
+		p.Items = &Schema{}
+		return resolveMap(prog, ref, pkg, p.Items, typ, generics)
 
 	default:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
