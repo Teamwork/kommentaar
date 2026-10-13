@@ -13,5 +13,7 @@ type elems struct {
 	mapRef  []map[string]item
 	mapChan []map[string][]chan int
 
+	iface []interface{}
+
 	ch []chan int
 }

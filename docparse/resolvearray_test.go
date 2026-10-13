@@ -24,6 +24,8 @@ func TestResolveArrayElements(t *testing.T) {
 			Type: "object", AdditionalProperties: &Schema{Reference: "elem.item"}}}},
 		"mapChan": {wantErr: "resolveMap resolveArray: fieldToSchema: unknown array type: *ast.ChanType"},
 
+		"iface": {want: &Schema{Type: "array", Items: &Schema{}}},
+
 		"ch": {wantErr: "unknown array type: *ast.ChanType"},
 	}
 

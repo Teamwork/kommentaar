@@ -957,6 +957,10 @@ arrayStart:
 		p.Items = &Schema{}
 		return resolveMap(prog, ref, pkg, p.Items, typ, generics)
 
+	case *ast.InterfaceType:
+		p.Items = &Schema{}
+		return nil
+
 	default:
 		return fmt.Errorf("fieldToSchema: unknown array type: %T", typ)
 	}
