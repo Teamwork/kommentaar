@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -386,7 +387,7 @@ func structParams(prog *docparse.Program, r *docparse.Ref, in string,
 			Name:        name,
 			In:          in,
 			Description: schema.Description,
-			Required:    len(schema.Required) > 0,
+			Required:    slices.Contains(def.Schema.Required, name),
 			Schema:      paramSchema(schema, ref),
 		})
 	}
@@ -447,7 +448,7 @@ func formSchema(prog *docparse.Program, r *docparse.Ref, ref func(string) string
 		field := paramSchema(p, ref)
 		field.Description = p.Description
 		schema.Properties[name] = field
-		if len(p.Required) > 0 {
+		if slices.Contains(def.Schema.Required, name) {
 			schema.Required = append(schema.Required, name)
 		}
 	}

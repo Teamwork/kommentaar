@@ -45,8 +45,7 @@ func TestFieldToProperty(t *testing.T) {
 		"aliasNamedSlice": {Type: "array", Items: &Schema{
 			Type: "array", Items: &Schema{Reference: "c.Nested"}}},
 		"docs": {Type: "string", Description: "This has some documentation!",
-			Required: []string{"docs"},
-			Enum:     []string{"one", "two", "three", "four", "five", "six", "seven"},
+			Enum: []string{"one", "two", "three", "four", "five", "six", "seven"},
 		},
 	}
 

@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: x
+  version: x
+paths:
+  /path:
+    post:
+      operationId: POST_path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/generics-required.reqRef'
+      responses:
+        "200":
+          description: 200 OK (no data)
+components:
+  schemas:
+    generics-required.reqRef:
+      title: reqRef
+      type: object
+      required:
+        - wrapped
+      properties:
+        wrapped:
+          type: object
+          required:
+            - data
+            - note
+          properties:
+            count:
+              type: integer
+            data:
+              type: string
+            note:
+              type: string

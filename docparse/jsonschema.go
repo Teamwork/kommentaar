@@ -92,9 +92,11 @@ func structToSchema(prog *Program, name, tagName string, ref Reference) (*Schema
 			return nil, fmt.Errorf("cannot parse %v: %v", ref.Lookup, err)
 		}
 
-		if !sliceutil.Contains([]string{"path", "query", "form"}, ref.Context) {
-			fixRequired(schema, prop)
+		if isTagRequired(p.KindField) {
+			schema.Required = append(schema.Required, name)
+		}
 
+		if !sliceutil.Contains([]string{"path", "query", "form"}, ref.Context) {
 			if prog.Config.InferRequired && isInferredRequired(p.KindField, tagName) &&
 				!sliceutil.Contains(schema.Required, name) {
 				schema.Required = append(schema.Required, name)
@@ -148,17 +150,9 @@ func fieldDoc(f *ast.Field) string {
 	return ""
 }
 
-// The required tags are added to the property itself, rather than to the
-// parent. So fix that by moving it from "prop" to "parent".
-//
-// TODO: fix it so we don't have to do this.
-func fixRequired(parent *Schema, prop *Schema) {
-	parent.Required = append(parent.Required, prop.Required...)
-	prop.Required = nil
-
-	for _, p := range prop.Properties {
-		fixRequired(prop, p)
-	}
+func isTagRequired(f *ast.Field) bool {
+	_, tags := parseTags(fieldDoc(f))
+	return sliceutil.Contains(tags, paramRequired)
 }
 
 const (
@@ -177,10 +171,8 @@ func setTags(name, fName string, p *Schema, tags []string) error {
 
 		case paramOmitDoc:
 			p.OmitDoc = true
-		case paramRequired:
-			p.Required = append(p.Required, name)
-		case paramOptional:
-			// Do nothing.
+		case paramRequired, paramOptional:
+			// The parent reads these from the field.
 		case paramOmitEmpty:
 			// TODO: implement this (also load from struct tag?), but I don't
 			// see any way to do that in the OpenAPI spec?
@@ -431,6 +423,9 @@ start:
 			prop, err := fieldToSchema(prog, propName, tagName, ref, f, generics)
 			if err != nil {
 				return nil, fmt.Errorf("anon struct: %v", err)
+			}
+			if isTagRequired(f) {
+				p.Required = append(p.Required, propName)
 			}
 
 			p.Properties[propName] = prop
@@ -706,6 +701,9 @@ func fillGenericsSchema(
 		schema, err := fieldToSchema(prog, fieldName, tagName, genericRef, field, generics)
 		if err != nil {
 			return fmt.Errorf("generic fieldToSchema: %v", err)
+		}
+		if isTagRequired(field) {
+			p.Required = append(p.Required, fieldName)
 		}
 		p.Properties[fieldName] = schema
 	}
