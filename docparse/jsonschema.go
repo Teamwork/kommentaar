@@ -646,6 +646,9 @@ func fillGenericsSchema(
 	if err != nil {
 		return fmt.Errorf("cannot find generic type: %v", err)
 	}
+	if genericsType.TypeParams == nil {
+		return fmt.Errorf("%s is not a generic type", genericsIdent.Name)
+	}
 
 	genericRef := ref
 	genericRef.File = genericsFilePath
@@ -658,31 +661,30 @@ func fillGenericsSchema(
 		}
 	}
 
-	if generics == nil {
-		generics = make(map[string]string)
+	if len(indices) != len(genericsTemplateIDs) {
+		return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
+			len(genericsTemplateIDs), len(indices))
 	}
-	if len(genericsTemplateIDs) > 0 {
-		if len(indices) != len(genericsTemplateIDs) {
-			return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
-				len(genericsTemplateIDs), len(indices))
+	outer := generics
+	generics = make(map[string]string, len(indices))
+	for i := 0; i < len(indices); i++ {
+		arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
+		if err != nil {
+			return fmt.Errorf("cannot find generic type argument: %v", err)
 		}
-		for i := 0; i < len(indices); i++ {
-			arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
-			if err != nil {
-				return fmt.Errorf("cannot find generic type argument: %v", err)
+		if resolved := outer[arg.Name]; argPkg == ref.Package && resolved != "" {
+			generics[genericsTemplateIDs[i]] = resolved
+		} else if argPkg != ref.Package {
+			// Cross-package type argument: resolve the import alias to the
+			// full package path so it can be looked up unambiguously later,
+			// regardless of which file provides the resolution context.
+			resolvedArgPkg, _, resolveErr := resolvePackage(ref.File, argPkg)
+			if resolveErr != nil {
+				return fmt.Errorf("cannot resolve package %q for generic type argument: %v", argPkg, resolveErr)
 			}
-			if argPkg != ref.Package {
-				// Cross-package type argument: resolve the import alias to the
-				// full package path so it can be looked up unambiguously later,
-				// regardless of which file provides the resolution context.
-				resolvedArgPkg, _, resolveErr := resolvePackage(ref.File, argPkg)
-				if resolveErr != nil {
-					return fmt.Errorf("cannot resolve package %q for generic type argument: %v", argPkg, resolveErr)
-				}
-				generics[genericsTemplateIDs[i]] = resolvedArgPkg + "." + arg.Name
-			} else {
-				generics[genericsTemplateIDs[i]] = arg.Name
-			}
+			generics[genericsTemplateIDs[i]] = resolvedArgPkg + "." + arg.Name
+		} else {
+			generics[genericsTemplateIDs[i]] = arg.Name
 		}
 	}
 
@@ -823,8 +825,11 @@ func resolveMap(
 		dbg("ERR FOUND MapType: %s", err.Error())
 		return nil
 	}
-	if generics != nil && generics[vtyp.Name] != "" {
-		vtyp.Name = generics[vtyp.Name]
+	if resolved := generics[vtyp.Name]; resolved != "" {
+		if dotIdx := strings.LastIndex(resolved, "."); dotIdx >= 0 {
+			vpkg, resolved = resolved[:dotIdx], resolved[dotIdx+1:]
+		}
+		vtyp = &ast.Ident{Name: resolved}
 	}
 	if isPrimitive(JSONSchemaType(vtyp.Name)) {
 		if vtyp.Name != "any" {
@@ -891,11 +896,19 @@ arrayStart:
 
 		dbg("resolveArray: ident: %#v in %#v", typ.Name, pkg)
 
-		if generics != nil && generics[typ.Name] != "" {
-			p.Items = &Schema{Type: JSONSchemaType(generics[typ.Name])}
-		} else {
-			p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
+		if resolved := generics[typ.Name]; resolved != "" && resolved != typ.Name {
+			if dotIdx := strings.LastIndex(resolved, "."); dotIdx >= 0 {
+				asw = &ast.SelectorExpr{
+					X:   &ast.Ident{Name: resolved[:dotIdx]},
+					Sel: &ast.Ident{Name: resolved[dotIdx+1:]},
+				}
+			} else {
+				asw = &ast.Ident{Name: resolved}
+			}
+			goto arrayStart
 		}
+
+		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
 		// Generally an item is an enum rather than the array itself
 		if len(p.Enum) > 0 {

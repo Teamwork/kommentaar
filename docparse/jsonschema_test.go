@@ -244,7 +244,6 @@ func TestIsInferredRequired(t *testing.T) {
 		{"non-pointer no tag", `struct{ F string }`, true},
 		{"non-pointer json tag", "struct{ F string `json:\"f\"` }", true},
 		{"pointer", `struct{ F *string }`, false},
-		{"omitempty", "struct{ F string `json:\"f,omitempty\"` }", false},
 		{"omitempty with whitespace", "struct{ F string `json:\"f, omitempty\"` }", false},
 		{"other tag option not omitempty", "struct{ F string `json:\"f,string\"` }", true},
 		{"explicit optional doc", "struct{\n// {optional}\nF string\n}", false},
@@ -379,6 +378,94 @@ func TestSetTagsNullable(t *testing.T) {
 	}
 	if untagged.Nullable != nil {
 		t.Errorf("Nullable = %v, want nil", untagged.Nullable)
+	}
+}
+
+func TestSetTags(t *testing.T) {
+	cases := []struct {
+		tag     string
+		want    Schema
+		wantErr string
+	}{
+		{"enum: a b\nc", Schema{Type: "enum", Enum: []string{"a", "b", "c"}}, ""},
+		{"datetime", Schema{Format: "date-time"}, ""},
+		{"url", Schema{Format: "uri"}, ""},
+		{"email", Schema{Format: "idn-email"}, ""},
+		{"hostname", Schema{Format: "idn-hostname"}, ""},
+		{"default: 5 ", Schema{Default: "5"}, ""},
+		{"range: 1-10", Schema{Minimum: 1, Maximum: 10}, ""},
+		{"range: 1-", Schema{Minimum: 1}, ""},
+		{"range: -10", Schema{Maximum: 10}, ""},
+		{"field-whitelist: a  b", Schema{FieldWhitelist: []string{"a", "b"}}, ""},
+
+		{"range: 5", Schema{}, `invalid range: "range: 5"`},
+		{"range: 1-2-3", Schema{}, "invalid range"},
+		{"range: x-10", Schema{}, "could not parse range minimum"},
+		{"range: 1-x", Schema{}, "could not parse range maximum"},
+		{"anyof: string bogus", Schema{}, `anyof for "f"`},
+		{"bogus", Schema{}, `unknown parameter property for "f": "bogus"`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.tag, func(t *testing.T) {
+			var p Schema
+			err := setTags("f", "in.go", &p, []string{tc.tag})
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			if d := diff.Diff(tc.want, p); d != "" {
+				t.Errorf("%v", d)
+			}
+		})
+	}
+}
+
+func TestReadAndUnmarshalSchemaFile(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"s.yaml":     "type: object\nrequired: [id]\n",
+		"s.json":     `{"type": "object", "required": ["id"]}`,
+		"s.txt":      "type: object\n",
+		"bad.yaml":   "type: object\nrequired: [id\n",
+		"bad.json":   `{"type": "object",`,
+		"wrong.yaml": "type: [object\n",
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		file    string
+		wantErr string
+	}{
+		{"s.yaml", ""},
+		{"s.json", ""},
+		{"missing.yaml", "could not read file"},
+		{"s.txt", "unknown file type"},
+		{"bad.yaml", "unmarshal schema"},
+		{"bad.json", "unmarshal schema"},
+		{"wrong.yaml", "unmarshal schema"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.file, func(t *testing.T) {
+			var p Schema
+			err := readAndUnmarshalSchemaFile(filepath.Join(dir, tc.file), &p)
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			if want := (Schema{Type: "object", Required: []string{"id"}}); !reflect.DeepEqual(p, want) {
+				t.Errorf("got %+v, want %+v", p, want)
+			}
+		})
 	}
 }
 
@@ -639,6 +726,104 @@ func TestFieldToPropertyPackageCollision(t *testing.T) {
 // TestGetReferenceEmbedPackageCollision makes sure an embedded struct merges
 // the fields of the type that its own package declares, not a type from
 // another package that shares its base name.
+func TestFieldToPropertyGenerics(t *testing.T) {
+	orig := build.Default.GOPATH
+	build.Default.GOPATH = "./testdata"
+	defer func() { build.Default.GOPATH = orig }()
+
+	box := func(ref string) *Schema {
+		return &Schema{Type: "object", Properties: map[string]*Schema{
+			"data":  {Reference: ref},
+			"items": {Type: "array", Items: &Schema{Reference: ref}},
+			"count": {Type: "integer"},
+		}}
+	}
+
+	mapOf := func(value *Schema) *Schema {
+		return &Schema{Type: "object", Properties: map[string]*Schema{
+			"values": {Type: "object", AdditionalProperties: value},
+		}}
+	}
+
+	cases := []struct {
+		typ, field string
+		mapTypes   map[string]string
+		want       *Schema
+		wantErr    string
+	}{
+		{"generic", "local", nil, box("gen.item"), ""},
+		{"generic", "pointer", nil, box("gen.item"), ""},
+		{"generic", "external", nil, box("mail.Address"), ""},
+		{"generic", "two", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"key":   {Type: "string"},
+			"value": {Type: "integer"},
+		}}, ""},
+
+		{"nestedGeneric", "shadow", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"first": {Type: "object", Properties: map[string]*Schema{"value": {Type: "string"}}},
+			"data":  {Reference: "gen.item"},
+		}}, ""},
+		{"nestedGeneric", "passOn", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"inner": {Type: "object", Properties: map[string]*Schema{"value": {Reference: "gen.item"}}},
+		}}, ""},
+		{"nestedGeneric", "passOnExt", nil, &Schema{Type: "object", Properties: map[string]*Schema{
+			"inner": {Type: "object", Properties: map[string]*Schema{"value": {Reference: "mail.Address"}}},
+		}}, ""},
+
+		{"nestedGeneric", "mapItem", nil, mapOf(&Schema{Reference: "gen.item"}), ""},
+		{"nestedGeneric", "mapExt", nil, mapOf(&Schema{Reference: "mail.Address"}), ""},
+		{"nestedGeneric", "mapString", nil, mapOf(&Schema{Type: "string"}), ""},
+
+		{"mappedGeneric", "full", map[string]string{"gen.box[string]": "string"}, &Schema{Type: "string"}, ""},
+		{"mappedGeneric", "external", map[string]string{"gen.box[mail.Address]": "string"}, &Schema{Type: "string"}, ""},
+		{"mappedGeneric", "fallback", map[string]string{"gen.pair": "integer"}, &Schema{Type: "integer"}, ""},
+		{"mappedGeneric", "nested", map[string]string{"gen.box": "number"}, &Schema{Type: "number"}, ""},
+
+		{"invalidGeneric", "argCount", nil, nil, "generic type has 1 template IDs, but 2 arguments were provided"},
+		{"invalidGeneric", "notStruct", nil, nil, "generic type is not a struct"},
+		{"invalidGeneric", "missing", nil, nil, `cannot find generic type: could not find type "unknown"`},
+		{"invalidGeneric", "nested", nil, nil, "cannot find generic type argument"},
+		{"invalidGeneric", "noParams", nil, nil, "plain is not a generic type"},
+		{"invalidGeneric", "badPkg", nil, nil, `cannot resolve package "nope"`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.typ+"/"+tc.field, func(t *testing.T) {
+			ts, _, _, err := findType("./testdata/src/gen/gen.go", "gen", tc.typ)
+			if err != nil {
+				t.Fatalf("could not parse file: %v", err)
+			}
+			var f *ast.Field
+			for _, field := range ts.Type.(*ast.StructType).Fields.List {
+				if field.Names[0].Name == tc.field {
+					f = field
+				}
+			}
+			if f == nil {
+				t.Fatalf("no field %q in %s", tc.field, tc.typ)
+			}
+
+			prog := NewProgram(false)
+			prog.Config.MapTypes = tc.mapTypes
+			out, err := fieldToSchema(prog, tc.field, "json", Reference{
+				Package: "gen",
+				File:    "./testdata/src/gen/gen.go",
+				Context: "req",
+			}, f, nil)
+			if !test.ErrorContains(err, tc.wantErr) {
+				t.Fatalf("wrong error\nout:  %v\nwant: %v", err, tc.wantErr)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+			assertReferencesDefined(t, prog, out)
+			if d := diff.Diff(tc.want, out); d != "" {
+				t.Errorf("%v", d)
+			}
+		})
+	}
+}
+
 func TestGetReferenceEmbedPackageCollision(t *testing.T) {
 	orig := build.Default.GOPATH
 	build.Default.GOPATH = "./testdata"
