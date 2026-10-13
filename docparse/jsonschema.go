@@ -891,11 +891,19 @@ arrayStart:
 
 		dbg("resolveArray: ident: %#v in %#v", typ.Name, pkg)
 
-		if generics != nil && generics[typ.Name] != "" {
-			p.Items = &Schema{Type: JSONSchemaType(generics[typ.Name])}
-		} else {
-			p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
+		if resolved := generics[typ.Name]; resolved != "" && resolved != typ.Name {
+			if dotIdx := strings.LastIndex(resolved, "."); dotIdx >= 0 {
+				asw = &ast.SelectorExpr{
+					X:   &ast.Ident{Name: resolved[:dotIdx]},
+					Sel: &ast.Ident{Name: resolved[dotIdx+1:]},
+				}
+			} else {
+				asw = &ast.Ident{Name: resolved}
+			}
+			goto arrayStart
 		}
+
+		p.Items = &Schema{Type: JSONSchemaType(typ.Name)}
 
 		// Generally an item is an enum rather than the array itself
 		if len(p.Enum) > 0 {
