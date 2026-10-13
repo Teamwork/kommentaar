@@ -651,6 +651,9 @@ func fillGenericsSchema(
 	if err != nil {
 		return fmt.Errorf("cannot find generic type: %v", err)
 	}
+	if genericsType.TypeParams == nil {
+		return fmt.Errorf("%s is not a generic type", genericsIdent.Name)
+	}
 
 	genericRef := ref
 	genericRef.File = genericsFilePath
@@ -666,28 +669,26 @@ func fillGenericsSchema(
 	if generics == nil {
 		generics = make(map[string]string)
 	}
-	if len(genericsTemplateIDs) > 0 {
-		if len(indices) != len(genericsTemplateIDs) {
-			return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
-				len(genericsTemplateIDs), len(indices))
+	if len(indices) != len(genericsTemplateIDs) {
+		return fmt.Errorf("generic type has %d template IDs, but %d arguments were provided",
+			len(genericsTemplateIDs), len(indices))
+	}
+	for i := 0; i < len(indices); i++ {
+		arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
+		if err != nil {
+			return fmt.Errorf("cannot find generic type argument: %v", err)
 		}
-		for i := 0; i < len(indices); i++ {
-			arg, argPkg, err := findTypeIdent(indices[i], ref.Package)
-			if err != nil {
-				return fmt.Errorf("cannot find generic type argument: %v", err)
+		if argPkg != ref.Package {
+			// Cross-package type argument: resolve the import alias to the
+			// full package path so it can be looked up unambiguously later,
+			// regardless of which file provides the resolution context.
+			resolvedArgPkg, _, resolveErr := resolvePackage(ref.File, argPkg)
+			if resolveErr != nil {
+				return fmt.Errorf("cannot resolve package %q for generic type argument: %v", argPkg, resolveErr)
 			}
-			if argPkg != ref.Package {
-				// Cross-package type argument: resolve the import alias to the
-				// full package path so it can be looked up unambiguously later,
-				// regardless of which file provides the resolution context.
-				resolvedArgPkg, _, resolveErr := resolvePackage(ref.File, argPkg)
-				if resolveErr != nil {
-					return fmt.Errorf("cannot resolve package %q for generic type argument: %v", argPkg, resolveErr)
-				}
-				generics[genericsTemplateIDs[i]] = resolvedArgPkg + "." + arg.Name
-			} else {
-				generics[genericsTemplateIDs[i]] = arg.Name
-			}
+			generics[genericsTemplateIDs[i]] = resolvedArgPkg + "." + arg.Name
+		} else {
+			generics[genericsTemplateIDs[i]] = arg.Name
 		}
 	}
 
