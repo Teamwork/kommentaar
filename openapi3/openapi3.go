@@ -5,7 +5,6 @@
 package openapi3 // import "github.com/teamwork/kommentaar/openapi3"
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,8 +16,8 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/teamwork/kommentaar/docparse"
+	"github.com/teamwork/kommentaar/internal/yamlout"
 	"github.com/teamwork/utils/v2/goutil"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -574,11 +573,7 @@ func marshal(outFormat string, w io.Writer, out *OpenAPI) error {
 	case "json":
 		d, err = json.Marshal(out)
 	case "yaml":
-		var b bytes.Buffer
-		yamlEncoder := yaml.NewEncoder(&b)
-		yamlEncoder.SetIndent(2)
-		err = yamlEncoder.Encode(out)
-		d = b.Bytes()
+		d, err = yamlout.Marshal(out)
 	default:
 		err = fmt.Errorf("unknown format: %#v", outFormat)
 	}
